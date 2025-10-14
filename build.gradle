@@ -21,7 +21,7 @@ sonar {
         property "sonar.organization", "dwr-cvm"
         property "sonar.host.url", "https://sonarcloud.io"
         property "sonar.pullrequest.provider", "GitHub"
-        property "sonar.pullrequest.github.repository", "CentralValleyModeling/wrims-engine"
+        property "sonar.pullrequest.github.repository", "CentralValleyModeling/wresl"
     }
 }
 
