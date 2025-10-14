@@ -27,7 +27,7 @@ dependencies {
 }
 
 dependencies {
-    api(platform(project(":wrims-engine-bom")))
+    //api(platform(project(":wrims-engine-bom")))
     api libs.hec.monolith
 
     antlr libs.antlr
