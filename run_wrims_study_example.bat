@@ -9,15 +9,15 @@ set JAVA_HOME="J:\java\jdk\jdk_21.0.8_temurin"
 set temp_wrims2=".\foo"
 
 REM Add the required DLLs to the PATH. Do not change if this if run from the wrims-engine root directory.
-set PATH=%PATH%;wrims-core\build\tmp\x64
+set PATH=%PATH%;wresl-core\build\tmp\x64
 
 REM Add the external libraries to the PATH. Do not change.
 set PATH=%PATH%;%PROJECT_DIR%\Run\External
 
 REM Set the main class to run. This is the entry point for the WRIMS application. Do not change when running from wrims-engine root.
 set MAIN_CLASS=wrimsv2.components.ControllerBatch
-set WRIMS_CORE_JAR="wrims-core\build\libs\*"
-set WRIMS_CORE_DEPENDENCIES="wrims-core\build\tmp\libs\*"
+set WRIMS_CORE_JAR="wresl-core\build\libs\*"
+set WRIMS_CORE_DEPENDENCIES="wresl-core\build\tmp\libs\*"
 
 %JAVA_HOME%\bin\java -Xmx4096m -Xss1024K -cp "%WRIMS_CORE_JAR%;%WRIMS_CORE_DEPENDENCIES%" %MAIN_CLASS% -config=%PROJECT_DIR%\%CONFIG_FILE%
 pause

@@ -40,9 +40,9 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@v4.0.0
         with:
-          name: wrims-core
+          name: wresl-core
           path: |
-            ./wrims-core/build/libs/*.jar
+            ./wresl-core/build/libs/*.jar
 
       - name: Generate tattletale-reports
         run: |

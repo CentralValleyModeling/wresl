@@ -1,5 +1,5 @@
 rootProject.name = 'wresl'
-include 'wrims-core'
+include 'wresl-core'
 //include 'wrims-engine-bom'
 //include 'wrims-comparison-test'
 
