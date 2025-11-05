@@ -1,7 +1,5 @@
 rootProject.name = 'wresl'
 include 'wresl-core'
-//include 'wrims-engine-bom'
-//include 'wrims-comparison-test'
 
 // If there is no gradle.properties when Gradle starts up, copy the template into place
 if (!file('gradle.properties').exists()) {

@@ -1,0 +1,7 @@
+// This file provides a set of defaults for defining the `repositories` block for subprojects within this build.
+// This ensures that all subprojects use the same repositories and credentials.
+
+repositories {
+    mavenCentral()
+}
+
