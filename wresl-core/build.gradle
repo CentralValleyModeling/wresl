@@ -41,5 +41,5 @@ tasks.register('runWreslParser', JavaExec) {
         }
     }
 
-    args = ['wresl', 'start', '-gui', project.property('file')]
+    args = ['wresl', 'start', '-tokens', '-gui', project.property('file')]
 }
