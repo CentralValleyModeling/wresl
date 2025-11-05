@@ -1,0 +1,5 @@
+define name {
+    alias other
+    kind 'str'
+    units 'str'
+}

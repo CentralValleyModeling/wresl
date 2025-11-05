@@ -1,0 +1,5 @@
+model Model1 {
+    include 'file.example'
+    include group group_name
+    include [global] 'file2.example'
+}

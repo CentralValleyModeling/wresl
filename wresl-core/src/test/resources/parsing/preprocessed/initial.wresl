@@ -1,0 +1,5 @@
+initial {
+    svar A { value 100 } 
+    svar B { value A*5 } 
+    svar C { select RESULT from TABLE where NAME = expr }
+}

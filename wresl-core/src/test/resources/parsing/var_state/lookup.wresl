@@ -1,0 +1,13 @@
+define(var) name {
+    select NAME
+    from LOCATION
+    where month=variable
+}
+
+define[local] name {
+    select NAME
+    from TABLE
+    given FIELD = expr
+    use linear
+    where field1 = expr, field2 = (a + 2) * 4
+}

@@ -1,0 +1,10 @@
+goal name {
+    lhs var_left
+    rhs var_right
+}
+
+goal name {
+    lhs var_left
+    rhs var_right
+    lhs>rhs penalty 0
+}

@@ -1,0 +1,26 @@
+define name1 {
+    lower 0 
+    upper unbounded 
+    kind 'string' 
+    units 'string'
+}
+
+define name2 {
+    std
+    kind 'string' 
+    units 'string'
+}
+
+define name3 {
+    integer
+    std
+    kind 'string' 
+    units 'string'
+}
+
+define name4 {
+    lower a - b
+    upper c + d
+    kind 'string' 
+    units 'string'
+}

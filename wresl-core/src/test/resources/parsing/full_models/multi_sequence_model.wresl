@@ -1,0 +1,62 @@
+initial {
+    svar go_cycle_01 {value 1.0} 
+    svar go_cycle_02 {value 1.0}
+}
+
+sequence Cycle01 {
+    model Model01
+    condition go_cycle_01 > 0.5
+    order 1
+}
+
+sequence Cycle02 {
+    model Model02
+    condition go_cycle_02 > 0.5
+    order 1
+}
+
+group CommonNetwork {
+    define inflow_01 {
+        timeseries
+        kind "FLOW"
+        units "CFS"
+    }
+    define outflow_01 {
+        lower 0.0
+        upper unbounded
+        kind "FLOW"
+        units "CFS"
+    }
+    define outflow_02 {
+        lower 0.0
+        upper 100.0
+        kind "FLOW"
+        units "CFS"
+    }
+    goal continuity {
+        inflow_01 - outflow_01 - outflow_02 = 0
+    }
+    objective preferences = {
+        [outflow_01, 1.0],
+        [outflow_02, 2.0],
+    }
+}
+
+group StabilityInOutflow02 {
+    ! Requires CommonNetwork group
+    goal stability {
+        lhs outflow_02 
+        rhs outflow_02(-1)
+        lhs > rhs penalty 100
+        lhs > rhs penalty 100  
+    }
+}
+
+model Model01 {
+    include group CommonNetwork
+}
+
+model Model02 {
+    include group CommonNetwork
+    include group StabilityInOutflow02
+}

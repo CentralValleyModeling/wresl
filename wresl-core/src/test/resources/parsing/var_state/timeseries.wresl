@@ -1,0 +1,12 @@
+define name_ts {
+    timeseries 'name_for_dv'
+    kind 'string' 
+    units 'string' 
+    convert 'string'
+}
+
+define name_ts {
+    timeseries
+    kind 'string' 
+    units 'string' 
+}

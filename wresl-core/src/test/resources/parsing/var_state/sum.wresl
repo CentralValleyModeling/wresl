@@ -1,0 +1,7 @@
+define name1 {
+    sum(i = ibeg, iend, istep) expr1
+}
+
+define name2 {
+    sum(j = month + 1, 12) j * 2
+}

@@ -1,0 +1,5 @@
+define name {
+    std
+    kind 'string'
+    units 'string'
+}

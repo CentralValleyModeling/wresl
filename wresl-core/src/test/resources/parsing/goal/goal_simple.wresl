@@ -1,0 +1,6 @@
+goal name {
+    expr = expr
+}
+goal name {
+    expr > expr
+}

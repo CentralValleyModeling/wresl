@@ -1,0 +1,74 @@
+model mod1 {
+    ! INCLUDE STATEMENT
+    include 'file.file'
+    include group statement
+    include[local] 'file.ext'  ! Comment
+
+    ! TIMESERIES INPUT DECLARATION
+    define name {
+        timeseries
+        kind 'string'
+        units 'string'
+        convert 'string'
+    }
+
+    ! STATE VARIABLE DECLARATION AND ASSIGNMENT
+    ! SIMPLE SV
+    svar name {
+        value expr
+    }
+    ! SUM SV
+    svar name {
+        sum(i = ibeg, sep - month, istep)
+        expr(-i) + expr(i)
+    }
+    ! LOOKUP SV
+    svar name {
+        select RESULT
+        from TABLE
+        given thing = 1
+        use max
+        where other = 2
+    }
+    ! CONDITIONAL SV
+    svar name {
+        case name {
+            condition expr
+            value ts(-12) + variable
+        }
+        case name {
+            condition always
+            value sum(i = ibeg, iend, istep) expr
+        }
+    }
+    ! PRIOR SEQUENCE SV
+    svar name {value dv[modelname] + expr}
+
+    ! GOAL STATEMENT
+    ! CONCISE
+    goal name {X > Y}
+    ! SIMPLE
+    goal name {
+        lhs expr
+        rhs expr
+        lhs > rhs constrain
+        lhs < rhs penalty expr
+    }
+
+    ! OBJECTIVE FUNCTION STATEMENT
+    ! STANDARD
+    objective name = {
+        [name(expr), expr],
+        [name(expr), expr],
+        [name(expr), expr]
+    }
+    ! COMMON WEIGHT
+    objective name = {
+        weight expr
+        variable name name name
+    }
+
+    ! DEFINE IN MODEL
+    define variable {value expr + expr}
+    define variable {value variable($m)}
+}

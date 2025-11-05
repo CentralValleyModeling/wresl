@@ -1,0 +1,11 @@
+goal name {
+    lhs var_left
+    case name {
+        condition expr + 2
+        rhs expr1
+    }
+    case name {
+        condition always
+        rhs expr2
+    }
+}

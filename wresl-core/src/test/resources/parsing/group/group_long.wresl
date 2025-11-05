@@ -1,0 +1,16 @@
+group name {
+    include 'string.wresl'
+    define name {
+        timeseries
+        kind 'string'
+        units 'string'
+        convert 'string'
+    }
+    svar name {timeseries kind 'string' units 'string'}
+    goal name {expr = expr}
+    objective name = {
+        [name($m), expr],
+        [name(-10), expr],
+        [name(expr), expr],
+    }
+}

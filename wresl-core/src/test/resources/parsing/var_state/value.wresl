@@ -1,0 +1,1 @@
+define(-10) name {value max(a, b, c, 7 + var(-5))}

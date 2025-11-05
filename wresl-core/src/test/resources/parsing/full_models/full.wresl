@@ -1,0 +1,259 @@
+/* This is a 
+comment */
+
+! Another one
+
+! PREPROCESSED EXPRESSIONS
+initial {
+    svar A { value 100 } 
+    svar B { value A*5 } 
+    svar C { select RESULT from TABLE where expr = 10 }
+}
+
+if A + B > 15. {
+    include 'string'
+    include group thing
+} elseif A + B == 15 {
+    include 'string'
+} else {
+    include 'string'
+}
+
+! SEQUENCE STATEMENT
+sequence seq1 {
+    model mod1
+    condition expr > expr2 .and. thing - 1 > other
+    order 1
+    timestep 1day
+}
+
+! MODEL STATEMENT
+model mod1 {
+    ! INCLUDE STATEMENT
+    include group statement
+    include[local] 'statement'  ! Comment
+
+    ! TIMESERIES INPUT DECLARATION
+    define name {
+        std
+        kind 'string' 
+        units 'string'
+        convert 'string'
+    }
+
+    ! STATE VARIABLE DECLARATION AND ASSIGNMENT
+    ! SIMPLE SV
+    svar name {
+        value expr
+    }
+    ! SUM SV
+    svar name {
+        sum(i = ibeg, sep - month, istep) 
+        expr(-i) + expr(i)
+    }
+    ! LOOKUP SV
+    svar name {
+        select RESULT 
+        from TABLE
+        given expr = 1
+        use max
+        where expr = 2
+    }
+    ! CONDITIONAL SV
+    svar name {
+        case name {
+            condition expr
+            value ts(-12) + variable
+        }
+        case name {
+            condition always
+            value sum(i = ibeg, iend, istep) expr
+        }
+    }
+    ! PRIOR SEQUENCE SV
+    svar name {value dv[modelname] + expr}
+
+    !ALSIAS VARIABLE DECLARATION AND ASSIGNMENT
+    define name {
+        alias other
+        kind 'string' 
+        units 'string'
+    }
+
+    ! GOAL STATEMENT
+    ! CONCISE
+    goal name {X > Y}
+    ! SIMPLE
+    goal name { 
+        lhs expr
+        rhs expr
+        lhs > rhs constrain
+        lhs < rhs penalty expr
+    }
+
+    ! OBJECTIVE FUNCTION STATEMENT
+    ! STANDARD
+    objective name = {
+        [name(expr), expr],
+        [name(expr), expr],
+        [name(expr), expr]
+    }
+    ! COMMON WEIGHT
+    objective name = {
+        weight expr
+        variable name name name
+    }
+
+    ! DEFINE IN MODEL
+    define variable {value expr + expr}
+    define variable {value variable($m)}
+    ! PREPROCESSED EXPRESSIONS IN MODEL
+    if statement > 1 {
+        include 'statement' }
+}
+
+! INCLUDE STATEMENT
+include[global] 'string'
+include group thing
+
+! DEFINE STATEMENTS
+! CONTINUOUS SV
+define(expr) name {
+    std
+    kind 'string' 
+    units 'string'
+}
+
+! INTEGER SV
+define[local] name {
+    integer
+    upper unbounded
+    lower 1
+    kind 'string' 
+    units 'string'
+}
+
+! TIMESERIES SV
+define name {
+    timeseries 'string'  ! string optional
+    kind 'string' 
+    units 'string'  ! optional
+    convert 'string'  ! optional
+}
+
+! CONSTANT SV
+define name {
+    value expr
+}
+
+! LOOKUP SV
+define(expr) name {
+    select NAME
+    from LOCATION
+    where month=variable($m)
+}
+
+define[local] name {
+    select NAME
+    from LOCATION
+    given FIELD = expr
+    use linear
+    where field = expr, field = expr
+}
+
+! FUTURE VALUE SV
+define(expr) name {value expr($m) * expr + expr($m)}
+
+! SUM VALUE SV
+define name {
+    sum(i = ibeg, iend, istep) expr
+}
+
+! CONDITIONAL SV
+define name {
+    case name {
+        condition expr(arg, arg, arg)
+        value expr * 0.5 + 1
+    }
+    case name {
+        condition always value 0.0
+    }
+}
+
+! ALIAS SV
+define name {
+    alias expr
+    kind 'str'
+    units 'str'
+}
+
+! EXTERNAL FUNCTION
+define name {
+    external 
+    filename.dll
+}
+define name {
+    external 
+    f90
+}
+define name {
+    external 
+    "filename.dll"
+}
+define name {
+    external 
+    'f90'
+}
+
+! GOAL STATEMENT
+! LONG FORM
+goal[local] name {
+    lhs expr
+    case name {
+        condition expr + 2
+        rhs expr
+        lhs > rhs penalty expr
+        lhs < rhs never
+    }
+    case name {
+        condition always
+        rhs expr
+        lhs > rhs constrain
+    }
+}
+
+goal(expr) name {
+    lhs expr($m)
+    rhs expr
+    lhs > rhs penalty expr
+    lhs < rhs never
+}
+
+! SHORT FORM
+goal name {
+    expr = expr
+}
+
+! GROUP STATEMENT
+group name {
+    include 'string'
+    define name {
+        std
+        kind 'string' 
+        units 'string'
+        convert 'string'
+    }
+    define name {std kind 'string' units 'string'}
+    svar name {std kind 'string' units 'string'}
+    goal name {expr = expr}
+    objective name = {
+        [name(expr), expr],
+        [name(expr), expr],
+        [name(expr), expr],
+    }
+    define name {
+        alias other
+        kind 'string' 
+        units 'string'
+    } 
+}

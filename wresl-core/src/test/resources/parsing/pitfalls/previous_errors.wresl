@@ -1,0 +1,17 @@
+define X2_prv_KM {lower 0 upper 1000 kind 'X2-POSITION-PREV' units 'KM'}  !@jmg 2017v13 - changed from 'std' definition
+
+
+Objective obj_SYS = {  ! demonstrate optional comma
+! ...
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! Minimum flow requirements !!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+[C_YUB024_MIF,15000],  ! Yuba River at Smartsville
+[C_YUB006_MIF,15500],  ! Yuba River at Marysville  
+[C_YUB006_ADD,-3100],
+[C_NFY002_MIF,70000]
+[D_NBLDB_CGT005_POW,10],
+![C_NFY002_ADD,-3100],
+![C_ENGLB_MIF,50],
+! ...
+}

@@ -1,0 +1,2 @@
+include[global] 'file.ext'
+include[local] 'folder/file.ext'

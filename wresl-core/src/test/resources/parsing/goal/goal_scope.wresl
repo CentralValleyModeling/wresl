@@ -1,0 +1,14 @@
+goal[local] name {
+    lhs 1 + 1
+    case name {
+        condition expr + 2
+        rhs expr
+        lhs > rhs penalty -9999
+        lhs < rhs never ! 1
+    }
+    case name {
+        condition always
+        rhs expr
+        lhs > rhs constrain
+    }
+}

@@ -1,0 +1,62 @@
+var
+
+var[local]
+var[other]
+var[other]($m)
+var[other](dec + 1)
+var(1:2)
+var(1, 2, 3:4)
+var[other]((dec + 1):dec+3)
+var($m)
+
+int(variable8)
+
+1 + 1
+(variable1 - variable2)
+variable3 / (variable4 - variable5)
+10*cfs_taf
+variable6[other] - variable7($m)
+int(variable8)
+
+-1 + 2
+3 - 4
+5.6 * 7.8
+9.1 / 2.3
+1 < 2
+3 > 4
+
+! LOGICAL
+5 <= 6
+7 >= 8
+9 == 1
+2 .ne. 3
+4 == 5 .and. 6 == 7
+8 == 9 .or. 1 == 2
+.not. 3 == 4
+
+! COMPARISON EXPRESSIONS
+X + Y == Z * max(A, B, C)
+
+! INTRINSIC DEFINITIONS
+cfs_taf(-1)
+taf_cfs(expr)
+pow(a, b)
+abs(1)
+int(a)
+real(a)
+exp(a)
+log(a)
+log10(a)
+sqrt(a)
+max(a, b, c, d)
+min(a, b, c, d)
+mod(a, b)
+round(a)
+daysin
+month
+wateryear
+jan
+prevfeb
+
+! FUTURE ARRAY EXPRESSIONS
+ts($m) < ts($m) - ts($m)

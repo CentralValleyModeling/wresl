@@ -1,0 +1,6 @@
+sequence seq1 {
+    model mod1
+    condition (left_var * 2) == (right_var + 1)
+    order 1
+    timestep 1day
+}

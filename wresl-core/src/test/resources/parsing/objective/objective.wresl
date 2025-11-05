@@ -1,0 +1,6 @@
+objective name1 = {
+    [name2, 1],
+    [name3, expr1($m)],
+    [name4(prevDec), 10],
+    [name5(expr4), expr3[local]]
+}

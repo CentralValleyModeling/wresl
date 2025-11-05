@@ -1,0 +1,6 @@
+goal(expr) name {
+    lhs expr($m)
+    rhs expr ! 2
+    lhs > rhs penalty expr
+    lhs < rhs never
+}

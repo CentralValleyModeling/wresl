@@ -1,0 +1,9 @@
+define name {
+    case name {
+        condition max(arg, arg, arg)
+        value var * 0.5 + 1
+    }
+    case name {
+        condition always value 0.0
+    }
+}
