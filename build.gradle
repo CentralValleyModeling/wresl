@@ -1,7 +1,109 @@
 plugins {
-    id 'base'
+    id 'java-library'
+    id 'antlr'
+    id 'maven-publish'
 }
 
-allprojects {
-    group = 'gov.ca.dwr'
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // ANTLR
+    antlr 'org.antlr:antlr4:4.13.1'
+    implementation 'org.antlr:antlr4-runtime:4.13.1'
+
+    // LOGGING
+    implementation 'org.slf4j:slf4j-api:2.0.12'
+    implementation platform("org.apache.logging.log4j:log4j-bom:2.23.1")
+    // Logging - Log4J runtimes
+    runtimeOnly "org.apache.logging.log4j:log4j-slf4j2-impl"
+    testRuntimeOnly "org.apache.logging.log4j:log4j-slf4j2-impl"
+    runtimeOnly "org.apache.logging.log4j:log4j-core"
+    testRuntimeOnly "org.apache.logging.log4j:log4j-core"
+    // Logging - Async Logger runtimes
+    runtimeOnly 'com.lmax:disruptor:4.0.0'
+    testRuntimeOnly 'com.lmax:disruptor:4.0.0'
+
+    // TESTING
+    testImplementation "org.junit.jupiter:junit-jupiter-engine:5.10.2"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.10.2"
+    testImplementation "org.junit.jupiter:junit-jupiter-params:5.10.2"
+}
+
+test {
+    useJUnitPlatform()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    // When building a library, ensure that a Sources and Javadoc jar are included as well; this makes sure
+    // that IDEs are able to automatically download and use the sources and javadoc for your library.
+    withSourcesJar()
+    withJavadocJar()
+}
+
+tasks.named("generateGrammarSource") {
+    arguments.addAll([
+            "-visitor",
+            "-no-listener",
+            "-long-messages",
+            "-package","gov.ca.water.wresl.grammar",
+    ])
+}
+
+tasks.register('runWreslParser', JavaExec) {
+    group = 'antlr'
+    description = 'Parse a WRESL file using the generated ANTLR parser.'
+    dependsOn tasks.generateGrammarSource
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'org.antlr.v4.gui.TestRig'
+
+    doFirst {
+        if (args == null || args.isEmpty()) {
+            throw new GradleException(
+                    "Usage: gradle runWreslParser --args=path/to/input.wresl"
+            )
+        }
+        args = [
+                "wresl",
+                "start",
+                "-tokens",
+                "-gui",
+                args[0]
+        ]
+    }
+}
+
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/CentralValleyModeling/wresl")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+}
+
+tasks.register('copyDependencies', Copy) {
+    from(configurations.runtimeClasspath) {
+    }
+    into 'build/tmp/libs'
+    duplicatesStrategy = DuplicatesStrategy.WARN
+}
+
+// There are conflicting versions of slf4j in the groovy plugin, enforce this here.
+configurations.configureEach {
+    resolutionStrategy.force("org.slf4j:slf4j-api:2.0.12")
+}
+
+// Required to add this dependency so the sourcesJar task knows about the generated sources ANTLR makes. This explicitly
+// tells gralde about the relationship between the tasks. Without it gradle versions > 8 will error.
+tasks.named("sourcesJar") {
+    dependsOn(tasks.generateGrammarSource)
 }

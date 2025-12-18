@@ -1,0 +1,11 @@
+svar name {
+        case name {
+            condition max(arg, arg)
+            value ts(-12) + var
+
+        }
+        case name {
+            condition always
+            value sum(i = ibeg, iend, istep) expr
+        }
+    }

@@ -1,7 +1,8 @@
 define(var) name {
     select NAME
     from LOCATION
-    where month=variable
+    where month=var
+
 }
 
 define[local] name {

@@ -63,7 +63,8 @@ model mod1 {
     svar name {
         case name {
             condition expr
-            value ts(-12) + variable
+            value ts(-12) + var
+
         }
         case name {
             condition always
@@ -105,8 +106,11 @@ model mod1 {
     }
 
     ! DEFINE IN MODEL
-    define variable {value expr + expr}
-    define variable {value variable($m)}
+    define var
+ {value expr + expr}
+    define var
+ {value var
+($m)}
     ! PREPROCESSED EXPRESSIONS IN MODEL
     if statement > 1 {
         include 'statement' }
@@ -150,7 +154,8 @@ define name {
 define(expr) name {
     select NAME
     from LOCATION
-    where month=variable($m)
+    where month=var
+($m)
 }
 
 define[local] name {

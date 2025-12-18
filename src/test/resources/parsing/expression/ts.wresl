@@ -1,0 +1,4 @@
+define var {
+    value
+    var1(-1) + var2
+}
