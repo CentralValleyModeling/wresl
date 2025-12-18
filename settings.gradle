@@ -1,11 +1,5 @@
 rootProject.name = 'wresl'
 
-// If there is no gradle.properties when Gradle starts up, copy the template into place
-if (file("settings.local.gradle").exists()) {
-    apply from: "settings.local.gradle"
-}
-
-
 /// DEVELOPER IDE BUILDING FROM SOURCE ///
 if(hasProperty('librarySourcesDir')) {
     def externalDir = new File("$librarySourcesDir")
