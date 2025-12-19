@@ -11,7 +11,8 @@ start
       | goal
       | objective
       | group
-      | define
+      | svar
+      | dvar
       )* EOF
     ;
 
@@ -20,14 +21,14 @@ sequence
     : SEQUENCE OBJECT_NAME OPEN_BRACE sequenceBody? CLOSE_BRACE
     ;
 sequenceBody
-    : MODEL OBJECT_NAME condition? ORDER INT timestepSpecification?
+    : MODEL OBJECT_NAME sequenceCondition? ORDER INT timestepSpecification?
     ;
-condition: CONDITION expression OP_COMP expression ;
+sequenceCondition: CONDITION expression opComp expression ;
 timestepSpecification: TIMESTEP STEP ;
 
 // MODEL
 model: MODEL OBJECT_NAME OPEN_BRACE modelBody+ CLOSE_BRACE ;
-modelBody: include | define | goal | objective | ifStatement ;
+modelBody: include | svar | dvar | goal | objective | ifStatement ;
 
 // INCLUDE
 include: INCLUDE scope? includeBody ;
@@ -40,7 +41,7 @@ groupReference: GROUP OBJECT_NAME ;
 // GOAL
 goal: GOAL scope? arraySizeDefinition? OBJECT_NAME OPEN_BRACE goalBody CLOSE_BRACE ;
 goalBody: goalShortForm | goalViaPenalty | goalViaCase ;
-goalShortForm: expression OP_COMP expression ;
+goalShortForm: expression opComp expression ;
 goalViaPenalty: SIDE expression SIDE expression penalty* ;
 goalViaCase: SIDE expression caseStatement+ ;
 
@@ -55,24 +56,25 @@ variables: VARIABLE expression+ ;
 
 // GROUP
 group: GROUP OBJECT_NAME OPEN_BRACE groupBody+ CLOSE_BRACE ;
-groupBody: include | define | goal | objective | ifStatement ;
+groupBody: include | dvar | svar | goal | objective | ifStatement ;
 
 // DEFINE
-define: dvar | svar ;
 dvar: (DVAR | DEFINE) scope? arraySizeDefinition? OBJECT_NAME OPEN_BRACE dvarBody CLOSE_BRACE ;
 svar: (SVAR | DEFINE) scope? arraySizeDefinition? OBJECT_NAME OPEN_BRACE svarBody CLOSE_BRACE ;
 dvarBody: defineViaBounds | defineViaAlias ;
-svarBody: defineViaValue | defineViaCase | defineViaLookup | defineViaExternal | defineViaTimeseries | defineViaSum ;
+svarBody: delayedSvarBody | immediateSvarBody ;
+delayedSvarBody: defineViaCase | defineViaLookup | defineViaExternal | defineViaSum ;
+immediateSvarBody: defineViaValue | defineViaTimeseries ;
 defineViaValue: VALUE expression ;
 defineViaCase: caseStatement+ ;
 defineViaLookup: select ;
 defineViaExternal: EXTERNAL SPECIFICATION_STRING ;
 defineViaBounds: defineBoundLimits definitionSpecifics+ ;
-defineViaTimeseries: TIMESERIES ('\'' OBJECT_NAME '\'')? definitionSpecifics+ ;
+defineViaTimeseries: TIMESERIES (SPECIFICATION_STRING)? definitionSpecifics+ ;
 defineViaAlias: ALIAS expression definitionSpecifics* ;
 defineViaSum: sumExpression ;
 
-defineBoundLimits: INT? (STD | defineBoundUl) ;
+defineBoundLimits: INTEGER? (STD | defineBoundUl) ;
 defineBoundUl: BOUND_SIDE expression (BOUND_SIDE expression)? ;
 
 definitionSpecifics: kind | units | convert ;
@@ -88,11 +90,11 @@ ifStatement: ifClause elseIfClause* elseClause? ;
 ifClause: IF expression ifBlock ;
 elseIfClause: ELSEIF expression ifBlock ;
 elseClause: ELSE ifBlock ;
-ifBlock: OPEN_BRACE (include | define)+ CLOSE_BRACE ;
+ifBlock: OPEN_BRACE (include | svar | dvar)+ CLOSE_BRACE ;
 
 // caseStatement
 caseStatement: CASE OBJECT_NAME OPEN_BRACE caseCondition? caseBody CLOSE_BRACE ;
-caseCondition: CONDITION expression ;
+caseCondition: CONDITION (expression | ALWAYS) ;
 caseBody: caseViaValue | goalCase | caseViaSelect | caseViaExpression ;
 caseViaValue: VALUE expression ;
 caseViaExpression: expression ;
@@ -106,7 +108,7 @@ penaltyValue: CONSTANT | (PENALTY expression) ;
 // SELECT
 select: SELECT OBJECT_NAME FROM OBJECT_NAME given? use? where? ;
 given: GIVEN OBJECT_NAME EQUALS_SIGN expression ;
-use: USE INTERPOLATION ;
+use: USE interpolation ;
 where: WHERE OBJECT_NAME EQUALS_SIGN expression (COMMA OBJECT_NAME EQUALS_SIGN expression)* ;
 
 // -----------------------------
@@ -114,7 +116,7 @@ where: WHERE OBJECT_NAME EQUALS_SIGN expression (COMMA OBJECT_NAME EQUALS_SIGN e
 // -----------------------------
 
 expression
-    : expression OP_COMP expression
+    : expression opComp expression
     | expression OP_MULT expression
     | expression OP_ADD expression
     | OP_UNARY expression
@@ -128,11 +130,12 @@ primaryExpression
     | variableReference
     | RUNTIME
     | MONTH
-    | PREV_MONTH
+    | prev_month
     | CONSTANT
-    | NULL
     | FUTURE_ARRAY_MAXMUM
-    | SIGNED_NUMBER
+    | SIGNED_FLOAT
+    | SIGNED_INT
+    | INT
     ;
 
 // Parentheses
@@ -170,17 +173,24 @@ arraySizeDefinition: OPEN_PAREN objectReference CLOSE_PAREN ;
 objectReference
     : RUNTIME
     | MONTH
-    | PREV_MONTH
+    | prev_month
     | CONSTANT
-    | NULL
     | FUTURE_ARRAY_MAXMUM
-    | SIGNED_NUMBER
+    | SIGNED_FLOAT
     | variableReference
     ;
+
+// simple parser rules
+prev_month: 'prev' MONTH;
+interpolation: 'linear' | MIN_MAX | 'maximum' | 'minimum' ;
+opComp: EQUALS_SIGN | '<=' | '>=' | '==' | OP_COMP_LIMITED | '.and.' | '.or.' | '.ne.' ;
 
 // -----------------------------
 // Lexer rules
 // -----------------------------
+
+// scope
+SCOPE_SPEC: OPEN_BRACKET ('global' | 'local' | OBJECT_NAME | SIGNED_INT) CLOSE_BRACKET ;
 
 // Keywords
 MODEL: 'model';
@@ -218,6 +228,7 @@ FROM: 'from';
 SUM: 'sum';
 PENALTY: 'penalty';
 VARIABLE: 'variable';
+ALWAYS: 'always';
 
 // Braces, parentheses, operators, punctuation
 OPEN_BRACE: '{';
@@ -232,28 +243,21 @@ COMMA: ',';
 // Intrinsic functions and constants
 RUNTIME: 'daysin' | 'month' | 'wateryear' ;
 MONTH: 'jan' | 'feb' | 'mar' | 'apr' | 'may' | 'jun' | 'jul' | 'aug' | 'sep' | 'oct' | 'nov' | 'dec' ;
-PREV_MONTH: 'prev' MONTH;
 F_UNARY: 'abs' | 'int' | 'real' | 'exp' | 'log' | 'log10' | 'sqrt' | 'round' ;
 F_BINARY: 'pow' | 'mod' ;
 F_ITER: MIN_MAX | 'range' ;
-CONSTANT: 'never' | 'always' | 'unbounded' | 'constrain' ;
+CONSTANT: 'never' | 'unbounded' | 'constrain' ;
 STEP: '1mon' | '1day' ;
 SIDE: [lr] 'hs' ;
-INTERPOLATION: 'linear' | MIN_MAX | 'maximum' | 'minimum' ;
 BOUND_SIDE: 'upper' | 'lower' ;
-NULL: 'null' ;
 FUTURE_ARRAY_MAXMUM: '$' 'm' ;
 MIN_MAX: 'max' | 'min';
 
 // Operators
 OP_ADD: '+' | '-';
 OP_MULT: '*' | '/';
-OP_COMP: '<=' | '>=' | '==' | OP_COMP_LIMITED | '.and.' | '.or.' | '.ne.' ;
 OP_COMP_LIMITED: '<' | '>';
 OP_UNARY: '.not.' | '-' | '+' ;
-
-// Scope
-SCOPE_SPEC: OPEN_BRACKET ('global' | 'local' | OBJECT_NAME | SIGNED_INT) CLOSE_BRACKET ;
 
 // Quoted strings
 SPECIFICATION_STRING
@@ -263,10 +267,10 @@ SPECIFICATION_STRING
 fragment STRING_BODY: ~['"\r\n]+ ;
 
 // Numbers
-INT: DIGITS ;
+INT: DIGITS ;  // references fragment only
 SIGNED_INT: ('+' | '-')? INT ;
-SIGNED_NUMBER
-    : ('+'|'-')? ( DIGITS ('.' DIGITS)? | '.' DIGITS ) ( [e] [+-]? DIGITS )?
+SIGNED_FLOAT
+    : ('+'|'-')? ( DIGITS ('.' DIGITS)?) ( [e] [+-]? DIGITS )?
     ;
 fragment DIGITS: [0-9]+ ;
 
