@@ -2,6 +2,7 @@ plugins {
     id 'java-library'
     id 'antlr'
     id 'maven-publish'
+    id 'idea'
 }
 
 repositories {
@@ -33,6 +34,9 @@ dependencies {
 
 test {
     useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
 }
 
 java {
@@ -43,6 +47,12 @@ java {
     // that IDEs are able to automatically download and use the sources and javadoc for your library.
     withSourcesJar()
     withJavadocJar()
+}
+
+idea {
+    module {
+        sourceDirs += file("generated-src/antlr/main/")
+    }
 }
 
 tasks.named("generateGrammarSource") {
