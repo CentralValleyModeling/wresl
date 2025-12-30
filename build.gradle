@@ -19,12 +19,12 @@ dependencies {
     implementation platform("org.apache.logging.log4j:log4j-bom:2.23.1")
     // Logging - Log4J runtimes
     runtimeOnly "org.apache.logging.log4j:log4j-slf4j2-impl"
-    testRuntimeOnly "org.apache.logging.log4j:log4j-slf4j2-impl"
     runtimeOnly "org.apache.logging.log4j:log4j-core"
-    testRuntimeOnly "org.apache.logging.log4j:log4j-core"
     // Logging - Async Logger runtimes
     runtimeOnly 'com.lmax:disruptor:4.0.0'
-    testRuntimeOnly 'com.lmax:disruptor:4.0.0'
+    // Logging - test logs
+    testImplementation "org.assertj:assertj-core:3.25.2"  // for easier assertions
+    testImplementation "com.github.valfirst:slf4j-test:3.0.3"
 
     // TESTING
     testImplementation "org.junit.jupiter:junit-jupiter-engine:5.10.2"
