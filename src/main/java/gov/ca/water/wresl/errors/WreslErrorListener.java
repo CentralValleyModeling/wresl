@@ -134,7 +134,7 @@ public class WreslErrorListener implements ANTLRErrorListener {
 
     private String tokensToText(TokenStream tokens, int start, int stop) {
         if (tokens instanceof CommonTokenStream) {
-            CharStream input = ((CommonTokenStream) tokens).getTokenSource().getInputStream();
+            CharStream input = tokens.getTokenSource().getInputStream();
             int startChar = tokens.get(start).getStartIndex();
             int stopChar = tokens.get(stop).getStopIndex();
             return input.getText(Interval.of(startChar, stopChar));

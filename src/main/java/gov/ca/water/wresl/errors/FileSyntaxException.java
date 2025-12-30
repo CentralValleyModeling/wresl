@@ -33,7 +33,7 @@ public class FileSyntaxException extends RuntimeException {
         try (java.io.BufferedReader reader = java.nio.file.Files.newBufferedReader(source)) {
             // accumulate a section of the file to show in the error
             Deque<String> window = new java.util.ArrayDeque<>(contextLines + 1);
-            String current = null;
+            String current;
             for (int i = 1; i <= line; i++) {
                 current = reader.readLine();
                 if (current == null) {
