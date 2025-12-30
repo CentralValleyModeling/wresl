@@ -1,16 +1,12 @@
 package gov.ca.water.wresl.errors;
 
-import gov.ca.water.wresl.grammar.wreslLexer;
-import gov.ca.water.wresl.grammar.wreslParser;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.atn.ATNConfigSet;
 import org.antlr.v4.runtime.dfa.DFA;
 import org.antlr.v4.runtime.misc.Interval;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.List;
 
 
 public class WreslErrorListener implements ANTLRErrorListener {
@@ -46,32 +42,16 @@ public class WreslErrorListener implements ANTLRErrorListener {
             String msg,
             RecognitionException e
     ) {
-        // Create a log message to help with the error. Messages will differ if it was during lexing or parsing
-        String logMessage = msg;  // default to simple message
-        if (recognizer instanceof wreslLexer) {  // error occurred during Lexing
-            String symbolString = recognizer.getInputStream().toString().split("\n")[line - 1]; // `line` is 1 indexed
-            logMessage = String.format(
-                    "Syntax error while lexing (probably caused by bad characters). Error at line %d, column %d. Line is: \"%s\". Message: %s",
-                    line, charPositionInLine, symbolString, msg
-            );
-        } else if (recognizer instanceof wreslParser) { // error occurred during parsing
-            TokenStream stream = ((wreslParser) recognizer).getTokenStream();
-            int numTokens = stream.size() - 1;  // Stream includes `EOF`, don't include that
-            List<String> lineStrings = new ArrayList<>();
-            for (int i = 0; i < numTokens; i++) {
-                lineStrings.add(stream.get(i).getText());
-            }
-            String lineText = String.join(" ", lineStrings);
-            logMessage = String.format(
-                    "Syntax error while parsing (probably caused by bad structure). Error at line %d, column %d. Line is: \"%s\". Message: %s",
-                    line, charPositionInLine, lineText, msg
-            );
-        }
-
         switch (mode) {
             case DEFAULT:
-                logger.atError().setMessage(logMessage).setCause(e).log();
-                throw new RuntimeException(logMessage, e);
+                logger.atError()
+                        .setMessage("WRESL+ Syntax error at line {}, column {}. {}")
+                        .addArgument(line)
+                        .addArgument(charPositionInLine)
+                        .addArgument(msg)
+                        .setCause(e)
+                        .log();
+                throw new SyntaxException(line, charPositionInLine, "WRESL+ Syntax error", e);
             case SILENT:
                 break;
         }
@@ -87,10 +67,24 @@ public class WreslErrorListener implements ANTLRErrorListener {
             BitSet ambigAlts,
             ATNConfigSet configs
     ) {
-        String logMessage = String.format("Ambiguity detected between tokens %d and %d", startIndex, stopIndex);
+
         switch (mode) {
             case DEFAULT:
-                logger.atWarn().setMessage(logMessage).log();
+                TokenStream tokens = recognizer.getInputStream();
+                String inputText = tokensToText(tokens, startIndex, stopIndex);
+                String ruleName = recognizer.getRuleNames()[recognizer.getContext().getRuleIndex()];
+                logger.atTrace()
+                        .setMessage("""
+                                Ambiguity detected, details below:
+                                ========================================================================
+                                rule           \t{}
+                                ------------------------------------------------------------------------
+                                {}
+                                ========================================================================"""
+                        )
+                        .addArgument(ruleName)
+                        .addArgument("\"" + inputText + "\"")
+                        .log();
             case SILENT:
                 break;
         }
@@ -126,7 +120,6 @@ public class WreslErrorListener implements ANTLRErrorListener {
         switch (mode) {
             case DEFAULT:
                 TokenStream ts = recognizer.getInputStream();
-                Token start = ts.get(startIndex);
                 String ruleName = recognizer.getRuleNames()[dfa.atnStartState.ruleIndex];
                 String text = ts.getText(Interval.of(startIndex, stopIndex));
                 String logMessage = String.format(
@@ -136,6 +129,22 @@ public class WreslErrorListener implements ANTLRErrorListener {
                 logger.atTrace().setMessage(logMessage).log();
             case SILENT:
                 break;
+        }
+    }
+
+    private String tokensToText(TokenStream tokens, int start, int stop) {
+        if (tokens instanceof CommonTokenStream) {
+            CharStream input = ((CommonTokenStream) tokens).getTokenSource().getInputStream();
+            int startChar = tokens.get(start).getStartIndex();
+            int stopChar = tokens.get(stop).getStopIndex();
+            return input.getText(Interval.of(startChar, stopChar));
+        } else {
+            // Fallback: concatenate token text
+            StringBuilder sb = new StringBuilder();
+            for (int i = start; i <= stop; i++) {
+                sb.append(tokens.get(i).getText());
+            }
+            return sb.toString();
         }
     }
 }
