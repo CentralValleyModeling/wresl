@@ -17,6 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import gov.ca.water.wresl.grammar.wreslParser.*;
+
 public class TestParser {
     private static final Logger logger = LoggerFactory.getLogger(TestParser.class);
     private static final WreslErrorListener errorListener = new WreslErrorListener();
@@ -56,7 +58,7 @@ public class TestParser {
         // Loop through each expression and make sure they parse
         for (TestCase tc : expressions) {
             wreslParser parser = createParser(tc.expression());
-            wreslParser.StartContext ctx = parser.start();
+            StartContext ctx = parser.start();
             assertEquals(wreslLexer.INCLUDE, ctx.start.getType());
         }
     }
@@ -93,7 +95,7 @@ public class TestParser {
         // Loop through each expression and make sure they parse
         for (TestCase tc : expressions) {
             wreslParser parser = createParser(tc.expression());
-            wreslParser.StartContext ctx = parser.start();
+            StartContext ctx = parser.start();
             assertEquals(wreslLexer.MODEL, ctx.start.getType());
         }
     }
@@ -103,25 +105,25 @@ public class TestParser {
         record TestCase(Class<? extends ParserRuleContext> expectedClass, String expression) {}
         // examples of valid expressions
         List<TestCase> expressions = List.of(
-                new TestCase(wreslParser.DvarContext.class, "define A { std kind 'TEST' units 'UNITS'}"),
-                new TestCase(wreslParser.DvarContext.class, "dvar   B { lower 0 upper 1 units 'UNITS'}"),
-                new TestCase(wreslParser.DvarContext.class, "dvar   C { alias Y + Z units 'UNITS'}"),
-                new TestCase(wreslParser.SvarContext.class, "define D { timeseries 'DIFF' kind 'TEST' units 'UNITS'}"),
-                new TestCase(wreslParser.SvarContext.class, "define E { timeseries kind 'TEST' units 'UNITS'}"),
-                new TestCase(wreslParser.SvarContext.class, "define F { value 3.14}"),
-                new TestCase(wreslParser.SvarContext.class, "define G { select COL from TABLE where IDX = ROW}"),
-                new TestCase(wreslParser.SvarContext.class, "define H { external 'file.dll'}"),
-                new TestCase(wreslParser.SvarContext.class, "define I { case otherwise { condition always value Z } }"),
-                new TestCase(wreslParser.SvarContext.class, "define J { sum(i=0, SEP-month, 1) VAR(i) }"),
-                new TestCase(wreslParser.DvarContext.class, "define K { integer std units 'TEST' }"),
-                new TestCase(wreslParser.DvarContext.class, "define(size) L {std units 'TEST'}"),
-                new TestCase(wreslParser.DvarContext.class, "define[local] M {std units 'TEST'}")
+                new TestCase(DvarContext.class, "define A { std kind 'TEST' units 'UNITS'}"),
+                new TestCase(DvarContext.class, "dvar   B { lower 0 upper 1 units 'UNITS'}"),
+                new TestCase(DvarContext.class, "dvar   C { alias Y + Z units 'UNITS'}"),
+                new TestCase(SvarContext.class, "define D { timeseries 'DIFF' kind 'TEST' units 'UNITS'}"),
+                new TestCase(SvarContext.class, "define E { timeseries kind 'TEST' units 'UNITS'}"),
+                new TestCase(SvarContext.class, "define F { value 3.14}"),
+                new TestCase(SvarContext.class, "define G { select COL from TABLE where IDX = ROW}"),
+                new TestCase(SvarContext.class, "define H { external 'file.dll'}"),
+                new TestCase(SvarContext.class, "define I { case otherwise { condition always value Z } }"),
+                new TestCase(SvarContext.class, "define J { sum(i=0, SEP-month, 1) VAR(i) }"),
+                new TestCase(DvarContext.class, "define K { integer std units 'TEST' }"),
+                new TestCase(DvarContext.class, "define(size) L {std units 'TEST'}"),
+                new TestCase(DvarContext.class, "define[local] M {std units 'TEST'}")
         );
 
         // Loop through each expression and make sure they parse
         for (TestCase tc : expressions) {
             wreslParser parser = createParser(tc.expression());
-            wreslParser.StartContext ctx = parser.start();
+            StartContext ctx = parser.start();
             assertEquals(tc.expectedClass(), ctx.getChild(0).getClass());
         }
     }
@@ -130,17 +132,17 @@ public class TestParser {
     public void testGoalStatementSimple() {
         String expression = "goal A { Y = Z }";
         wreslParser parser = createParser(expression);
-        wreslParser.StartContext ctx = parser.start();
+        StartContext ctx = parser.start();
 
-        assertEquals(wreslParser.GoalContext.class, ctx.getChild(0).getClass());
+        assertEquals(GoalContext.class, ctx.getChild(0).getClass());
 
-        wreslParser.GoalContext goal = (wreslParser.GoalContext) ctx.getChild(0);
+        GoalContext goal = (GoalContext) ctx.getChild(0);
         assertEquals("A", goal.OBJECT_NAME().getText());
 
-        wreslParser.GoalBodyContext body = goal.goalBody();
-        assertEquals(wreslParser.GoalShortFormContext.class, body.goalShortForm().getClass());
+        GoalBodyContext body = goal.goalBody();
+        assertEquals(GoalShortFormContext.class, body.goalShortForm().getClass());
 
-        wreslParser.GoalShortFormContext bodyInner = body.goalShortForm();
+        GoalShortFormContext bodyInner = body.goalShortForm();
         String leftVar = bodyInner.expression(0).getText();
         String comp = bodyInner.opComp().getText();
         String rightVar = bodyInner.expression(1).getText();
@@ -153,17 +155,17 @@ public class TestParser {
     public void testGoalStatementViaPenalty() {
         String expression = "goal A { lhs Y rhs Z lhs > rhs penalty P lhs<rhs penalty 9999 }";
         wreslParser parser = createParser(expression);
-        wreslParser.StartContext ctx = parser.start();
+        StartContext ctx = parser.start();
 
-        assertEquals(wreslParser.GoalContext.class, ctx.getChild(0).getClass());
+        assertEquals(GoalContext.class, ctx.getChild(0).getClass());
 
-        wreslParser.GoalContext goal = (wreslParser.GoalContext) ctx.getChild(0);
+        GoalContext goal = (GoalContext) ctx.getChild(0);
         assertEquals("A", goal.OBJECT_NAME().getText());
 
-        wreslParser.GoalBodyContext body = goal.goalBody();
-        assertEquals(wreslParser.GoalViaPenaltyContext.class, body.goalViaPenalty().getClass());
+        GoalBodyContext body = goal.goalBody();
+        assertEquals(GoalViaPenaltyContext.class, body.goalViaPenalty().getClass());
 
-        wreslParser.GoalViaPenaltyContext bodyInner = body.goalViaPenalty();
+        GoalViaPenaltyContext bodyInner = body.goalViaPenalty();
         String firstSide = bodyInner.SIDE(0).getText();
         String secondSide = bodyInner.SIDE(1).getText();
         assertEquals("lhs", firstSide);
@@ -179,15 +181,15 @@ public class TestParser {
     public void testNestedSumExpression() {
         String expression = "define A {value max(2., min(A+3., C))} ";
         wreslParser parser = createParser(expression);
-        wreslParser.StartContext ctx = parser.start();
+        StartContext ctx = parser.start();
 
-        assertEquals(wreslParser.SvarContext.class, ctx.getChild(0).getClass());
+        assertEquals(SvarContext.class, ctx.getChild(0).getClass());
 
-        wreslParser.SvarContext svar = (wreslParser.SvarContext) ctx.getChild(0);
+        SvarContext svar = (SvarContext) ctx.getChild(0);
         assertEquals("A", svar.OBJECT_NAME().getText());
 
-        wreslParser.DefineViaValueContext inner = svar.svarBody().immediateSvarBody().defineViaValue();
-        wreslParser.CallExpressionContext call = (wreslParser.CallExpressionContext) inner.expression();
+        DefineViaValueContext inner = svar.svarBody().immediateSvarBody().defineViaValue();
+        CallExpressionContext call = (CallExpressionContext) inner.expression();
         assertEquals("max", call.getChild(0).getText());
         assertEquals("2.", call.arguments().expression().getFirst().getText());
     }
@@ -197,22 +199,22 @@ public class TestParser {
         String expression  = "LOG10(A[B]($m-1))";
 
         wreslParser parser = createParser(expression);
-        wreslParser.CallExpressionContext ctx = (wreslParser.CallExpressionContext) parser.expression();
-        assertEquals(wreslParser.PreDefinedFunctionContext.class, ctx.getChild(0).getClass());
-        assertEquals(wreslParser.ArgumentsContext.class, ctx.children.get(2).getClass());
+        CallExpressionContext ctx = (CallExpressionContext) parser.expression();
+        assertEquals(PreDefinedFunctionContext.class, ctx.getChild(0).getClass());
+        assertEquals(ArgumentsContext.class, ctx.children.get(2).getClass());
 
-        wreslParser.ArgumentsContext args = ctx.arguments();
-        assertEquals(wreslParser.ObjectReferenceContext.class, args.getChild(0).getChild(0).getClass());
+        ArgumentsContext args = ctx.arguments();
+        assertEquals(ObjectReferenceContext.class, args.getChild(0).getChild(0).getClass());
 
-        wreslParser.ExpressionContext exp = args.expression().getFirst();
-        wreslParser.ObjectReferenceContext obj = (wreslParser.ObjectReferenceContext) exp.getChild(0);
+        ExpressionContext exp = args.expression().getFirst();
+        ObjectReferenceContext obj = (ObjectReferenceContext) exp.getChild(0);
         assertEquals("A", obj.OBJECT_NAME().getText());
         assertEquals("B", obj.scope().scopeBody().getText());
 
-        wreslParser.TimestepOffsetContext ts = obj.timestepOffset();
+        TimestepOffsetContext ts = obj.timestepOffset();
         assertEquals("($m-1)", ts.getText());
 
-        wreslParser.ReferenceExpressionContext m = (wreslParser.ReferenceExpressionContext) ts.expression().getChild(0);
-        assertEquals(wreslParser.ArrayMaximumReferenceContext.class, m.variableReference().getClass());
+        ReferenceExpressionContext m = (ReferenceExpressionContext) ts.expression().getChild(0);
+        assertEquals(ArrayMaximumReferenceContext.class, m.variableReference().getClass());
     }
 }

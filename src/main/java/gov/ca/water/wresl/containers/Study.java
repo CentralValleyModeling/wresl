@@ -38,7 +38,7 @@ public class Study {
     }
 
     private ExpandIncludesVisitor loadStudyFiles() {
-        ExpandIncludesVisitor visitor = new ExpandIncludesVisitor(this.config.mainFile.getParent()); // assume the root is the same location as the main file
+        ExpandIncludesVisitor visitor = new ExpandIncludesVisitor();
         long start = System.currentTimeMillis();
         visitor.startVisitingFromFile(this.config.mainFile);
         long end = System.currentTimeMillis();

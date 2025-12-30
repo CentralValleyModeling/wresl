@@ -42,7 +42,7 @@ public class TestLexer {
 
     }
 
-    static List<Token> getTokens(Path source) throws IOException {
+    public static List<Token> getTokens(Path source) throws IOException {
         CharStream cStream = CharStreams.fromFileName(source.toAbsolutePath().toString());
         return getTokens(cStream);
     }
