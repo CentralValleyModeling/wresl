@@ -122,7 +122,7 @@ public class TestParser {
         for (TestCase tc : expressions) {
             wreslParser parser = createParser(tc.expression());
             wreslParser.StartContext ctx = parser.start();
-            assertEquals(tc.expectedClass(), ctx.children.getFirst().getClass());
+            assertEquals(tc.expectedClass(), ctx.getChild(0).getClass());
         }
     }
 
@@ -132,9 +132,9 @@ public class TestParser {
         wreslParser parser = createParser(expression);
         wreslParser.StartContext ctx = parser.start();
 
-        assertEquals(wreslParser.GoalContext.class, ctx.children.getFirst().getClass());
+        assertEquals(wreslParser.GoalContext.class, ctx.getChild(0).getClass());
 
-        wreslParser.GoalContext goal = (wreslParser.GoalContext) ctx.children.getFirst();
+        wreslParser.GoalContext goal = (wreslParser.GoalContext) ctx.getChild(0);
         assertEquals("A", goal.OBJECT_NAME().getText());
 
         wreslParser.GoalBodyContext body = goal.goalBody();
@@ -155,9 +155,9 @@ public class TestParser {
         wreslParser parser = createParser(expression);
         wreslParser.StartContext ctx = parser.start();
 
-        assertEquals(wreslParser.GoalContext.class, ctx.children.getFirst().getClass());
+        assertEquals(wreslParser.GoalContext.class, ctx.getChild(0).getClass());
 
-        wreslParser.GoalContext goal = (wreslParser.GoalContext) ctx.children.getFirst();
+        wreslParser.GoalContext goal = (wreslParser.GoalContext) ctx.getChild(0);
         assertEquals("A", goal.OBJECT_NAME().getText());
 
         wreslParser.GoalBodyContext body = goal.goalBody();
@@ -175,4 +175,44 @@ public class TestParser {
         assertEquals("9999", secondPenalty);
     }
 
+    @Test
+    public void testNestedSumExpression() {
+        String expression = "define A {value max(2., min(A+3., C))} ";
+        wreslParser parser = createParser(expression);
+        wreslParser.StartContext ctx = parser.start();
+
+        assertEquals(wreslParser.SvarContext.class, ctx.getChild(0).getClass());
+
+        wreslParser.SvarContext svar = (wreslParser.SvarContext) ctx.getChild(0);
+        assertEquals("A", svar.OBJECT_NAME().getText());
+
+        wreslParser.DefineViaValueContext inner = svar.svarBody().immediateSvarBody().defineViaValue();
+        wreslParser.CallExpressionContext call = (wreslParser.CallExpressionContext) inner.expression();
+        assertEquals("max", call.getChild(0).getText());
+        assertEquals("2.", call.arguments().expression().getFirst().getText());
+    }
+
+    @Test
+    public void testCallExpressionWithCycleAndTimestepReferences() {
+        String expression  = "LOG10(A[B]($m-1))";
+
+        wreslParser parser = createParser(expression);
+        wreslParser.CallExpressionContext ctx = (wreslParser.CallExpressionContext) parser.expression();
+        assertEquals(wreslParser.PreDefinedFunctionContext.class, ctx.getChild(0).getClass());
+        assertEquals(wreslParser.ArgumentsContext.class, ctx.children.get(2).getClass());
+
+        wreslParser.ArgumentsContext args = ctx.arguments();
+        assertEquals(wreslParser.ObjectReferenceContext.class, args.getChild(0).getChild(0).getClass());
+
+        wreslParser.ExpressionContext exp = args.expression().getFirst();
+        wreslParser.ObjectReferenceContext obj = (wreslParser.ObjectReferenceContext) exp.getChild(0);
+        assertEquals("A", obj.OBJECT_NAME().getText());
+        assertEquals("B", obj.scope().scopeBody().getText());
+
+        wreslParser.TimestepOffsetContext ts = obj.timestepOffset();
+        assertEquals("($m-1)", ts.getText());
+
+        wreslParser.ReferenceExpressionContext m = (wreslParser.ReferenceExpressionContext) ts.expression().getChild(0);
+        assertEquals(wreslParser.ArrayMaximumReferenceContext.class, m.variableReference().getClass());
+    }
 }

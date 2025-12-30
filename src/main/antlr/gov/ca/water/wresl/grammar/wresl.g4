@@ -24,19 +24,26 @@ sequenceBody
     : MODEL OBJECT_NAME sequenceCondition? ORDER INT timestepSpecification?
     ;
 sequenceCondition: CONDITION expression opComp expression ;
-timestepSpecification: TIMESTEP STEP ;
+timestepSpecification: TIMESTEP (STEP_1MON | STEP_1DAY) ;
 
 // MODEL
 model: MODEL OBJECT_NAME OPEN_BRACE modelBody+ CLOSE_BRACE ;
-modelBody: include | svar | dvar | goal | objective | ifStatement ;
+modelBody
+    : include
+    | svar
+    | dvar
+    | goal
+    | objective
+    | ifStatement
+    ;
 
 // INCLUDE
 include: INCLUDE scope? includeBody ;
 includeBody
     : groupReference       # IncludeGroup
-    | SPECIFICATION_STRING # IncludeFile
+    | specificationString  # IncludeFile
     ;
-groupReference: GROUP OBJECT_NAME ;
+groupReference: GROUP OBJECT_NAME  ;
 
 // GOAL
 goal: GOAL scope? arraySizeDefinition? OBJECT_NAME OPEN_BRACE goalBody CLOSE_BRACE ;
@@ -56,31 +63,67 @@ variables: VARIABLE expression+ ;
 
 // GROUP
 group: GROUP OBJECT_NAME OPEN_BRACE groupBody+ CLOSE_BRACE ;
-groupBody: include | dvar | svar | goal | objective | ifStatement ;
+groupBody
+    : include
+    | dvar
+    | svar
+    | goal
+    | objective
+    | ifStatement
+    ;
 
 // DEFINE
 dvar: (DVAR | DEFINE) scope? arraySizeDefinition? OBJECT_NAME OPEN_BRACE dvarBody CLOSE_BRACE ;
 svar: (SVAR | DEFINE) scope? arraySizeDefinition? OBJECT_NAME OPEN_BRACE svarBody CLOSE_BRACE ;
-dvarBody: defineViaBounds | defineViaAlias ;
-svarBody: delayedSvarBody | immediateSvarBody ;
-delayedSvarBody: defineViaCase | defineViaLookup | defineViaExternal | defineViaSum ;
-immediateSvarBody: defineViaValue | defineViaTimeseries ;
+dvarBody
+    : defineViaBounds
+    | defineViaAlias
+    ;
+svarBody
+    : delayedSvarBody
+    | immediateSvarBody
+    ;
+delayedSvarBody
+    : defineViaCase
+    | defineViaLookup
+    | defineViaExternal
+    | defineViaSum
+    ;
+immediateSvarBody
+    : defineViaValue
+    | defineViaTimeseries
+    ;
 defineViaValue: VALUE expression ;
 defineViaCase: caseStatement+ ;
 defineViaLookup: select ;
-defineViaExternal: EXTERNAL SPECIFICATION_STRING ;
+defineViaExternal: EXTERNAL externalTarget ;
 defineViaBounds: defineBoundLimits definitionSpecifics+ ;
-defineViaTimeseries: TIMESERIES (SPECIFICATION_STRING)? definitionSpecifics+ ;
+defineViaTimeseries: TIMESERIES (specificationString)? definitionSpecifics+ ;
 defineViaAlias: ALIAS expression definitionSpecifics* ;
-defineViaSum: sumExpression ;
+defineViaSum: sumExpressionBody ;
+
+externalTarget
+    : specificationString
+    | unescapedTargetString
+    ;
+unescapedTargetString: (OBJECT_NAME ('.' OBJECT_NAME)?);
 
 defineBoundLimits: INTEGER? (STD | defineBoundUl) ;
-defineBoundUl: BOUND_SIDE expression (BOUND_SIDE expression)? ;
+defineBoundUl: boundSide boundType (boundSide boundType)? ;
+boundSide: UPPER | LOWER;
+boundType
+    : UNBOUNDED    #unbounded
+    | expression   #expressionBounded
+    ;
 
-definitionSpecifics: kind | units | convert ;
-kind: KIND SPECIFICATION_STRING ;
-units: UNITS SPECIFICATION_STRING ;
-convert: CONVERT SPECIFICATION_STRING ;
+definitionSpecifics
+    : kind
+    | units
+    | convert
+    ;
+kind: KIND specificationString ;
+units: UNITS specificationString ;
+convert: CONVERT specificationString ;
 
 // INITIAL
 initial: INITIAL OPEN_BRACE svar+ CLOSE_BRACE ;
@@ -93,106 +136,149 @@ elseClause: ELSE ifBlock ;
 ifBlock: OPEN_BRACE (include | svar | dvar)+ CLOSE_BRACE ;
 
 // caseStatement
-caseStatement: CASE OBJECT_NAME OPEN_BRACE caseCondition? caseBody CLOSE_BRACE ;
+caseStatement: CASE caseName OPEN_BRACE caseCondition? caseBody CLOSE_BRACE ;
+caseName
+    : OBJECT_NAME
+    | nonReservedKeywords
+    ;
 caseCondition: CONDITION (expression | ALWAYS) ;
-caseBody: caseViaValue | goalCase | caseViaSelect | caseViaExpression ;
+caseBody
+    : caseViaValue
+    | goalCase
+    | caseViaSelect
+    | caseViaExpression
+    ;
 caseViaValue: VALUE expression ;
 caseViaExpression: expression ;
 goalCase: SIDE expression penalty* ;
 caseViaSelect: select ;
 
 // PENALTY
-penalty: SIDE OP_COMP_LIMITED SIDE penaltyValue? ;
-penaltyValue: CONSTANT | (PENALTY expression) ;
+penalty: SIDE (LESS_THAN | GREATER_THAN) SIDE penaltyValue? ;
+penaltyValue
+    : NEVER
+    | CONSTRAIN
+    | (PENALTY expression)
+    ;
 
 // SELECT
-select: SELECT OBJECT_NAME FROM OBJECT_NAME given? use? where? ;
-given: GIVEN OBJECT_NAME EQUALS_SIGN expression ;
+select: SELECT columnName FROM OBJECT_NAME given? use? where? ;
+given: GIVEN columnName EQUALS_SIGN expression ;
 use: USE interpolation ;
-where: WHERE OBJECT_NAME EQUALS_SIGN expression (COMMA OBJECT_NAME EQUALS_SIGN expression)* ;
+where: WHERE columnName EQUALS_SIGN expression (COMMA columnName EQUALS_SIGN expression)* ;
+interpolation
+    : LINEAR
+    | MIN
+    | MAX
+    | MAXIMUM
+    | MINIMUM
+    ;
+columnName
+    : OBJECT_NAME
+    | nonReservedKeywords
+    ;
 
 // -----------------------------
-// Expressions (unified)
+// Expressions
 // -----------------------------
 
 expression
-    : expression opComp expression
-    | expression OP_MULT expression
-    | expression OP_ADD expression
-    | OP_UNARY expression
-    | primaryExpression
+    : expression opComp expression                                          #comparsionExpression
+    | expression opMultiplicationDivision expression                        #multDivExpression
+    | expression opAdditionSubtration expression                            #addSubExpression
+    | NOT expression                                                        #notExpression
+    | opAdditionSubtration expression                                       #signedExpression // +1, or -1 without a left hand side
+    | sumExpressionBody                                                     #sumExpression
+    | (preDefinedFunction | OBJECT_NAME) OPEN_PAREN arguments? CLOSE_PAREN  #callExpression
+    | expression COLON expression                                           #sliceExpression
+    | variableReference                                                     #referenceExpression
+    | OPEN_PAREN expression CLOSE_PAREN                                     #parenExpression
     ;
 
-primaryExpression
-    : paren
-    | sumExpression
-    | call
-    | variableReference
-    | RUNTIME
-    | MONTH
-    | prev_month
-    | CONSTANT
-    | FUTURE_ARRAY_MAXMUM
-    | SIGNED_FLOAT
-    | SIGNED_INT
-    | INT
+sumExpressionBody
+    : SUM OPEN_PAREN OBJECT_NAME EQUALS_SIGN expression COMMA sumEnd (COMMA sumStep)? CLOSE_PAREN accumulatingExpression;
+
+variableReference
+    : OBJECT_NAME scope? timestepOffset? #objectReference
+    | DAYSIN                             #daysInMonthReference
+    | CURRENT_MONTH                      #currentMonthReference
+    | WATER_YEAR                         #waterYearReference
+    | MONTH                              #monthReference
+    | FUTURE_ARRAY_MAXMUM                #arrayMaximumReference
+    | FLOAT                              #floatNumber
+    | INT                                #intNumber
     ;
 
-// Parentheses
-paren: OPEN_PAREN expression CLOSE_PAREN ;
 
 // Function calls
-call
-    : (F_UNARY | F_BINARY | F_ITER) OPEN_PAREN arguments? CLOSE_PAREN
-    ;
+preDefinedFunction
+   : F_ABSOLUTE_VALUE
+   | F_INTEGER
+   | F_REAL
+   | F_EXPONENTIAL
+   | F_LOG_E
+   | F_LOG_10
+   | F_SQRT
+   | F_ROUND
+   | F_POWER
+   | F_MODULUS
+   | F_RANGE
+   | MIN
+   | MAX
+   ;
 
 arguments
     : expression (COMMA expression)*
-    ;
-
-// Sum expression
-sumExpression
-    : SUM OPEN_PAREN OBJECT_NAME EQUALS_SIGN expression COMMA sumEnd (COMMA sumStep)? CLOSE_PAREN accumulatingExpression
     ;
 
 accumulatingExpression: expression ;
 sumEnd: expression ;
 sumStep: expression ;
 
-// Variable references
-variableReference
-    : OBJECT_NAME scope? tsRef?
+timestepOffset: OPEN_PAREN (expression) CLOSE_PAREN ;
+scope: OPEN_BRACKET scopeBody CLOSE_BRACKET ;
+scopeBody
+    : GLOBAL
+    | LOCAL
+    | expression
     ;
-tsRef
-    : OPEN_PAREN (SIGNED_INT | OBJECT_NAME) CLOSE_PAREN
-    ;
-scope: SCOPE_SPEC ;
-arraySizeDefinition: OPEN_PAREN objectReference CLOSE_PAREN ;
+arraySizeDefinition: OPEN_PAREN expression CLOSE_PAREN ;
 
-// Object references
-objectReference
-    : RUNTIME
-    | MONTH
-    | prev_month
-    | CONSTANT
-    | FUTURE_ARRAY_MAXMUM
-    | SIGNED_FLOAT
-    | variableReference
+// common parser groups
+opComp
+    : EQUALS_SIGN
+    | GREATER_THAN
+    | GREATER_THAN_OR_EQUAL
+    | LESS_THAN
+    | LESS_THAN_OR_EQUAL
+    | DOUBLE_EQUAL
+    | AND
+    | OR
+    | NOT_EQUAL
     ;
-
-// simple parser rules
-prev_month: 'prev' MONTH;
-interpolation: 'linear' | MIN_MAX | 'maximum' | 'minimum' ;
-opComp: EQUALS_SIGN | '<=' | '>=' | '==' | OP_COMP_LIMITED | '.and.' | '.or.' | '.ne.' ;
+opMultiplicationDivision
+    : MULT
+    | DIVIDE
+    ;
+opAdditionSubtration
+    : PLUS
+    | MINUS
+    ;
+specificationString
+    : SINGLE_QUOTE_STRING
+    | DOUBLE_QUOTE_STRING
+    ;
+nonReservedKeywords
+    : MONTH
+    | CURRENT_MONTH
+    | WATER_YEAR
+    ;
 
 // -----------------------------
 // Lexer rules
 // -----------------------------
 
-// scope
-SCOPE_SPEC: OPEN_BRACKET ('global' | 'local' | OBJECT_NAME | SIGNED_INT) CLOSE_BRACKET ;
-
-// Keywords
+// Keywords - Objects
 MODEL: 'model';
 SEQUENCE: 'sequence';
 ORDER: 'order';
@@ -205,6 +291,31 @@ WEIGHT: 'weight';
 DEFINE: 'define' ;
 DVAR: 'dvar';
 SVAR: 'svar';
+// Keywords - constants
+LOCAL: 'local';
+GLOBAL: 'global';
+ALWAYS: 'always';
+DAYSIN: 'daysin';
+CURRENT_MONTH: 'month';
+WATER_YEAR: 'wateryear';
+MONTH:
+    'jan'      | 'prevjan'
+    | 'feb'    | 'prevfeb'
+    | 'mar'    | 'prevmar'
+    | 'apr'    | 'prevapr'
+    | 'may'    | 'prevmay'
+    | 'jun'    | 'prevjun'
+    | 'jul'    | 'prevjul'
+    | 'aug'    | 'prevaug'
+    | 'sep'    | 'prevsep'
+    | 'oct'    | 'prevoct'
+    | 'nov'    | 'prevnov'
+    | 'dec'    | 'prevdec'
+    ;
+STEP_1MON: '1mon';
+STEP_1DAY: '1day';
+FUTURE_ARRAY_MAXMUM: '$m' ;
+// Keywords - instructions
 VALUE: 'value';
 EXTERNAL: 'external';
 TIMESERIES: 'timeseries';
@@ -228,7 +339,45 @@ FROM: 'from';
 SUM: 'sum';
 PENALTY: 'penalty';
 VARIABLE: 'variable';
-ALWAYS: 'always';
+LINEAR: 'linear';
+MAXIMUM: 'maximum';
+MINIMUM: 'minimum';
+NEVER: 'never';
+UNBOUNDED: 'unbounded';
+CONSTRAIN: 'constrain';
+UPPER: 'upper';
+LOWER: 'lower';
+// Keywords - functions
+F_RANGE: 'range';
+F_ABSOLUTE_VALUE: 'abs';
+F_INTEGER: 'int';
+F_REAL: 'real';
+F_EXPONENTIAL: 'exp';
+F_LOG_E: 'log';
+F_LOG_10: 'log10';
+F_SQRT: 'sqrt';
+F_ROUND: 'round';
+F_POWER: 'pow';
+F_MODULUS: 'mod';
+MIN: 'min';
+MAX: 'max';
+// Keywords - operators (logic)
+GREATER_THAN: '>';
+LESS_THAN: '<';
+GREATER_THAN_OR_EQUAL: '>=';
+LESS_THAN_OR_EQUAL: '<=';
+DOUBLE_EQUAL: '==';
+NOT: '.not.';
+AND: '.and.';
+OR: '.or.';
+NOT_EQUAL: '.ne.';
+SIDE: [lr] 'hs' ;
+// Keywords - operators (math)
+PLUS: '+';
+MINUS: '-';
+MULT: '*';
+DIVIDE: '/';
+COLON: ':';
 
 // Braces, parentheses, operators, punctuation
 OPEN_BRACE: '{';
@@ -240,37 +389,15 @@ CLOSE_BRACKET: ']';
 EQUALS_SIGN: '=';
 COMMA: ',';
 
-// Intrinsic functions and constants
-RUNTIME: 'daysin' | 'month' | 'wateryear' ;
-MONTH: 'jan' | 'feb' | 'mar' | 'apr' | 'may' | 'jun' | 'jul' | 'aug' | 'sep' | 'oct' | 'nov' | 'dec' ;
-F_UNARY: 'abs' | 'int' | 'real' | 'exp' | 'log' | 'log10' | 'sqrt' | 'round' ;
-F_BINARY: 'pow' | 'mod' ;
-F_ITER: MIN_MAX | 'range' ;
-CONSTANT: 'never' | 'unbounded' | 'constrain' ;
-STEP: '1mon' | '1day' ;
-SIDE: [lr] 'hs' ;
-BOUND_SIDE: 'upper' | 'lower' ;
-FUTURE_ARRAY_MAXMUM: '$' 'm' ;
-MIN_MAX: 'max' | 'min';
-
-// Operators
-OP_ADD: '+' | '-';
-OP_MULT: '*' | '/';
-OP_COMP_LIMITED: '<' | '>';
-OP_UNARY: '.not.' | '-' | '+' ;
-
-// Quoted strings
-SPECIFICATION_STRING
-    : '\'' STRING_BODY '\''
-    | '"'  STRING_BODY '"'
-    ;
+// Quoted strings (we don't allow nesting, so this is not allowed: "they're")
+SINGLE_QUOTE_STRING: '\'' STRING_BODY '\'';
+DOUBLE_QUOTE_STRING:  '"'  STRING_BODY '"';
 fragment STRING_BODY: ~['"\r\n]+ ;
 
 // Numbers
 INT: DIGITS ;  // references fragment only
-SIGNED_INT: ('+' | '-')? INT ;
-SIGNED_FLOAT
-    : ('+'|'-')? ( DIGITS ('.' DIGITS)?) ( [e] [+-]? DIGITS )?
+FLOAT
+    : DIGITS? '.' DIGITS? ([e] [+-]? DIGITS)?
     ;
 fragment DIGITS: [0-9]+ ;
 
