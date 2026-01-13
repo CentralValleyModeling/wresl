@@ -42,12 +42,17 @@ include: INCLUDE scope? includeBody ;
 includeBody
     : groupReference       # IncludeGroup
     | specificationString  # IncludeFile
+    | start                # IncludeAnotherTree  // this should never appear in a file, but keep this so ANTLR generates the class for us
     ;
 groupReference: GROUP OBJECT_NAME  ;
 
 // GOAL
 goal: GOAL scope? arraySizeDefinition? OBJECT_NAME OPEN_BRACE goalBody CLOSE_BRACE ;
-goalBody: goalShortForm | goalViaPenalty | goalViaCase ;
+goalBody
+    : goalShortForm
+    | goalViaPenalty
+    | goalViaCase
+    ;
 goalShortForm: expression opComp expression ;
 goalViaPenalty: SIDE expression SIDE expression penalty* ;
 goalViaCase: SIDE expression caseStatement+ ;
@@ -76,31 +81,17 @@ groupBody
 dvar: (DVAR | DEFINE) scope? arraySizeDefinition? OBJECT_NAME OPEN_BRACE dvarBody CLOSE_BRACE ;
 svar: (SVAR | DEFINE) scope? arraySizeDefinition? OBJECT_NAME OPEN_BRACE svarBody CLOSE_BRACE ;
 dvarBody
-    : defineViaBounds
-    | defineViaAlias
+    : defineBoundLimits definitionSpecifics+ #dvarBounds
+    | ALIAS expression definitionSpecifics*  #dvarAlias
     ;
 svarBody
-    : delayedSvarBody
-    | immediateSvarBody
+    : caseStatement+                                         #svarCase
+    | select                                                 #svarLookup
+    | EXTERNAL externalTarget                                #svarExternal
+    | sumExpressionBody                                      #svarSum
+    | VALUE expression                                       #svarValue
+    | TIMESERIES (specificationString)? definitionSpecifics+ #svarTimeseries
     ;
-delayedSvarBody
-    : defineViaCase
-    | defineViaLookup
-    | defineViaExternal
-    | defineViaSum
-    ;
-immediateSvarBody
-    : defineViaValue
-    | defineViaTimeseries
-    ;
-defineViaValue: VALUE expression ;
-defineViaCase: caseStatement+ ;
-defineViaLookup: select ;
-defineViaExternal: EXTERNAL externalTarget ;
-defineViaBounds: defineBoundLimits definitionSpecifics+ ;
-defineViaTimeseries: TIMESERIES (specificationString)? definitionSpecifics+ ;
-defineViaAlias: ALIAS expression definitionSpecifics* ;
-defineViaSum: sumExpressionBody ;
 
 externalTarget
     : specificationString

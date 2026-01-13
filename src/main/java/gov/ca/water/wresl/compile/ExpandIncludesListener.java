@@ -1,15 +1,17 @@
-package gov.ca.water.wresl.visitors;
+package gov.ca.water.wresl.compile;
 
 import gov.ca.water.wresl.errors.FileSyntaxException;
 import gov.ca.water.wresl.errors.SyntaxException;
 import gov.ca.water.wresl.errors.WreslErrorListener;
-import gov.ca.water.wresl.grammar.wreslBaseVisitor;
+import gov.ca.water.wresl.grammar.wreslBaseListener;
 import gov.ca.water.wresl.grammar.wreslLexer;
 import gov.ca.water.wresl.grammar.wreslParser;
+import gov.ca.water.wresl.grammar.wreslParser.StartContext;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,8 +23,8 @@ import java.util.Map;
 import java.util.Set;
 
 
-public class ExpandIncludesVisitor extends wreslBaseVisitor<ParseTree> {
-    private static final Logger logger = LoggerFactory.getLogger(ExpandIncludesVisitor.class);
+public class ExpandIncludesListener extends wreslBaseListener {
+    private static final Logger logger = LoggerFactory.getLogger(ExpandIncludesListener.class);
     /**
      * An array of the current files being expanded, where the last file in the list is the current target.
      */
@@ -31,7 +33,7 @@ public class ExpandIncludesVisitor extends wreslBaseVisitor<ParseTree> {
     /**
      * A cache of included files, used to avoid reparsing files already seen.
      */
-    private final Map<Path, ParseTree> includedTrees;
+    public final Map<Path, StartContext> includedTrees;
 
     /**
      * A map of java.nio.file.Path objects keyed by their String representation.
@@ -43,7 +45,7 @@ public class ExpandIncludesVisitor extends wreslBaseVisitor<ParseTree> {
      * ExpandIncludesVisitor is used to traverse files looking for include statements, and will traverse those included
      * files in a depth first search.
      */
-    public ExpandIncludesVisitor() {
+    public ExpandIncludesListener() {
         super();
         // optimized for larger models, like CalSim3 (although the performance impact is <1 sec)
         this.currentExpansion = new ArrayList<>(10);  // CalSim3 max is    5 on 2025-12-30
@@ -56,23 +58,24 @@ public class ExpandIncludesVisitor extends wreslBaseVisitor<ParseTree> {
      * @param mainFile The file to begin reading from.
      * @return All the parsed trees, keyed by the Path of the file.
      */
-    public Map<Path, ParseTree> startVisitingFromFile(Path mainFile) {
+    public Map<Path, StartContext> startVisitingFromFile(Path mainFile) {
         logger.atInfo()
                 .setMessage("starting parsing from file: {}")
                 .addArgument(mainFile)
                 .log();
-        ParseTree tree = this.getTreeForFile(mainFile);
+        StartContext tree = this.getTreeForFile(mainFile);
         this.includedTrees.put(mainFile, tree);  // track the main file
         return this.includedTrees;
     }
 
-    public ParseTree getTreeForFile(Path target) {
+    public StartContext getTreeForFile(Path target) {
         this.currentExpansion.addLast(target); // track the new file being traversed
         wreslParser parser = getParserForFile(target);
-        ParseTree tree;
+        StartContext tree;
         try {
             tree = parser.start();
-            this.visit(tree);  // go one level deeper
+            ParseTreeWalker walker = new ParseTreeWalker();
+            walker.walk(this, tree);
         } catch (SyntaxException e) {
             throw new FileSyntaxException(target, e);
         }
@@ -84,20 +87,15 @@ public class ExpandIncludesVisitor extends wreslBaseVisitor<ParseTree> {
         return this.includedTrees.keySet();
     }
 
-    public ParseTree getTree(String sourceString) throws IllegalArgumentException {
-        return getTree(Path.of(sourceString));
-    }
-
     /**
      * Nearly the default behavior of the parent class method, but this implementation modifies the state of the
      * currentExpansion, and includedTrees attributes of this subclass. This also triggers the depth first traversal
      * of other files.
      *
      * @param ctx The context of the node
-     * @return The default behavior from visitChildren
      */
     @Override
-    public ParseTree visitIncludeFile(wreslParser.IncludeFileContext ctx) {
+    public void enterIncludeFile(wreslParser.IncludeFileContext ctx) {
         String fileName = strip(ctx.specificationString());
         Path target = getFullPathFromWreslReference(fileName);
         if (this.includedTrees.containsKey(target)) {
@@ -109,13 +107,12 @@ public class ExpandIncludesVisitor extends wreslBaseVisitor<ParseTree> {
         } else {
             // new file, go ahead and parse the tree
             logger.atInfo().setMessage("included: {}").addArgument(target).log();
-            ParseTree tree = this.getTreeForFile(target);
-            this.includedTrees.put(target, tree);  // modify this object in place
+            StartContext tree = this.getTreeForFile(target);
+            this.includedTrees.put(target, tree); // save this tree for further compilation
         }
-        return visitChildren(ctx);
     }
 
-    private ParseTree getTree(Path source) throws IllegalArgumentException {
+    private StartContext getTree(Path source) throws IllegalArgumentException {
         if (this.includedTrees.containsKey(source)) {
             return this.includedTrees.get(source);
         }

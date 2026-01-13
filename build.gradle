@@ -58,7 +58,7 @@ idea {
 tasks.named("generateGrammarSource") {
     arguments.addAll([
             "-visitor",
-            "-no-listener",
+            "-listener",
             "-long-messages",
             "-package","gov.ca.water.wresl.grammar",
     ])

@@ -1,27 +1,20 @@
 package gov.ca.water.wresl.containers;
 
+import gov.ca.water.wresl.compile.CollectContainersListener;
+import gov.ca.water.wresl.compile.CollectedContainers;
+import gov.ca.water.wresl.compile.ExpandIncludesListener;
 import gov.ca.water.wresl.configuration.StudyConfiguration;
-import gov.ca.water.wresl.domain.Group;
-import gov.ca.water.wresl.domain.Model;
-import gov.ca.water.wresl.domain.Sequence;
-import gov.ca.water.wresl.visitors.ExpandIncludesVisitor;
-
+import gov.ca.water.wresl.grammar.wreslParser.StartContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 public class Study {
     private static final Logger logger = LoggerFactory.getLogger(Study.class);
     public String name;
     public StudyConfiguration config;
-    public Set<Path> paths;
-    public Map<String, Model> models;
-    public Map<String, Sequence> sequences;
-    public Map<String, Group> groups;
 
     public Study(String name, Path svPath, Path dvPath, Path initPath, Path mainFile) {
         StudyConfiguration cfg = new StudyConfiguration(svPath, dvPath, initPath, mainFile);
@@ -31,28 +24,55 @@ public class Study {
     public Study(String name, StudyConfiguration studyConfiguration) {
         this.name = name;
         this.config = studyConfiguration;
-        this.paths = new HashSet<>();
-        this.models = new HashMap<>();
-        this.sequences = new HashMap<>();
-        this.groups = new HashMap<>();
     }
 
-    private ExpandIncludesVisitor loadStudyFiles() {
-        ExpandIncludesVisitor visitor = new ExpandIncludesVisitor();
+    private static Map<Path, StartContext> collectTrees(Path entryFile) {
+        // begin by parsing all the files into separate trees
         long start = System.currentTimeMillis();
-        visitor.startVisitingFromFile(this.config.mainFile);
+        ExpandIncludesListener expandIncludes = new ExpandIncludesListener();
+        expandIncludes.startVisitingFromFile(entryFile);  // find and parse files
         long end = System.currentTimeMillis();
         float duration = (float) (end - start) / 1_000L;
         logger.atInfo()
                 .setMessage("{} files parsed in {} seconds")
-                .addArgument(visitor.getFileSet().size())
+                .addArgument(expandIncludes.getFileSet().size())
                 .addArgument(duration)
                 .log();
-        return visitor;
+        return expandIncludes.includedTrees;
     }
 
-    public String toString(){
-        return String.format("%s(name=\"%s\")", this.getClass().getSimpleName(), this.name);
+    private static CollectedContainers compileTreesToContainers(Map<Path, StartContext> trees) {
+        long start = System.currentTimeMillis();
+        CollectContainersListener containerCollector = new CollectContainersListener();
+        CollectedContainers containers = containerCollector.collectContainersFromTrees(trees.values());
+        long end = System.currentTimeMillis();
+        float durationCompile= (float) (end - start) / 1_000L;
+        logger.atDebug()
+                .setMessage("containers collected in {} seconds")
+                .addArgument(durationCompile)
+                .log();
+        return containers;
+    }
+
+    private void compile() {
+        // track the time
+        long start = System.currentTimeMillis();
+        // first, collect all the trees that are included
+        Map<Path, StartContext> treesByFile = collectTrees(this.config.mainFile);
+        // next, find the sequences, models, groups, and initial constructs
+        CollectedContainers containers = compileTreesToContainers(treesByFile);
+        // next combine the trees, organized by each sequence
+        // TODO
+        // next, compile each sequence into package objects
+        // TODO
+        // Report total compile time
+        long end = System.currentTimeMillis();
+        float durationTotal= (float) (end - start) / 1_000L;
+        logger.atInfo()
+                .setMessage("total parse + compile time: {} seconds")
+                .addArgument(durationTotal)
+                .log();
+        logger.atInfo().setMessage("{}").addArgument(containers.sequences.get("CYCLE01")).log();
     }
 
     public static void main(String[] args) {
@@ -62,6 +82,6 @@ public class Study {
         logger.atInfo().setMessage("mainWresl={}").addArgument(mainWresl).log();
         StudyConfiguration cfg = new StudyConfiguration(svPath, dvPath, svPath, mainWresl);
         Study study = new Study("TEST", cfg);
-        ExpandIncludesVisitor visitor = study.loadStudyFiles();
+        study.compile();
     }
 }
