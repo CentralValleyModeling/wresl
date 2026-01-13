@@ -7,36 +7,31 @@ import gov.ca.water.wresl.grammar.wreslBaseListener;
 import gov.ca.water.wresl.grammar.wreslLexer;
 import gov.ca.water.wresl.grammar.wreslParser;
 import gov.ca.water.wresl.grammar.wreslParser.StartContext;
-import org.antlr.v4.runtime.CharStream;
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.ParseTreeWalker;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.tree.ParseTreeWalker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ExpandIncludesListener extends wreslBaseListener {
     private static final Logger logger = LoggerFactory.getLogger(ExpandIncludesListener.class);
     /**
-     * An array of the current files being expanded, where the last file in the list is the current target.
-     */
-    private final ArrayList<Path> currentExpansion;
-
-    /**
      * A cache of included files, used to avoid reparsing files already seen.
      */
     public final Map<Path, StartContext> includedTrees;
-
     /**
-     * A map of java.nio.file.Path objects keyed by their String representation.
+     * An array of the current files being expanded, where the last file in the list is the current target.
+     */
+    private final ArrayList<Path> currentExpansion;
+    /**
+     * A map of `java.nio.file.Path` objects keyed by their String representation.
      * This saves time on resolving relative paths on disk.
      */
     private final Map<String, Path> filePathCache;
@@ -63,8 +58,8 @@ public class ExpandIncludesListener extends wreslBaseListener {
                 .setMessage("starting parsing from file: {}")
                 .addArgument(mainFile)
                 .log();
-        StartContext tree = this.getTreeForFile(mainFile);
-        this.includedTrees.put(mainFile, tree);  // track the main file
+        StartContext tree = this.getTreeForFile(mainFile); // this starts the search, and modifies includedTrees
+        this.includedTrees.put(mainFile, tree);  // track the main file (adds it last)
         return this.includedTrees;
     }
 
@@ -75,12 +70,31 @@ public class ExpandIncludesListener extends wreslBaseListener {
         try {
             tree = parser.start();
             ParseTreeWalker walker = new ParseTreeWalker();
-            walker.walk(this, tree);
+            walker.walk(this, tree);  // use listener to walk the tree (see enterXxx and exitXxx methods below)
         } catch (SyntaxException e) {
             throw new FileSyntaxException(target, e);
         }
         this.currentExpansion.removeLast(); // no longer resolving this target
         return tree;
+    }
+
+    private wreslParser getParserForFile(Path source) {
+        CharStream stream;
+        try {
+            stream = CharStreams.fromFileName(source.toString());
+        } catch (IOException e) {
+            logger.atError()
+                    .setMessage("IOException while reading main WRESL file: {}")
+                    .addArgument(source)
+                    .setCause(e)
+                    .log();
+            throw new RuntimeException("IOException while reading main WRESL file.", e);
+        }
+        wreslLexer lexer = new wreslLexer(stream);
+        wreslParser parser = new wreslParser(new CommonTokenStream(lexer));
+        WreslErrorListener listener = new WreslErrorListener();
+        parser.addErrorListener(listener);
+        return parser;
     }
 
     public Set<Path> getFileSet() {
@@ -112,42 +126,9 @@ public class ExpandIncludesListener extends wreslBaseListener {
         }
     }
 
-    private StartContext getTree(Path source) throws IllegalArgumentException {
-        if (this.includedTrees.containsKey(source)) {
-            return this.includedTrees.get(source);
-        }
-        Path resolvedSource = getFullPathFromWreslReference(source);
-        if (this.includedTrees.containsKey(resolvedSource)) {
-            return this.includedTrees.get(resolvedSource);
-        } else {
-            String msg = String.format("Could not find \"%s\" (or \"%s\") in file cache", source, resolvedSource);
-            logger.atError().setMessage(msg).log();
-            throw new IllegalArgumentException(msg);
-        }
-    }
-
-    private String strip(wreslParser.SpecificationStringContext ctx) {
+    private static String strip(wreslParser.SpecificationStringContext ctx) {
         String pattern = (ctx.DOUBLE_QUOTE_STRING() == null) ? "^'|'$" : "^\"|\"$";
         return ctx.getText().replaceAll(pattern, "");
-    }
-
-    private wreslParser getParserForFile(Path source) {
-        CharStream stream;
-        try {
-            stream = CharStreams.fromFileName(source.toString());
-        } catch (IOException e) {
-            logger.atError()
-                    .setMessage("IOException while reading main WRESL file: {}")
-                    .addArgument(source)
-                    .setCause(e)
-                    .log();
-            throw new RuntimeException("IOException while reading main WRESL file.", e);
-        }
-        wreslLexer lexer = new wreslLexer(stream);
-        wreslParser parser = new wreslParser(new CommonTokenStream(lexer));
-        WreslErrorListener listener = new WreslErrorListener();
-        parser.addErrorListener(listener);
-        return parser;
     }
 
     private Path getFullPathFromWreslReference(String source) {
@@ -164,10 +145,11 @@ public class ExpandIncludesListener extends wreslBaseListener {
         try {
             String pathStr;
             if (this.currentExpansion.isEmpty()) {
-                pathStr = source.toAbsolutePath().toFile().getCanonicalPath();  // first path should be absolute, or relative to CWD
+                // first path should be absolute, or relative to CWD
+                pathStr = source.toAbsolutePath().toFile().getCanonicalPath();
             } else {
                 source = removeLeadingSlashFromPath(source);
-                Path currentTarget = this.currentExpansion.getLast();
+                Path currentTarget = this.currentExpansion.getLast(); // use current file being read for "relative to"
                 pathStr = currentTarget.getParent().resolve(source).toFile().getCanonicalPath();
             }
             return Path.of(pathStr);
