@@ -1,4 +1,4 @@
-package gov.ca.water.wresl.visitors;
+package gov.ca.water.wresl.compile;
 
 import com.github.valfirst.slf4jtest.LoggingEvent;
 import com.github.valfirst.slf4jtest.TestLogger;
@@ -9,7 +9,6 @@ import gov.ca.water.wresl.grammar.wreslParser;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ListTokenSource;
 import org.antlr.v4.runtime.Token;
-import org.antlr.v4.runtime.tree.ParseTree;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -24,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
 public class TestExpandIncludesVisitor {
-    TestLogger logger = TestLoggerFactory.getTestLogger(ExpandIncludesVisitor.class);
+    TestLogger logger = TestLoggerFactory.getTestLogger(ExpandIncludesListener.class);
     private static final WreslErrorListener errorListener = new WreslErrorListener();
 
     static wreslParser createParser(List<Token> tokens) {
@@ -49,8 +48,8 @@ public class TestExpandIncludesVisitor {
     @Test
     public void testLinearInclude() {
         Path root = Path.of("src/test/resources/compiling/expand_includes/linear").toAbsolutePath();
-        ExpandIncludesVisitor visitor = new ExpandIncludesVisitor();
-        Map<Path, ParseTree> trees = visitor.startVisitingFromFile(root.resolve("A.wresl"));
+        ExpandIncludesListener visitor = new ExpandIncludesListener();
+        Map<Path, wreslParser.StartContext> trees = visitor.startVisitingFromFile(root.resolve("A.wresl"));
         Set<Path> paths = visitor.getFileSet();
         Set<String> pathNames = paths
                 .stream()
@@ -64,8 +63,8 @@ public class TestExpandIncludesVisitor {
     @Test
     public void testCircularInclude() {
         Path root = Path.of("src/test/resources/compiling/expand_includes/circular").toAbsolutePath();
-        ExpandIncludesVisitor visitor = new ExpandIncludesVisitor();
-        Map<Path, ParseTree> trees = visitor.startVisitingFromFile(root.resolve("A.wresl"));
+        ExpandIncludesListener visitor = new ExpandIncludesListener();
+        Map<Path, wreslParser.StartContext> trees = visitor.startVisitingFromFile(root.resolve("A.wresl"));
         Set<Path> paths = visitor.getFileSet();
         Set<String> pathNames = paths
                 .stream()
@@ -82,8 +81,8 @@ public class TestExpandIncludesVisitor {
     @Test
     public void testCacheInclude() {
         Path root = Path.of("src/test/resources/compiling/expand_includes/cache").toAbsolutePath();
-        ExpandIncludesVisitor visitor = new ExpandIncludesVisitor();
-        Map<Path, ParseTree> trees = visitor.startVisitingFromFile(root.resolve("A.wresl"));
+        ExpandIncludesListener visitor = new ExpandIncludesListener();
+        Map<Path, wreslParser.StartContext> trees = visitor.startVisitingFromFile(root.resolve("A.wresl"));
         Set<Path> paths = visitor.getFileSet();
         Set<String> pathNames = paths
                 .stream()

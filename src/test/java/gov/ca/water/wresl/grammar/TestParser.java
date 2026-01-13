@@ -188,7 +188,7 @@ public class TestParser {
         SvarContext svar = (SvarContext) ctx.getChild(0);
         assertEquals("A", svar.OBJECT_NAME().getText());
 
-        DefineViaValueContext inner = svar.svarBody().immediateSvarBody().defineViaValue();
+        SvarValueContext inner = (wreslParser.SvarValueContext) svar.svarBody();
         CallExpressionContext call = (CallExpressionContext) inner.expression();
         assertEquals("max", call.getChild(0).getText());
         assertEquals("2.", call.arguments().expression().getFirst().getText());
