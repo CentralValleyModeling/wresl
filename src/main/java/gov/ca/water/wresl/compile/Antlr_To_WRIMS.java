@@ -138,9 +138,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                     case External external -> {}
                     default      -> System.out.println("error");
                 }
-                if (data.getClass() == Alias.class) {
-                }
-                else if
+                
             }
         }
 

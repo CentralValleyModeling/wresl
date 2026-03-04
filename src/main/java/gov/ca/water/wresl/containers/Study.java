@@ -37,19 +37,6 @@ public class Study {
         return studyFileCollector.getFiles();
     }
 
-    private static Containers compileTreesToContainers(Map<Path, WRESLFile> trees) {
-        long start = System.currentTimeMillis();
-//        CollectContainersListener containerCollector = new CollectContainersListener();
-//        Containers containers = containerCollector.collectContainersFromTrees(trees.values());
-        long end = System.currentTimeMillis();
-        float durationCompile= (float) (end - start) / 1_000L;
-        logger.atDebug()
-                .setMessage("containers collected in {} seconds")
-                .addArgument(durationCompile)
-                .log();
-//        return containers;
-        return null;
-    }
 
     private void compile() {
         // track the time
