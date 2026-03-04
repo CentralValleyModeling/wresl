@@ -2,7 +2,7 @@ grammar wresl;
 
 options { caseInsensitive = true; }
 
-start
+study
     : ( initial
       | ifStatement
       | model
@@ -13,7 +13,7 @@ start
       | group
       | svar
       | dvar
-      )* EOF
+      )+ EOF
     ;
 
 // SEQUENCE
@@ -23,7 +23,7 @@ sequence
 sequenceBody
     : MODEL OBJECT_NAME sequenceCondition? ORDER INT timestepSpecification?
     ;
-sequenceCondition: CONDITION expression opComp expression ;
+sequenceCondition: CONDITION expression opCompare expression ;
 timestepSpecification: TIMESTEP (STEP_1MON | STEP_1DAY) ;
 
 // MODEL
@@ -38,11 +38,23 @@ modelBody
     ;
 
 // INCLUDE
+includeStart
+    : ( initial
+      | ifStatement
+      | model
+      | sequence
+      | include
+      | goal
+      | objective
+      | group
+      | svar
+      | dvar
+      )* EOF
+    ;
 include: INCLUDE scope? includeBody ;
 includeBody
     : groupReference       # IncludeGroup
     | specificationString  # IncludeFile
-    | start                # IncludeAnotherTree  // this should never appear in a file, but keep this so ANTLR generates the class for us
     ;
 groupReference: GROUP OBJECT_NAME  ;
 
@@ -53,7 +65,7 @@ goalBody
     | goalViaPenalty
     | goalViaCase
     ;
-goalShortForm: expression opComp expression ;
+goalShortForm: expression opCompare expression ;
 goalViaPenalty: SIDE expression SIDE expression penalty* ;
 goalViaCase: SIDE expression caseStatement+ ;
 
@@ -126,7 +138,7 @@ elseIfClause: ELSEIF expression ifBlock ;
 elseClause: ELSE ifBlock ;
 ifBlock: OPEN_BRACE (include | svar | dvar)+ CLOSE_BRACE ;
 
-// caseStatement
+// CASE STATEMENT
 caseStatement: CASE caseName OPEN_BRACE caseCondition? caseBody CLOSE_BRACE ;
 caseName
     : OBJECT_NAME
@@ -174,11 +186,11 @@ columnName
 // -----------------------------
 
 expression
-    : expression opComp expression                                          #comparsionExpression
+    : expression opCompare expression                                       #comparisonExpression
     | expression opMultiplicationDivision expression                        #multDivExpression
-    | expression opAdditionSubtration expression                            #addSubExpression
+    | expression opAdditionSubtraction expression                           #addSubExpression
     | NOT expression                                                        #notExpression
-    | opAdditionSubtration expression                                       #signedExpression // +1, or -1 without a left hand side
+    | opAdditionSubtraction expression                                      #signedExpression // +1, or -1 without a left hand side
     | sumExpressionBody                                                     #sumExpression
     | (preDefinedFunction | OBJECT_NAME) OPEN_PAREN arguments? CLOSE_PAREN  #callExpression
     | expression COLON expression                                           #sliceExpression
@@ -187,7 +199,11 @@ expression
     ;
 
 sumExpressionBody
-    : SUM OPEN_PAREN OBJECT_NAME EQUALS_SIGN expression COMMA sumEnd (COMMA sumStep)? CLOSE_PAREN accumulatingExpression;
+    : SUM OPEN_PAREN OBJECT_NAME EQUALS_SIGN sumBegin COMMA sumEnd (COMMA sumStep)? CLOSE_PAREN accumulatingExpression;
+accumulatingExpression: expression ;
+sumBegin: expression;
+sumEnd: expression ;
+sumStep: expression ;
 
 variableReference
     : OBJECT_NAME scope? timestepOffset? #objectReference
@@ -195,7 +211,7 @@ variableReference
     | CURRENT_MONTH                      #currentMonthReference
     | WATER_YEAR                         #waterYearReference
     | MONTH                              #monthReference
-    | FUTURE_ARRAY_MAXMUM                #arrayMaximumReference
+    | FUTURE_ARRAY_MAXIMUM               #arrayMaximumReference
     | FLOAT                              #floatNumber
     | INT                                #intNumber
     ;
@@ -222,10 +238,6 @@ arguments
     : expression (COMMA expression)*
     ;
 
-accumulatingExpression: expression ;
-sumEnd: expression ;
-sumStep: expression ;
-
 timestepOffset: OPEN_PAREN (expression) CLOSE_PAREN ;
 scope: OPEN_BRACKET scopeBody CLOSE_BRACKET ;
 scopeBody
@@ -236,7 +248,7 @@ scopeBody
 arraySizeDefinition: OPEN_PAREN expression CLOSE_PAREN ;
 
 // common parser groups
-opComp
+opCompare
     : EQUALS_SIGN
     | GREATER_THAN
     | GREATER_THAN_OR_EQUAL
@@ -251,7 +263,7 @@ opMultiplicationDivision
     : MULT
     | DIVIDE
     ;
-opAdditionSubtration
+opAdditionSubtraction
     : PLUS
     | MINUS
     ;
@@ -290,7 +302,7 @@ DAYSIN: 'daysin';
 CURRENT_MONTH: 'month';
 WATER_YEAR: 'wateryear';
 MONTH:
-    'jan'      | 'prevjan'
+      'jan'    | 'prevjan'
     | 'feb'    | 'prevfeb'
     | 'mar'    | 'prevmar'
     | 'apr'    | 'prevapr'
@@ -305,7 +317,7 @@ MONTH:
     ;
 STEP_1MON: '1mon';
 STEP_1DAY: '1day';
-FUTURE_ARRAY_MAXMUM: '$m' ;
+FUTURE_ARRAY_MAXIMUM: '$m' ;
 // Keywords - instructions
 VALUE: 'value';
 EXTERNAL: 'external';
@@ -386,10 +398,10 @@ DOUBLE_QUOTE_STRING:  '"'  STRING_BODY '"';
 fragment STRING_BODY: ~['"\r\n]+ ;
 
 // Numbers
-INT: DIGITS ;  // references fragment only
 FLOAT
     : DIGITS? '.' DIGITS? ([e] [+-]? DIGITS)?
     ;
+INT: DIGITS ;  // references fragment only
 fragment DIGITS: [0-9]+ ;
 
 // Identifiers

@@ -157,7 +157,7 @@ public class TestLexer {
                 ),
                 new TestCase(
                         "condition SumUD_26S_PU3_sv < .1",
-                        List.of(wreslLexer.CONDITION, wreslLexer.OBJECT_NAME, wreslLexer.LESS_THAN, wreslLexer.FLOAT, wreslLexer.EOF)
+                        List.of(wreslLexer.CONDITION, wreslLexer.OBJECT_NAME,  wreslLexer.LESS_THAN, wreslLexer.FLOAT, wreslLexer.EOF)
                 ),
                 new TestCase(
                         "LOG10(A[B](C))",
@@ -174,7 +174,7 @@ public class TestLexer {
                     assertEquals(
                             expected, observed,
                             String.format(
-                                    "Token in position %d of expression is was lexed incorrectly for expression: \"%s\"",
+                                    "Token in position %d of expression is lexed incorrectly for expression: \"%s\"",
                                     i, tc.expression()
                             )
                     );

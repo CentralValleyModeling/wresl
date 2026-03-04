@@ -58,7 +58,7 @@ public class TestParser {
         // Loop through each expression and make sure they parse
         for (TestCase tc : expressions) {
             wreslParser parser = createParser(tc.expression());
-            StartContext ctx = parser.start();
+            StudyContext ctx = parser.study();
             assertEquals(wreslLexer.INCLUDE, ctx.start.getType());
         }
     }
@@ -76,7 +76,7 @@ public class TestParser {
             wreslParser parser = createParser(tc.expression());
             assertThrows(
                     tc.exception(),
-                    parser::start,
+                    parser::study,
                     () -> "Expected failure did not occur for expression `" + tc.expression() + "`"
             );
         }
@@ -95,7 +95,7 @@ public class TestParser {
         // Loop through each expression and make sure they parse
         for (TestCase tc : expressions) {
             wreslParser parser = createParser(tc.expression());
-            StartContext ctx = parser.start();
+            StudyContext ctx = parser.study();
             assertEquals(wreslLexer.MODEL, ctx.start.getType());
         }
     }
@@ -123,7 +123,7 @@ public class TestParser {
         // Loop through each expression and make sure they parse
         for (TestCase tc : expressions) {
             wreslParser parser = createParser(tc.expression());
-            StartContext ctx = parser.start();
+            StudyContext ctx = parser.study();
             assertEquals(tc.expectedClass(), ctx.getChild(0).getClass());
         }
     }
@@ -132,7 +132,7 @@ public class TestParser {
     public void testGoalStatementSimple() {
         String expression = "goal A { Y = Z }";
         wreslParser parser = createParser(expression);
-        StartContext ctx = parser.start();
+        StudyContext ctx = parser.study();
 
         assertEquals(GoalContext.class, ctx.getChild(0).getClass());
 
@@ -144,7 +144,7 @@ public class TestParser {
 
         GoalShortFormContext bodyInner = body.goalShortForm();
         String leftVar = bodyInner.expression(0).getText();
-        String comp = bodyInner.opComp().getText();
+        String comp = bodyInner.opCompare().getText();
         String rightVar = bodyInner.expression(1).getText();
         assertEquals("Y", leftVar);
         assertEquals("=", comp);
@@ -155,7 +155,7 @@ public class TestParser {
     public void testGoalStatementViaPenalty() {
         String expression = "goal A { lhs Y rhs Z lhs > rhs penalty P lhs<rhs penalty 9999 }";
         wreslParser parser = createParser(expression);
-        StartContext ctx = parser.start();
+        StudyContext ctx = parser.study();
 
         assertEquals(GoalContext.class, ctx.getChild(0).getClass());
 
@@ -181,7 +181,7 @@ public class TestParser {
     public void testNestedSumExpression() {
         String expression = "define A {value max(2., min(A+3., C))} ";
         wreslParser parser = createParser(expression);
-        StartContext ctx = parser.start();
+        StudyContext ctx = parser.study();
 
         assertEquals(SvarContext.class, ctx.getChild(0).getClass());
 

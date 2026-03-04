@@ -6,9 +6,7 @@ import com.github.valfirst.slf4jtest.TestLoggerFactory;
 import gov.ca.water.wresl.errors.WreslErrorListener;
 import gov.ca.water.wresl.grammar.TestLexer;
 import gov.ca.water.wresl.grammar.wreslParser;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.ListTokenSource;
-import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.*;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -49,7 +47,7 @@ public class TestExpandIncludesVisitor {
     public void testLinearInclude() {
         Path root = Path.of("src/test/resources/compiling/expand_includes/linear").toAbsolutePath();
         ExpandIncludesListener visitor = new ExpandIncludesListener();
-        Map<Path, wreslParser.StartContext> trees = visitor.startVisitingFromFile(root.resolve("A.wresl"));
+        Map<Path, wreslParser.StudyContext> trees = visitor.startVisitingFromFile(root.resolve("A.wresl"));
         Set<Path> paths = visitor.getFileSet();
         Set<String> pathNames = paths
                 .stream()
@@ -64,7 +62,7 @@ public class TestExpandIncludesVisitor {
     public void testCircularInclude() {
         Path root = Path.of("src/test/resources/compiling/expand_includes/circular").toAbsolutePath();
         ExpandIncludesListener visitor = new ExpandIncludesListener();
-        Map<Path, wreslParser.StartContext> trees = visitor.startVisitingFromFile(root.resolve("A.wresl"));
+        Map<Path, wreslParser.StudyContext> trees = visitor.startVisitingFromFile(root.resolve("A.wresl"));
         Set<Path> paths = visitor.getFileSet();
         Set<String> pathNames = paths
                 .stream()
@@ -82,7 +80,7 @@ public class TestExpandIncludesVisitor {
     public void testCacheInclude() {
         Path root = Path.of("src/test/resources/compiling/expand_includes/cache").toAbsolutePath();
         ExpandIncludesListener visitor = new ExpandIncludesListener();
-        Map<Path, wreslParser.StartContext> trees = visitor.startVisitingFromFile(root.resolve("A.wresl"));
+        Map<Path, wreslParser.StudyContext> trees = visitor.startVisitingFromFile(root.resolve("A.wresl"));
         Set<Path> paths = visitor.getFileSet();
         Set<String> pathNames = paths
                 .stream()
@@ -95,4 +93,5 @@ public class TestExpandIncludesVisitor {
         Set<String> messages = logger.getLoggingEvents().stream().map(LoggingEvent::getMessage).collect(Collectors.toSet());
         assertThat(messages).contains(expectedMessage);
     }
+
 }
