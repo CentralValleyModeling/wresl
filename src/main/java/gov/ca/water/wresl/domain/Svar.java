@@ -53,5 +53,21 @@ public class Svar extends WRIMSComponent implements Serializable {
     public Map<Integer, ArrayList<String>> timeMap_caseCondition = new HashMap<>();
     public Map<Integer, ArrayList<String>> timeMap_caseExpression = new HashMap<>();
 
+    
+    // --------------------
+    // --- SETTERS
+    // --------------------
 
+    // Set WRESL file related data
+    public void setFileData(String wreslFile, int line) {
+        this.fromWresl = wreslFile;
+        this.line = line;
+    }
+
+    // Set case condition related data
+    public void addCaseData(String caseName, String caseCondition, String caseExpression) {
+        this.caseName.add(caseName);
+        this.caseCondition.add(caseCondition);
+        this.caseExpression.add(caseExpression);
+    }
 }

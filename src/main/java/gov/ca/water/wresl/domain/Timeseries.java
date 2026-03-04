@@ -1,17 +1,21 @@
 package gov.ca.water.wresl.domain;
 
-public class Timeseries {
+import gov.ca.water.wresl.compile.Param;
+
+import java.io.Serializable;
+
+public class Timeseries extends WRIMSComponent implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private String scope;
-    private String dssBPart;
-    private String format;
-    private String kind;
-    private String units;
-    private String convertToUnits;
-    private String fromWresl;
-    private int line=1;
+    public String scope = Param.undefined;
+    public String dssBPart = Param.undefined;
+    public String format = Param.undefined;
+    public String kind = Param.undefined;
+    public String units = Param.undefined;
+    public String convertToUnits = Param.undefined;
+    public String fromWresl = Param.undefined;
+    public int line = 1;
 
-    private IntDouble data;
+    private IntDouble data = null;
 
 }

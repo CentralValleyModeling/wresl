@@ -39,23 +39,21 @@ public class Study {
 
 
     private void compile() {
-        // track the time
+        // Track time
         long start = System.currentTimeMillis();
 
-        // First, collect all the trees that are included
+        // PASS 1
+        // Collect all the trees that are included
         Map<Path, WRESLFile> treesByFile = collectTrees(this.mainFilePath);
 
+        // PASS 2
         // Retrieve parse tree for the main file as the starting tree
         ParseTree studyTree = treesByFile.get(this.mainFilePath).getParseTree();
 
         // Parse WRESL input into WRIMS objects
         Antlr_To_WRIMS parse = new Antlr_To_WRIMS(this.mainFilePath, treesByFile);
-        try {
-            VisitorResult study = parse.visit(studyTree);
-            StudyDataSet sds = (StudyDataSet)study.data();
-        } catch (Exception e) {
-            System.out.println(e);
-        }
+        VisitorResult study = parse.visit(studyTree);
+        StudyDataSet sds = (StudyDataSet)study.data();
 
         // next, find the sequences, models, groups, and initial constructs
         //Containers containers = compileTreesToContainers(treesByFile);
