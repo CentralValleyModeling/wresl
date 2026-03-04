@@ -40,8 +40,11 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     }
 
 
+    // --------------------------------------
+    // --- WRESL FILE PARSING ENTRY METHODS
+    // --------------------------------------
     @Override
-    // ENTRY POINT FOR VISIT METHODS FOR THE STUDY
+    // ROOT VISITOR FOR THE MAIN FILE
     public VisitorResult visitStudy(wreslParser.StudyContext ctx) {
         // Current WRESL file we are working with
         this.currentFile = this.mainFilePath.toString();
@@ -69,7 +72,6 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
         return new VisitorResult(sds,null);
     }
-
 
     @Override
     // ROOT VISITOR FOR INCLUDE FILES
@@ -104,6 +106,9 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     }
 
 
+    // --------------------------------------
+    // --- VISITORS TO COMPILE CONTAINERS
+    // --------------------------------------
     @Override
     // INITIAL
     public VisitorResult visitInitial(wreslParser.InitialContext ctx) {
@@ -115,7 +120,6 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     public VisitorResult visitSequence(wreslParser.SequenceContext ctx) {
         return null;
     }
-
 
     @Override
     // MODEL
@@ -138,7 +142,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                     case External external -> {}
                     default      -> System.out.println("error");
                 }
-                
+
             }
         }
 
