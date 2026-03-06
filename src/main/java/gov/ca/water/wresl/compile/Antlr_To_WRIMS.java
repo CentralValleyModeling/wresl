@@ -146,6 +146,10 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         mds.svMap.put(name,(Svar)data);
                     }
                     case Dvar     dvar     -> {}
+                    case Timeseries ts -> {
+                        mds.tsList.add(name);
+                        mds.tsMap.put(name,(Timeseries)data);
+                    }
                     case Goal     goal     -> {}
                     case Alias    alias    -> {}
                     case External external -> {}
@@ -177,10 +181,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     public VisitorResult visitIncludeFile(wreslParser.IncludeFileContext ctx) {
         // Retrieve filename and create file path
         VisitorResult result = visit(ctx.specificationString());
-        String includeFileName = null;
-        if (result.data() instanceof WRIMS_String fileName) {
-            includeFileName = fileName.getValue();
-        }
+        String includeFileName = visitorResultToString(result);
         Path includeFilePath = this.startingFolder.resolve(includeFileName);
 
         // Set current file
@@ -224,9 +225,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             // Is this a future array?
             if (svarCtx.arraySizeDefinition() != null) {
                 svar.needVarFromEarlierCycle = true;
-                if (visit(svarCtx.arraySizeDefinition()).data() instanceof WRIMS_String timeArraySize) {
-                    svar.timeArraySize = timeArraySize.getValue();
-                }
+                VisitorResult result = visit(svarCtx.arraySizeDefinition());
+                svar.timeArraySize = visitorResultToString(result);
             }
 
             String name = svarCtx.OBJECT_NAME().getText();
@@ -252,9 +252,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             // Is this a future array?
             if (svarCtx.arraySizeDefinition() != null) {
                 svar.needVarFromEarlierCycle = true;
-                if (visit(svarCtx.arraySizeDefinition()).data() instanceof WRIMS_String timeArraySize) {
-                    svar.timeArraySize = timeArraySize.getValue();
-                }
+                VisitorResult result = visit(svarCtx.arraySizeDefinition());
+                svar.timeArraySize = visitorResultToString(result);
             }
 
             String name = svarCtx.OBJECT_NAME().getText();
@@ -293,9 +292,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             // Is this a future array?
             if (svarCtx.arraySizeDefinition() != null) {
                 svar.needVarFromEarlierCycle = true;
-                if (visit(svarCtx.arraySizeDefinition()).data() instanceof WRIMS_String timeArraySize) {
-                    svar.timeArraySize = timeArraySize.getValue();
-                }
+                VisitorResult result = visit(svarCtx.arraySizeDefinition());
+                svar.timeArraySize = visitorResultToString(result);
             }
 
             String name = svarCtx.OBJECT_NAME().getText();
@@ -306,25 +304,54 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         return null;
     }
 
+
+    //----------------
+    // TIMESERIES
+    //----------------
+    // WRESL+ type
     @Override
-    // svarTimeseries (returns a Timeseries object)
-    public VisitorResult visitSvarTimeseries(wreslParser.SvarTimeseriesContext ctx) {
+    public VisitorResult visitTimeSeriesTypeTS(wreslParser.TimeSeriesTypeTSContext ctx) {
         Timeseries ts = new Timeseries();
 
+        // Retrieve ts name
+        String tsName = ctx.OBJECT_NAME().getText();
+
         // Collect data
-
-        // Walk up the tree to access parent (svar) data
-        if (ctx.parent instanceof wreslParser.SvarContext svarCtx) {
-            // WRESL file related data
-            ts.fromWresl = this.currentFile;
-            ts.line = svarCtx.OBJECT_NAME().getSymbol().getLine();
-
-            String name = svarCtx.OBJECT_NAME().getText();
-            return new VisitorResult(ts, name.toLowerCase());
+        ts.fromWresl = this.currentFile;
+        ts.line = ctx.TIMESERIES().getSymbol().getLine();
+        ts.dssBPart = tsName;
+        ts.kind = visitorResultToString(visit(ctx.kind().specificationString()));
+        ts.units = visitorResultToString(visit(ctx.units().specificationString()));
+        if (ctx.convert() != null) {
+            ts.convertToUnits = visitorResultToString(visit(ctx.convert().specificationString()));
         }
 
-        // This should not happen
-        return null;
+        return new VisitorResult(ts, tsName.toLowerCase());
+    }
+
+    @Override
+    // WRESL type
+    public VisitorResult visitTimeSeriesTypeSvar(wreslParser.TimeSeriesTypeSvarContext ctx) {
+        Timeseries ts = new Timeseries();
+
+        // Retrieve ts name
+        String tsName = ctx.OBJECT_NAME().getText();
+
+        // Collect data
+        ts.fromWresl = this.currentFile;
+        ts.line = ctx.DEFINE().getSymbol().getLine();
+        if (ctx.optionalBPart() != null) {
+            ts.dssBPart = visitorResultToString(visit(ctx.optionalBPart().specificationString())); }
+        else {
+            ts.dssBPart = tsName;
+        }
+        ts.kind = visitorResultToString(visit(ctx.kind().specificationString()));
+        ts.units = visitorResultToString(visit(ctx.units().specificationString()));
+        if (ctx.convert() != null) {
+            ts.convertToUnits = visitorResultToString(visit(ctx.convert().specificationString()));
+        }
+
+        return new VisitorResult(ts, tsName.toLowerCase());
     }
 
 
@@ -354,9 +381,9 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     }
 
 
-    //----------------
-    // MISCELLANEOUS
-    //----------------
+    //-----------------------------
+    // MISCELLANEOUS VISIT METHODS
+    //-----------------------------
     @Override
     // caseStatement
     public VisitorResult visitCaseStatement(wreslParser.CaseStatementContext ctx) {
@@ -403,5 +430,23 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     public VisitorResult visitSpecificationString(wreslParser.SpecificationStringContext ctx) {
         WRIMS_String data = new WRIMS_String(ctx.getText().substring(0, ctx.getText().length() - 1).substring(1));   // Remove first and last character;
         return new VisitorResult(data, null);
+    }
+
+
+    // ----------------------------
+    // --- HELPER METHODS
+    // ----------------------------
+
+    // Convert visitor result to string
+    private String visitorResultToString(VisitorResult result) {
+        String stringData;
+
+        if (result.data() instanceof WRIMS_String data) {
+            stringData = data.getValue(); }
+        else {
+            stringData = null;
+        }
+
+        return stringData;
     }
 }

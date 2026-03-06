@@ -13,6 +13,7 @@ study
       | group
       | svar
       | dvar
+      | timeSeries
       )+ EOF
     ;
 
@@ -32,6 +33,7 @@ modelBody
     : include
     | svar
     | dvar
+    | timeSeries
     | goal
     | objective
     | ifStatement
@@ -49,6 +51,7 @@ includeStart
       | group
       | svar
       | dvar
+      | timeSeries
       )* EOF
     ;
 include: INCLUDE scope? includeBody ;
@@ -84,6 +87,7 @@ groupBody
     : include
     | dvar
     | svar
+    | timeSeries
     | goal
     | objective
     | ifStatement
@@ -102,7 +106,6 @@ svarBody
     | EXTERNAL externalTarget                                #svarExternal
     | sumExpressionBody                                      #svarSum
     | VALUE expression                                       #svarValue
-    | TIMESERIES (specificationString)? definitionSpecifics+ #svarTimeseries
     ;
 
 externalTarget
@@ -124,9 +127,16 @@ definitionSpecifics
     | units
     | convert
     ;
+optionalBPart: specificationString ;
 kind: KIND specificationString ;
 units: UNITS specificationString ;
 convert: CONVERT specificationString ;
+
+// TIMESERIES
+timeSeries
+    : TIMESERIES OBJECT_NAME OPEN_BRACE kind units (convert)? CLOSE_BRACE                          #timeSeriesTypeTS
+    | DEFINE OBJECT_NAME OPEN_BRACE TIMESERIES (optionalBPart)? kind units (convert)? CLOSE_BRACE  #timeSeriesTypeSvar
+    ;
 
 // INITIAL
 initial: INITIAL OPEN_BRACE svar+ CLOSE_BRACE ;
