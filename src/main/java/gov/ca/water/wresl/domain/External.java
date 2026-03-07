@@ -1,13 +1,15 @@
 package gov.ca.water.wresl.domain;
 
+import gov.ca.water.wresl.compile.Param;
+
 import java.io.Serializable;
 
 public class External extends WRIMSComponent implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private String scope;
-    private String type;
-    private String fromWresl;
-    private int line=1;
+    public String scope = Param.undefined;
+    public String type = Param.undefined;
+    public String fromWresl = Param.undefined;
+    public int line = 1;
 
 }

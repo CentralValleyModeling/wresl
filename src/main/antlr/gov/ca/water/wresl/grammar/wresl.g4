@@ -135,7 +135,7 @@ convert: CONVERT specificationString ;
 // TIMESERIES
 timeSeries
     : TIMESERIES OBJECT_NAME OPEN_BRACE kind units (convert)? CLOSE_BRACE                          #timeSeriesTypeTS
-    | DEFINE OBJECT_NAME OPEN_BRACE TIMESERIES (optionalBPart)? kind units (convert)? CLOSE_BRACE  #timeSeriesTypeSvar
+    | DEFINE OBJECT_NAME OPEN_BRACE TIMESERIES (optionalBPart)? kind units (convert)? CLOSE_BRACE  #timeSeriesTypeDef
     ;
 
 // INITIAL
@@ -196,16 +196,16 @@ columnName
 // -----------------------------
 
 expression
-    : expression opCompare expression                                       #comparisonExpression
-    | expression opMultiplicationDivision expression                        #multDivExpression
-    | expression opAdditionSubtraction expression                           #addSubExpression
-    | NOT expression                                                        #notExpression
-    | opAdditionSubtraction expression                                      #signedExpression // +1, or -1 without a left hand side
-    | sumExpressionBody                                                     #sumExpression
-    | (preDefinedFunction | OBJECT_NAME) OPEN_PAREN arguments? CLOSE_PAREN  #callExpression
-    | expression COLON expression                                           #sliceExpression
-    | variableReference                                                     #referenceExpression
-    | OPEN_PAREN expression CLOSE_PAREN                                     #parenExpression
+    : expression opCompare expression                                       #expressionComparison
+    | expression opMultiplicationDivision expression                        #expressionMultDiv
+    | expression opAdditionSubtraction expression                           #expressionAddSub
+    | NOT expression                                                        #expressionNot
+    | opAdditionSubtraction expression                                      #expressionSigned // +1, or -1 without a left hand side
+    | sumExpressionBody                                                     #expressionSum
+    | (preDefinedFunction | OBJECT_NAME) OPEN_PAREN arguments? CLOSE_PAREN  #expressionCall
+    | expression COLON expression                                           #expressionSlice
+    | variableReference                                                     #expressionReference
+    | OPEN_PAREN expression CLOSE_PAREN                                     #expressionParen
     ;
 
 sumExpressionBody

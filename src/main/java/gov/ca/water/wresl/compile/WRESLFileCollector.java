@@ -27,8 +27,8 @@ public class WRESLFileCollector {
         Set<Path> processedFiles = new HashSet<>();
         Queue<Path> filesToBeProcessed = new LinkedList<>();
 
-        // Add the main file to the queue to be processed
-        filesToBeProcessed.add(mainFile);
+        // Add lower case main file to the queue to be processed
+        filesToBeProcessed.add(Path.of(mainFile.toString().toLowerCase()));
 
         while (!filesToBeProcessed.isEmpty()) {
             Path currentFile = filesToBeProcessed.poll();

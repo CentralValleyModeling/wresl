@@ -1,6 +1,5 @@
-package gov.ca.water.wresl.containers;
+package gov.ca.water.wresl.compile;
 
-import gov.ca.water.wresl.compile.*;
 import gov.ca.water.wresl.domain.StudyDataSet;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.slf4j.Logger;
@@ -38,7 +37,7 @@ public class Study {
     }
 
 
-    private void compile() {
+    public void compile() {
         // Track time
         long start = System.currentTimeMillis();
 
@@ -69,12 +68,5 @@ public class Study {
                 .addArgument(durationTotal)
                 .log();
     //    logger.atInfo().setMessage("{}").addArgument(containers.sequences.get("CYCLE01")).log();
-    }
-
-    public static void main(String[] args) {
-        Path mainWRESL = Path.of(args[0]).normalize();
-        logger.atInfo().setMessage("mainWresl={}").addArgument(mainWRESL).log();
-        Study study = new Study("TEST", mainWRESL);
-        study.compile();
     }
 }

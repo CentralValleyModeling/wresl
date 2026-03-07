@@ -22,7 +22,7 @@ public class WRESLFileFinder extends wreslBaseVisitor<String> {
     // Discover included files
     public String visitIncludeFile(wreslParser.IncludeFileContext ctx) {
         // Retrieve filename
-        String sFileName = visit(ctx.specificationString());
+        String sFileName = visit(ctx.specificationString()).toLowerCase();
         this.listFoundFiles.add(sFileName);
         return null;
     }
