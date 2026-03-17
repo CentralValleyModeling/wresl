@@ -6,14 +6,15 @@ import gov.ca.water.wresl.grammar.wreslParser;
 import org.antlr.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
+    private static final Logger logger = LoggerFactory.getLogger(Antlr_To_WRIMS.class);
+
     private final Path mainFilePath;
     private final Path startingFolder;
     private final Map<Path, WRESLFile> wreslInput;
@@ -21,7 +22,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     private String currentFile;
 
     // Containers
-    private Map<String,Initial> initialData;
+    private Map<String,Svar> initialData;
     private Map<String, Group> groups;
     private Map<String, ModelDataSet> models;
     private StudyDataSet sds;
@@ -108,8 +109,39 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     // --- VISITORS TO COMPILE CONTAINERS
     // --------------------------------------
     @Override
-    // INITIAL
+    // INITIAL; Svars listed under INITIAL statement are stored as parameters in StudyDataSet
     public VisitorResult visitInitial(wreslParser.InitialContext ctx) {
+        ArrayList<String> parameterList = new ArrayList<>();
+        LinkedHashMap<String,Svar> parameterMap = new LinkedHashMap<>();
+
+        // Loop through children; they should all be SVARs
+        for (int i=0; i<=ctx.children.size()-1; i++) {
+            // Skip anything that is not Svar definition
+            if (!(ctx.getChild(i) instanceof wreslParser.SvarContext svarCtx)) {continue;}
+
+            VisitorResult returnedData = visit(ctx.getChild(i));
+            WRIMSComponent data = returnedData.data();
+            String name = returnedData.name();
+
+            // WRIMS component must be an SVAR; generate error otherwise
+            switch (data) {
+                case Svar svar -> {
+                    parameterList.add(name);
+                    parameterMap.put(name,svar);
+                }
+                default -> {
+                    logger.atError()
+                            .setMessage("INITIAL statement can only include SVARs!%n " +
+                                        "Variable " + name + " in file " + data.fromWresl + " at line " + data.line)
+                            .log();
+                }
+            }
+        }
+
+        // Store parameter data in permanently
+        this.sds.setParameterList(parameterList);
+        this.sds.setParameterMap(parameterMap);
+
         return null;
     }
 
@@ -245,7 +277,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     public VisitorResult visitSvarLookup(wreslParser.SvarLookupContext ctx) {
         Svar svar = new Svar();
 
-        // Walk up the tree to access parent (svar) data for svar name, filename and lline number in file
+        // Walk up the tree to access parent (svar) data for svar name, filename and line number in file
         if (ctx.parent instanceof wreslParser.SvarContext svarCtx) {
             // WRESL file related data
             svar.setFileData(this.currentFile, svarCtx.OBJECT_NAME().getSymbol().getLine());
@@ -284,7 +316,6 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                     ex.type = ex.type + "." + externalTargetCtx.unescapedTargetString().OBJECT_NAME(01);
                 }
             }
-
 
             String name = svarCtx.OBJECT_NAME().getText().toLowerCase();
             return new VisitorResult(ex, name);

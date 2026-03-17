@@ -21,8 +21,6 @@ public class Goal extends WRIMSComponent implements Serializable {
     public ArrayList<String> caseExpression;
     public Set<String> expressionDependants;
     public ArrayList<EvaluatorParser_DUMMY> caseExpressionParsers;
-    public String fromWresl;
-    public int line=1;
     public Set<String> neededVarInCycleSet;
     public boolean needVarFromEarlierCycle;
 

@@ -9,7 +9,5 @@ public class External extends WRIMSComponent implements Serializable {
 
     public String scope = Param.undefined;
     public String type = Param.undefined;
-    public String fromWresl = Param.undefined;
-    public int line = 1;
 
 }

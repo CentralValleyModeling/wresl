@@ -10,6 +10,7 @@ import java.util.Map;
 public class testParser {
     private static final Logger logger = LoggerFactory.getLogger(testParser.class);
 
+
     public static void main(String[] args) {
         Path mainWRESL = Path.of(args[0]).normalize();
         logger.atInfo().setMessage("mainWresl={}").addArgument(mainWRESL).log();

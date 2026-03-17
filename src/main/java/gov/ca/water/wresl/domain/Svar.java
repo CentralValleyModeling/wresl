@@ -9,8 +9,6 @@ public class Svar extends WRIMSComponent implements Serializable {
     private static final long serialVersionUID = 1L;
 
     // These properties are the same for all Svar time array
-    public String fromWresl = Param.undefined;
-    public int line = 1;
     public String scope = Param.undefined;
     public String dssBPart = Param.undefined;
     public String format = Param.undefined;

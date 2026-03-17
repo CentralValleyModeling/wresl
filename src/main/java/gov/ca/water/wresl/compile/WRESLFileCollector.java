@@ -6,12 +6,17 @@ import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
 
 public class WRESLFileCollector {
+    private static final Logger logger = LoggerFactory.getLogger(WRESLFileCollector.class);
+
     private final Map<Path, WRESLFile> mapStudyFiles;
 
 
@@ -36,9 +41,7 @@ public class WRESLFileCollector {
             // Skip if we've already parsed this file
             if (processedFiles.contains(currentFile)) continue;
 
-            System.out.println("Processing "+currentFile);
-
-            // Find the path to starting point where parent file point to include file lives
+             // Find the path to starting point where parent file point to include file lives
             Path startingPath = currentFile.getParent();
 
             try {
@@ -49,11 +52,20 @@ public class WRESLFileCollector {
                 wreslParser parser = new wreslParser(tokens);
                 // Generate parse trees for the main file and include files from different roots
                 ParseTree tree;
-                if (currentFile == mainFile) {
+                if (currentFile.toString().equals(mainFile.toString())) {
                     tree = parser.study();
                 } else {
                     tree = parser.includeStart();
                 }
+
+                // Inform user the file is processed
+                // Logger is refusing to show naything on the console; using System.out.Println for now
+                System.out.println("Processed " + currentFile);
+                // Delete above line when logger decides to cooporate
+                logger.atInfo()
+                        .setMessage("Parsed " + currentFile)
+                        .log();
+
                 // Create new file data
                 WRESLFile wreslFile = new WRESLFile(tree);
 
@@ -62,10 +74,11 @@ public class WRESLFileCollector {
                 includeFileFinder.visit(tree);
 
                 // Add newly found files to the queue and as children to the file we are working with
-                for (String childFile : includeFileFinder.getListFoundFiles()) {
-                    Path childFilePath = startingPath.resolve(childFile);
+                for (String childFilename : includeFileFinder.getListFoundFiles()) {
+                    File childFile = new File(startingPath.toString(), childFilename);
+                    Path childFilePath = Path.of(childFile.getCanonicalPath().toLowerCase()); //startingPath.resolve(childFilename);
                     wreslFile.addChild(childFilePath);
-                    if (!processedFiles.contains(childFile)) {
+                    if (!processedFiles.contains(childFilename)) {
                         filesToBeProcessed.add(childFilePath);
                     }
                 }
@@ -77,7 +90,8 @@ public class WRESLFileCollector {
                 this.mapStudyFiles.put(currentFile,wreslFile);
 
             } catch (IOException e) {
-                System.err.println("Skipping file (not found): " + currentFile);
+                // Do nothing at this point since this error is catostropic at this point;
+                // The file may be not needed becuase of teh results of an IF statement
             }
         }
 
@@ -86,6 +100,7 @@ public class WRESLFileCollector {
             Set<Path> childrenFiles = value.getChildrenFiles();
             for (Path childFile : childrenFiles) {
                 WRESLFile childWRESLFile = this.mapStudyFiles.get(childFile);
+                if (childWRESLFile == null) {continue;}
                 childWRESLFile.addParent(key);
                 this.mapStudyFiles.put(childFile, childWRESLFile);
             }

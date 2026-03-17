@@ -126,6 +126,7 @@ definitionSpecifics
     : kind
     | units
     | convert
+    | NOSOLVER
     ;
 optionalBPart: specificationString ;
 kind: KIND specificationString ;
@@ -146,7 +147,7 @@ ifStatement: ifClause elseIfClause* elseClause? ;
 ifClause: IF expression ifBlock ;
 elseIfClause: ELSEIF expression ifBlock ;
 elseClause: ELSE ifBlock ;
-ifBlock: OPEN_BRACE (include | svar | dvar)+ CLOSE_BRACE ;
+ifBlock: OPEN_BRACE (include | svar | dvar | timeSeries)+ CLOSE_BRACE ;
 
 // CASE STATEMENT
 caseStatement: CASE caseName OPEN_BRACE caseCondition? caseBody CLOSE_BRACE ;
@@ -339,6 +340,7 @@ STD: 'std';
 KIND: 'kind';
 UNITS: 'units';
 CONVERT: 'convert';
+NOSOLVER: 'nosolver';
 CASE: 'case';
 CONDITION: 'condition';
 IF: 'if';

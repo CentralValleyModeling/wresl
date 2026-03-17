@@ -17,7 +17,7 @@ public class Study {
     // Constructor
     public Study(String name, Path mainFilePath) {
         this.name = name;
-        this.mainFilePath = mainFilePath;
+        this.mainFilePath = Path.of(mainFilePath.toString().toLowerCase());
     }
 
     // Collect study WRESL files, compile their parse trees as well as their parent and child files
