@@ -57,9 +57,11 @@ includeStart
 include: INCLUDE scope? includeBody ;
 includeBody
     : groupReference       # IncludeGroup
+    | modelReference       # IncludeModel
     | specificationString  # IncludeFile
     ;
-groupReference: GROUP OBJECT_NAME  ;
+groupReference: GROUP OBJECT_NAME ;
+modelReference: MODEL OBJECT_NAME ;
 
 // GOAL
 goal: GOAL scope? arraySizeDefinition? OBJECT_NAME OPEN_BRACE goalBody CLOSE_BRACE ;
@@ -147,7 +149,7 @@ ifStatement: ifClause elseIfClause* elseClause? ;
 ifClause: IF expression ifBlock ;
 elseIfClause: ELSEIF expression ifBlock ;
 elseClause: ELSE ifBlock ;
-ifBlock: OPEN_BRACE (include | svar | dvar | timeSeries)+ CLOSE_BRACE ;
+ifBlock: OPEN_BRACE (include | svar | dvar | timeSeries | goal | objective)+ CLOSE_BRACE ;
 
 // CASE STATEMENT
 caseStatement: CASE caseName OPEN_BRACE caseCondition? caseBody CLOSE_BRACE ;

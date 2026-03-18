@@ -1,6 +1,7 @@
 package gov.ca.water.wresl.compile;
 
 import gov.ca.water.wresl.domain.StudyDataSet;
+import gov.ca.water.wresl.errors.SyntaxErrorException;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,30 +15,19 @@ public class Study {
     private Path mainFileFolder;
     private Path mainFilePath;
 
-    // Constructor
+    // ------------------------------------------------------------
+    // --- CONSTRUCTOR
+    // ------------------------------------------------------------
     public Study(String name, Path mainFilePath) {
         this.name = name;
         this.mainFilePath = Path.of(mainFilePath.toString().toLowerCase());
     }
 
-    // Collect study WRESL files, compile their parse trees as well as their parent and child files
-    private static Map<Path, WRESLFile> collectTrees(Path entryFile) {
-        // begin by parsing all the files into separate trees
-        long start = System.currentTimeMillis();
-        WRESLFileCollector studyFileCollector = new WRESLFileCollector();
-        studyFileCollector.collect(entryFile);
-        long end = System.currentTimeMillis();
-        float duration = (float) (end - start) / 1_000L;
-        logger.atInfo()
-                .setMessage("{} files parsed in {} seconds")
-                .addArgument(studyFileCollector.getFiles().size())
-                .addArgument(duration)
-                .log();
-        return studyFileCollector.getFiles();
-    }
 
-
-    public void compile() {
+    // ------------------------------------------------------------
+    // --- COMPILE WRIMS DATA FROM WRESL FILES
+    // ------------------------------------------------------------
+    public void compile() throws SyntaxErrorException {
         // Track time
         long start = System.currentTimeMillis();
 
@@ -67,6 +57,32 @@ public class Study {
                 .setMessage("total parse + compile time: {} seconds")
                 .addArgument(durationTotal)
                 .log();
-    //    logger.atInfo().setMessage("{}").addArgument(containers.sequences.get("CYCLE01")).log();
+        //    logger.atInfo().setMessage("{}").addArgument(containers.sequences.get("CYCLE01")).log();
     }
+
+
+    // ------------------------------------------------------------
+    // --- COLLECT STUDY WRESL FILES, COMPILE THEIR PARSE TREES AS WELL AS THEIR PARENT AND CHILD FILES
+    // ------------------------------------------------------------
+    private static Map<Path, WRESLFile> collectTrees(Path entryFile) throws SyntaxErrorException{
+        // Begin by parsing all the files into separate trees
+        long start = System.currentTimeMillis();
+        WRESLFileCollector studyFileCollector = new WRESLFileCollector();
+        studyFileCollector.collect(entryFile);
+
+        // Otherwise, report parse time
+        long end = System.currentTimeMillis();
+        float duration = (float) (end - start) / 1_000L;
+        logger.atInfo()
+                .setMessage("{} files parsed in {} seconds")
+                .addArgument(studyFileCollector.getFiles().size())
+                .addArgument(duration)
+                .log();
+
+        // Return files
+        return studyFileCollector.getFiles();
+    }
+
+
+
 }

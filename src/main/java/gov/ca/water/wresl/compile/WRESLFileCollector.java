@@ -1,5 +1,7 @@
 package gov.ca.water.wresl.compile;
 
+import gov.ca.water.wresl.errors.SyntaxErrorException;
+import gov.ca.water.wresl.errors.WRESLErrorListener;
 import gov.ca.water.wresl.grammar.wreslLexer;
 import gov.ca.water.wresl.grammar.wreslParser;
 import org.antlr.v4.runtime.CharStream;
@@ -19,15 +21,18 @@ public class WRESLFileCollector {
 
     private final Map<Path, WRESLFile> mapStudyFiles;
 
-
-    // Constructor
+    // ------------------------------------------------------------
+    // --- CONSTRUCTOR
+    // ------------------------------------------------------------
     public WRESLFileCollector() {
         this.mapStudyFiles = new HashMap<>();
     }
 
 
-    // Collect study WRESL files and their trees
-    public void collect(Path mainFile) {
+    // ------------------------------------------------------------
+    // --- COLLECT STUDY WRESL FILES AND THEIR TREES
+    // ------------------------------------------------------------
+    public void collect(Path mainFile) throws SyntaxErrorException {
         // Variables
         Set<Path> processedFiles = new HashSet<>();
         Queue<Path> filesToBeProcessed = new LinkedList<>();
@@ -41,8 +46,19 @@ public class WRESLFileCollector {
             // Skip if we've already parsed this file
             if (processedFiles.contains(currentFile)) continue;
 
-             // Find the path to starting point where parent file point to include file lives
+            // Skip if file doesn't exist
+            if (!currentFile.toFile().exists()) {continue;}
+
+            // Find the path to starting point where parent file point to include file lives
             Path startingPath = currentFile.getParent();
+
+            // Inform user the file is processed
+            // Logger is refusing to show naything on the console; using System.out.Println for now
+            System.out.println("Processing " + currentFile);
+            // Delete above line when logger decides to cooporate
+            logger.atInfo()
+                    .setMessage("Processing " + currentFile)
+                    .log();
 
             try {
                 // ANTLR Parsing Pipeline
@@ -50,6 +66,12 @@ public class WRESLFileCollector {
                 wreslLexer lexer = new wreslLexer(input);
                 CommonTokenStream tokens = new CommonTokenStream(lexer);
                 wreslParser parser = new wreslParser(tokens);
+
+                // Replace default error generator with ours
+                WRESLErrorListener customErrorListener = new WRESLErrorListener();
+                parser.removeErrorListeners();
+                parser.addErrorListener(customErrorListener);
+
                 // Generate parse trees for the main file and include files from different roots
                 ParseTree tree;
                 if (currentFile.toString().equals(mainFile.toString())) {
@@ -58,13 +80,10 @@ public class WRESLFileCollector {
                     tree = parser.includeStart();
                 }
 
-                // Inform user the file is processed
-                // Logger is refusing to show naything on the console; using System.out.Println for now
-                System.out.println("Processed " + currentFile);
-                // Delete above line when logger decides to cooporate
-                logger.atInfo()
-                        .setMessage("Parsed " + currentFile)
-                        .log();
+                // Report syntax errors if any
+                if (customErrorListener.hasSyntaxError()) {
+                    throw new SyntaxErrorException(currentFile,customErrorListener.getErrorMessages());
+                }
 
                 // Create new file data
                 WRESLFile wreslFile = new WRESLFile(tree);
@@ -106,9 +125,13 @@ public class WRESLFileCollector {
             }
         });
     }
-    
-    // Retrieve processed files, their parse trees, parents and children
+
+
+    // ------------------------------------------------------------
+    // --- RETRIEVE PROCESSED FILES, THEIR PARSE TREES, PARENTS AND CHILDREN
+    // ------------------------------------------------------------
     public Map<Path,WRESLFile> getFiles() {
         return this.mapStudyFiles;
     }
+
 }
