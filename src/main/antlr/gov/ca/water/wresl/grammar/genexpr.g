@@ -4,9 +4,7 @@ options {
   language = Java;
 }
 
-@header {
-  package gov.ca.water.wrims.wresl.grammer;
-    
+@header { 
   import org.antlr.runtime.ANTLRFileStream;
   import org.antlr.runtime.CharStream;
   import org.antlr.runtime.CommonTokenStream;
