@@ -2,29 +2,23 @@ grammar wresl;
 
 options { caseInsensitive = true; }
 
-study
+mainStart
     : ( initial
-      | ifStatement
-      | model
-      | sequence
-      | include
-      | goal
-      | objective
       | group
-      | svar
-      | dvar
-      | timeSeries
+      | sequence
+      | model
+      | include
       )+ EOF
     ;
 
 // SEQUENCE
 sequence
-    : SEQUENCE OBJECT_NAME OPEN_BRACE sequenceBody? CLOSE_BRACE
+    : SEQUENCE OBJECT_NAME OPEN_BRACE sequenceBody CLOSE_BRACE
     ;
 sequenceBody
     : MODEL OBJECT_NAME sequenceCondition? ORDER INT timestepSpecification?
     ;
-sequenceCondition: CONDITION expression opCompare expression ;
+sequenceCondition: CONDITION expression ;
 timestepSpecification: TIMESTEP (STEP_1MON | STEP_1DAY) ;
 
 // MODEL
@@ -33,6 +27,8 @@ modelBody
     : include
     | svar
     | dvar
+    | external
+    | alias
     | timeSeries
     | goal
     | objective
@@ -51,6 +47,8 @@ includeStart
       | group
       | svar
       | dvar
+      | external
+      | alias
       | timeSeries
       )* EOF
     ;
@@ -87,34 +85,25 @@ variables: VARIABLE expression+ ;
 group: GROUP OBJECT_NAME OPEN_BRACE groupBody+ CLOSE_BRACE ;
 groupBody
     : include
-    | dvar
     | svar
+    | dvar
+    | external
+    | alias
     | timeSeries
     | goal
     | objective
     | ifStatement
     ;
 
-// DEFINE
-dvar: (DVAR | DEFINE) scope? arraySizeDefinition? OBJECT_NAME OPEN_BRACE dvarBody CLOSE_BRACE ;
+// DEFINE (SVAR or DVAR)
+dvar: (DVAR | DEFINE) scope? arraySizeDefinition? OBJECT_NAME OPEN_BRACE defineBoundLimits definitionSpecifics+ CLOSE_BRACE ;
 svar: (SVAR | DEFINE) scope? arraySizeDefinition? OBJECT_NAME OPEN_BRACE svarBody CLOSE_BRACE ;
-dvarBody
-    : defineBoundLimits definitionSpecifics+ #dvarBounds
-    | ALIAS expression definitionSpecifics*  #dvarAlias
-    ;
 svarBody
     : caseStatement+                                         #svarCase
     | select                                                 #svarLookup
-    | EXTERNAL externalTarget                                #svarExternal
     | sumExpressionBody                                      #svarSum
     | VALUE expression                                       #svarValue
     ;
-
-externalTarget
-    : specificationString
-    | unescapedTargetString
-    ;
-unescapedTargetString: (OBJECT_NAME ('.' OBJECT_NAME)?);
 
 defineBoundLimits: INTEGER? (STD | defineBoundUl) ;
 defineBoundUl: boundSide boundType (boundSide boundType)? ;
@@ -135,10 +124,28 @@ kind: KIND specificationString ;
 units: UNITS specificationString ;
 convert: CONVERT specificationString ;
 
+
+// ALIAS
+alias
+    : DEFINE scope? arraySizeDefinition? OBJECT_NAME OPEN_BRACE ALIAS expression (kind | units)* CLOSE_BRACE   
+    | ALIAS  scope? arraySizeDefinition? OBJECT_NAME OPEN_BRACE       expression (kind | units)* CLOSE_BRACE   
+    ;
+
+
+// EXTERNAL
+external: DEFINE scope? OBJECT_NAME OPEN_BRACE EXTERNAL externalTarget CLOSE_BRACE ;
+externalTarget
+    : specificationString
+    | unescapedTargetString
+    ;
+unescapedTargetString: (OBJECT_NAME ('.' OBJECT_NAME)?);
+
+
 // TIMESERIES
+// 1 kind and 1 unit must exist; 1 convert and 1 optionalBPart are optional; compliance will be checked in Visitors
 timeSeries
-    : TIMESERIES OBJECT_NAME OPEN_BRACE kind units (convert)? CLOSE_BRACE                          #timeSeriesTypeTS
-    | DEFINE OBJECT_NAME OPEN_BRACE TIMESERIES (optionalBPart)? kind units (convert)? CLOSE_BRACE  #timeSeriesTypeDef
+    : TIMESERIES OBJECT_NAME OPEN_BRACE            (kind | units | convert)+                 CLOSE_BRACE  #timeSeriesTypeTS
+    | DEFINE     OBJECT_NAME OPEN_BRACE TIMESERIES (optionalBPart | kind | units | convert)+ CLOSE_BRACE  #timeSeriesTypeDef
     ;
 
 // INITIAL
@@ -149,7 +156,7 @@ ifStatement: ifClause elseIfClause* elseClause? ;
 ifClause: IF expression ifBlock ;
 elseIfClause: ELSEIF expression ifBlock ;
 elseClause: ELSE ifBlock ;
-ifBlock: OPEN_BRACE (include | svar | dvar | timeSeries | goal | objective)+ CLOSE_BRACE ;
+ifBlock: OPEN_BRACE (include | svar | dvar | external | alias | timeSeries | external | goal | objective)+ CLOSE_BRACE ;
 
 // CASE STATEMENT
 caseStatement: CASE caseName OPEN_BRACE caseCondition? caseBody CLOSE_BRACE ;

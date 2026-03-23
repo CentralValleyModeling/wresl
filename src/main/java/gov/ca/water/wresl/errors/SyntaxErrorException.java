@@ -3,15 +3,17 @@ package gov.ca.water.wresl.errors;
 import java.nio.file.Path;
 import java.util.List;
 
-public class SyntaxErrorException extends Exception {
+public class SyntaxErrorException extends RuntimeException {
     private Path sourceFile;
+    private int line;
     private List<String> errorMessages;
 
     // ------------------------------------------------------------
     // --- CONSTRUCTOR
     // ------------------------------------------------------------
-    public SyntaxErrorException(Path sourceFile, List<String> errorMessages) {
+    public SyntaxErrorException(Path sourceFile, int line, List<String> errorMessages) {
         this.sourceFile = sourceFile;
+        this.line = line;
         this.errorMessages =  errorMessages;
     }
 
@@ -31,4 +33,12 @@ public class SyntaxErrorException extends Exception {
         return this.sourceFile;
     }
 
- }
+
+    // ------------------------------------------------------------
+    // --- RETRIEVE LINE NUMBER WHERE ERROR OCCURED
+    // ------------------------------------------------------------
+    public int getLine() {
+        return this.line;
+    }
+
+}

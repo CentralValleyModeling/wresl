@@ -75,14 +75,14 @@ public class WRESLFileCollector {
                 // Generate parse trees for the main file and include files from different roots
                 ParseTree tree;
                 if (currentFile.toString().equals(mainFile.toString())) {
-                    tree = parser.study();
+                    tree = parser.mainStart();
                 } else {
                     tree = parser.includeStart();
                 }
 
                 // Report syntax errors if any
                 if (customErrorListener.hasSyntaxError()) {
-                    throw new SyntaxErrorException(currentFile,customErrorListener.getErrorMessages());
+                    throw new SyntaxErrorException(currentFile,-1,customErrorListener.getErrorMessages());
                 }
 
                 // Create new file data
@@ -95,7 +95,7 @@ public class WRESLFileCollector {
                 // Add newly found files to the queue and as children to the file we are working with
                 for (String childFilename : includeFileFinder.getListFoundFiles()) {
                     File childFile = new File(startingPath.toString(), childFilename);
-                    Path childFilePath = Path.of(childFile.getCanonicalPath().toLowerCase()); //startingPath.resolve(childFilename);
+                    Path childFilePath = Path.of(childFile.getCanonicalPath().toLowerCase());
                     wreslFile.addChild(childFilePath);
                     if (!processedFiles.contains(childFilename)) {
                         filesToBeProcessed.add(childFilePath);
