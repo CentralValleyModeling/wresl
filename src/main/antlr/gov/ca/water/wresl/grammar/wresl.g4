@@ -166,15 +166,12 @@ caseName
     ;
 caseCondition: CONDITION (expression | ALWAYS) ;
 caseBody
-    : caseViaValue
-    | goalCase
-    | caseViaSelect
-    | caseViaExpression
+    : VALUE expression          #caseViaValue       
+    | SIDE expression penalty*  #caseViaGoal           
+    | select                    #caseViaSelect      
+    | expression                #caseViaExpression  
     ;
-caseViaValue: VALUE expression ;
-caseViaExpression: expression ;
-goalCase: SIDE expression penalty* ;
-caseViaSelect: select ;
+
 
 // PENALTY
 penalty: SIDE (LESS_THAN | GREATER_THAN) SIDE penaltyValue? ;

@@ -12,8 +12,7 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Path;
 import java.util.*;
 
@@ -151,6 +150,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         // Store parameter data in permanently
         this.sds.setParameterList(parameterList);
         this.sds.setParameterMap(parameterMap);
+
 
         return null;
     }
@@ -683,10 +683,10 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
 
     // ------------------------------------------------------------
-    // --- MISCELLANEOUS VISIT METHODS
+    // --- CASE STATEMENT
     // ------------------------------------------------------------
     @Override
-    // caseStatement
+    // caseStatement - Gateway to all CASE visit methods
     public VisitorResult visitCaseStatement(wreslParser.CaseStatementContext ctx) {
         // Case name
         String caseName = getWreslText(ctx.caseName());
@@ -700,25 +700,93 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         }
 
         // Case expression
-        String caseExpression;
-        wreslParser.CaseBodyContext caseBody = ctx.caseBody();
-        if (caseBody.caseViaValue() != null) {
-            caseExpression = getWreslText(caseBody.caseViaValue().getChild(1));
-        } else if (caseBody.goalCase() != null) {
-            caseExpression = "needs implementation";
-        } else if (caseBody.caseViaSelect() != null) {
-            caseExpression = "needs implementation";
-        } else if (caseBody.caseViaExpression() != null) {
-            caseExpression = getWreslText(caseBody.caseViaExpression().expression());
-        } else {
-            caseExpression = null;
-        }
+        String caseExpression = visitorResultToString(visit(ctx.caseBody()));
 
         WRIMS_CaseData caseData = new WRIMS_CaseData(caseCondition, caseExpression);
 
         return new VisitorResult(caseData,caseName);
     }
 
+    @Override
+    // caseViaValue
+    public VisitorResult visitCaseViaValue(wreslParser.CaseViaValueContext ctx) {
+        return new VisitorResult(new WRIMS_String(getWreslText(ctx.expression())), null);
+    }
+
+    @Override
+    // caseViaGoal
+    public VisitorResult visitCaseViaGoal(wreslParser.CaseViaGoalContext ctx) {
+        return new VisitorResult(new WRIMS_String("needs implementation"), null);
+    }
+
+    @Override
+    // caseViaSelect
+    public VisitorResult visitCaseViaSelect(wreslParser.CaseViaSelectContext ctx) {
+        return new VisitorResult(new WRIMS_String(getWreslText(ctx.select())), null);
+    }
+
+    @Override
+    // caseViaExpression
+    public VisitorResult visitCaseViaExpression(wreslParser.CaseViaExpressionContext ctx) {
+        return new VisitorResult(new WRIMS_String(getWreslText(ctx.expression())), null);
+    }
+
+
+    // ------------------------------------------------------------
+    // --- SELECT
+    // ------------------------------------------------------------
+
+    @Override
+    public VisitorResult visitSelect(wreslParser.SelectContext ctx) {
+        // Table name
+        String tableName = getWreslText(ctx.OBJECT_NAME());
+
+        // Open file that stores the table
+        String absoluteTableFileName = this.absReferencePath + File.separator + "lookup" + File.separator + tableName + ".table";
+        try {
+            // Check exitance of file
+            File tableFile = new File(absoluteTableFileName);
+            if (!tableFile.exists()) {
+                throw new IOException("File "+absoluteTableFileName+" could not be found!");
+            }
+
+            // Retrieve data into memory
+            FileInputStream fStream = new FileInputStream(absoluteTableFileName);
+            DataInputStream input = new DataInputStream(fStream);
+            BufferedReader br = new BufferedReader(new InputStreamReader(input));
+
+            String strLine = "";
+            boolean isFirstActiveLine = true;
+            boolean isEnd = false;
+            int line = 0;
+            while ((strLine = br.readLine()) != null) {
+                line = line + 1;
+                strLine = strLine.strip();
+                // Skip comment
+                if (strLine.contains("!")) {continue;}
+                // First line of entry must be the name of the table
+                if (isFirstActiveLine) {
+                    if (!strLine.toLowerCase().equals(tableName)) {
+                        throw new IOException("The first line after comments in table " + tableName + ".table should be the file name without extension: " + tableName);
+                    }
+                    isFirstActiveLine = false;
+                }
+
+            }
+            if (line == 0) {
+                input.close();
+                throw new IOException ("No data exists in table " + tableName);
+            }
+        } catch (Exception e) {
+
+        }
+
+        return super.visitSelect(ctx);
+    }
+
+    // ------------------------------------------------------------
+    // --- MISCELLANEOUS VISIT METHODS
+    // ------------------------------------------------------------
     @Override
     // arraySizeDefinition
     public VisitorResult visitArraySizeDefinition(wreslParser.ArraySizeDefinitionContext ctx) {
