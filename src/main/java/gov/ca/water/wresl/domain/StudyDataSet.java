@@ -3,7 +3,7 @@ package gov.ca.water.wresl.domain;
 import java.io.Serializable;
 import java.util.*;
 
-public class StudyDataSet extends WRIMSComponent implements Serializable  {
+public class StudyDataSet extends WRESLComponent implements Serializable  {
     private static final long serialVersionUID = 1L;
 
     private String absMainFilePath;

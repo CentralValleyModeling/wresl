@@ -4,7 +4,7 @@ import gov.ca.water.wresl.compile.Param;
 
 import java.io.Serializable;
 
-public class Timeseries extends WRIMSComponent implements Serializable {
+public class Timeseries extends WRESLComponent implements Serializable {
     private static final long serialVersionUID = 1L;
 
     public String scope = Param.undefined;

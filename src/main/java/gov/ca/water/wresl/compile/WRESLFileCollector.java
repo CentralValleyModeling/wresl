@@ -116,7 +116,7 @@ public class WRESLFileCollector {
 
         // Compile parent files for each WRESL file
         this.mapStudyFiles.forEach((key, value) -> {
-            Set<Path> childrenFiles = value.getChildrenFiles();
+            Set<Path> childrenFiles = value.getChildFiles();
             for (Path childFile : childrenFiles) {
                 WRESLFile childWRESLFile = this.mapStudyFiles.get(childFile);
                 if (childWRESLFile == null) {continue;}

@@ -1,11 +1,12 @@
 package gov.ca.water.wresl.domain;
 
 import gov.ca.water.wresl.compile.Param;
+import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.io.Serializable;
 import java.util.*;
 
-public class Svar extends WRIMSComponent implements Serializable {
+public class Svar extends WRESLComponent implements Serializable {
     private static final long serialVersionUID = 1L;
 
     // These properties are the same for all Svar time array
@@ -33,8 +34,10 @@ public class Svar extends WRIMSComponent implements Serializable {
     //      e.g.,  define(3) someSvar { value $m }
     public List<String> caseName = new ArrayList<>();
     public List<String> caseCondition = new ArrayList<>();
+    public List<ParseTree> caseConditionTree = new ArrayList<>();
     public List<ValueEvaluatorParser_DUMMY> caseConditionParsers = new ArrayList<>();
     public List<String> caseExpression = new ArrayList<>();
+    public List<ParseTree> caseExpressionTree = new ArrayList<>();
     public List<ValueEvaluatorParser_DUMMY> caseExpressionParsers = new ArrayList<>();
 
 
@@ -63,9 +66,16 @@ public class Svar extends WRIMSComponent implements Serializable {
     }
 
     // Set case condition related data
-    public void addCaseData(String caseName, String caseCondition, String caseExpression) {
+    public void addCaseData(String caseName, String caseCondition, String caseExpression, ParseTree caseConditionTree, ParseTree caseExpressionTree) {
         this.caseName.add(caseName);
         this.caseCondition.add(caseCondition);
         this.caseExpression.add(caseExpression);
+        this.caseConditionTree.add(caseConditionTree);
+        this.caseExpressionTree.add(caseExpressionTree);
+    }
+
+    // Set data
+    public void setData(IntDouble data) {
+        this.data = data;
     }
 }

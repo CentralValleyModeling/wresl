@@ -5,8 +5,6 @@ import gov.ca.water.wresl.errors.SyntaxErrorException;
 import gov.ca.water.wresl.grammar.wreslBaseVisitor;
 import gov.ca.water.wresl.grammar.wreslParser;
 import org.antlr.v4.runtime.Token;
-import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.slf4j.Logger;
@@ -15,6 +13,8 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.nio.file.Path;
 import java.util.*;
+
+import static gov.ca.water.wresl.compile.Utilities.getWreslText;
 
 public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     private static final Logger logger = LoggerFactory.getLogger(Antlr_To_WRIMS.class);
@@ -126,12 +126,13 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             if (!(ctx.getChild(i) instanceof wreslParser.SvarContext svarCtx)) {continue;}
 
             VisitorResult result = visit(ctx.getChild(i));
-            WRIMSComponent data = result.data();
+            WRESLComponent data = result.data();
             String name = result.name();
 
-            // WRIMS component can only be an SVAR as dictated by the grammar
+            // WRESL component can only be an SVAR as dictated by the grammar
             switch (data) {
                 case Svar svar -> {
+                    svar.setData(Evaluator.evaluate(data));
                     parameterList.add(name);
                     parameterMap.put(name,svar);
                 }
@@ -207,7 +208,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                 dataList = returnedData.children();
             }
             for (int j=0; j<=dataList.size()-1; j++) {
-                WRIMSComponent data = dataList.get(j).data();
+                WRESLComponent data = dataList.get(j).data();
                 if (data == null) continue;
                 String name = dataList.get(j).name();
                 switch (data) {
@@ -259,7 +260,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                 dataList = result.children();
             }
             for (int j=0; j<=dataList.size()-1; j++) {
-                WRIMSComponent data = dataList.get(j).data();
+                WRESLComponent data = dataList.get(j).data();
                 if (data == null) continue;
                 String name = dataList.get(j).name();
                 switch (data) {
@@ -351,10 +352,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             svar = tempSvar;
         }
 
-        // Retrieve name, file and line number of Svar
-        String name = getWreslText(ctx.OBJECT_NAME());
-
-        // Source file and line number
+        // Retrieve name, source file and line number of Svar
+        svar.name = getWreslText(ctx.OBJECT_NAME());
         svar.fromWresl = this.currentFile;
         svar.line = ctx.OBJECT_NAME().getSymbol().getLine();
 
@@ -366,7 +365,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         }
 
         // Return data
-        return new VisitorResult(svar, name);
+        return new VisitorResult(svar, svar.name);
     }
 
     @Override
@@ -377,8 +376,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         // Loop over case statements and case information
         for (int i=0; i<=ctx.getChildCount()-1; i++) {
             VisitorResult result = visit(ctx.getChild(i));
-            WRIMS_CaseData caseData = (WRIMS_CaseData)result.data();
-            svar.addCaseData(result.name().toLowerCase(), caseData.caseCondition, caseData.caseExpression);
+            WRESL_CaseData caseData = (WRESL_CaseData)result.data();
+            svar.addCaseData(result.name().toLowerCase(), caseData.caseCondition, caseData.caseExpression, caseData.caseConditionTree, caseData.caseExpressionTree);
         }
 
         // Return data
@@ -392,7 +391,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         Svar svar = new Svar();
 
         // Set case condition
-        svar.addCaseData(Param.defaultCaseName, Param.always, getWreslText(ctx.select()).toLowerCase());
+        svar.addCaseData(Param.defaultCaseName, Param.always, getWreslText(ctx.select()).toLowerCase(),null,ctx.select());
 
         // Return data
         return new VisitorResult(svar, null);
@@ -404,7 +403,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         Svar svar = new Svar();
 
         // Set case condition
-        svar.addCaseData(Param.defaultCaseName, Param.always, getWreslText(ctx.sumExpressionBody()));
+        svar.addCaseData(Param.defaultCaseName, Param.always, getWreslText(ctx.sumExpressionBody()), null,ctx.sumExpressionBody());
 
         // Return data
         return new VisitorResult(svar, null);
@@ -416,7 +415,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         Svar svar = new Svar();
 
         // Set case condition
-        svar.addCaseData(Param.defaultCaseName, Param.always, getWreslText(ctx.expression()));
+        svar.addCaseData(Param.defaultCaseName, Param.always, getWreslText(ctx.expression()), null, ctx.expression());
 
         // Return data
         return new VisitorResult(svar, null);
@@ -649,7 +648,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     @Override
     // expressionComparison
     public VisitorResult visitExpressionComparison(wreslParser.ExpressionComparisonContext ctx) {
-        WRIMS_String expression = new WRIMS_String(getWreslText(ctx));
+        WRESL_String expression = new WRESL_String(getWreslText(ctx));
         return new VisitorResult(expression, null);
     }
 
@@ -657,7 +656,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     // expressionMultDiv
     public VisitorResult visitExpressionMultDiv(wreslParser.ExpressionMultDivContext ctx) {
         // Store expression to be computed later during run
-        WRIMS_String expression = new WRIMS_String(getWreslText(ctx));
+        WRESL_String expression = new WRESL_String(getWreslText(ctx));
         return new VisitorResult(expression,null);
      }
 
@@ -665,7 +664,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     // expressionAddSub
     public VisitorResult visitExpressionAddSub(wreslParser.ExpressionAddSubContext ctx) {
         // Store expression to be computed later during run
-        WRIMS_String expression = new WRIMS_String(getWreslText(ctx));
+        WRESL_String expression = new WRESL_String(getWreslText(ctx));
         return new VisitorResult(expression,null);
     }
 
@@ -676,7 +675,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         if (ctx.preDefinedFunction() != null) {
             return new VisitorResult(null, null); }
         else {
-            WRIMS_String functionName = new WRIMS_String(getWreslText(ctx.OBJECT_NAME()));
+            WRESL_String functionName = new WRESL_String(getWreslText(ctx.OBJECT_NAME()));
             return new VisitorResult(functionName, null);
         }
     }
@@ -693,16 +692,21 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
         // Case condition
         String caseCondition;
+        ParseTree caseConditionTree;
         if (ctx.caseCondition() != null) {
-            caseCondition = getWreslText(ctx.caseCondition().getChild(1)); }
+            caseCondition = getWreslText(ctx.caseCondition().getChild(1));
+            caseConditionTree = ctx.caseCondition();
+        }
         else {
             caseCondition = Param.always;
+            caseConditionTree = null;
         }
 
         // Case expression
         String caseExpression = visitorResultToString(visit(ctx.caseBody()));
+        ParseTree caseExpressionTree = ctx.caseBody();
 
-        WRIMS_CaseData caseData = new WRIMS_CaseData(caseCondition, caseExpression);
+        WRESL_CaseData caseData = new WRESL_CaseData(caseCondition, caseExpression, caseConditionTree, caseExpressionTree);
 
         return new VisitorResult(caseData,caseName);
     }
@@ -710,79 +714,27 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     @Override
     // caseViaValue
     public VisitorResult visitCaseViaValue(wreslParser.CaseViaValueContext ctx) {
-        return new VisitorResult(new WRIMS_String(getWreslText(ctx.expression())), null);
+        return new VisitorResult(new WRESL_String(getWreslText(ctx.expression())), null);
     }
 
     @Override
     // caseViaGoal
     public VisitorResult visitCaseViaGoal(wreslParser.CaseViaGoalContext ctx) {
-        return new VisitorResult(new WRIMS_String("needs implementation"), null);
+        return new VisitorResult(new WRESL_String("needs implementation"), null);
     }
 
     @Override
     // caseViaSelect
     public VisitorResult visitCaseViaSelect(wreslParser.CaseViaSelectContext ctx) {
-        return new VisitorResult(new WRIMS_String(getWreslText(ctx.select())), null);
+        return new VisitorResult(new WRESL_String(getWreslText(ctx.select())), null);
     }
 
     @Override
     // caseViaExpression
     public VisitorResult visitCaseViaExpression(wreslParser.CaseViaExpressionContext ctx) {
-        return new VisitorResult(new WRIMS_String(getWreslText(ctx.expression())), null);
+        return new VisitorResult(new WRESL_String(getWreslText(ctx.expression())), null);
     }
 
-
-    // ------------------------------------------------------------
-    // --- SELECT
-    // ------------------------------------------------------------
-
-    @Override
-    public VisitorResult visitSelect(wreslParser.SelectContext ctx) {
-        // Table name
-        String tableName = getWreslText(ctx.OBJECT_NAME());
-
-        // Open file that stores the table
-        String absoluteTableFileName = this.absReferencePath + File.separator + "lookup" + File.separator + tableName + ".table";
-        try {
-            // Check exitance of file
-            File tableFile = new File(absoluteTableFileName);
-            if (!tableFile.exists()) {
-                throw new IOException("File "+absoluteTableFileName+" could not be found!");
-            }
-
-            // Retrieve data into memory
-            FileInputStream fStream = new FileInputStream(absoluteTableFileName);
-            DataInputStream input = new DataInputStream(fStream);
-            BufferedReader br = new BufferedReader(new InputStreamReader(input));
-
-            String strLine = "";
-            boolean isFirstActiveLine = true;
-            boolean isEnd = false;
-            int line = 0;
-            while ((strLine = br.readLine()) != null) {
-                line = line + 1;
-                strLine = strLine.strip();
-                // Skip comment
-                if (strLine.contains("!")) {continue;}
-                // First line of entry must be the name of the table
-                if (isFirstActiveLine) {
-                    if (!strLine.toLowerCase().equals(tableName)) {
-                        throw new IOException("The first line after comments in table " + tableName + ".table should be the file name without extension: " + tableName);
-                    }
-                    isFirstActiveLine = false;
-                }
-
-            }
-            if (line == 0) {
-                input.close();
-                throw new IOException ("No data exists in table " + tableName);
-            }
-        } catch (Exception e) {
-
-        }
-
-        return super.visitSelect(ctx);
-    }
 
     // ------------------------------------------------------------
     // --- MISCELLANEOUS VISIT METHODS
@@ -790,7 +742,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     @Override
     // arraySizeDefinition
     public VisitorResult visitArraySizeDefinition(wreslParser.ArraySizeDefinitionContext ctx) {
-        WRIMS_String expr = new WRIMS_String(getWreslText(ctx.expression()));
+        WRESL_String expr = new WRESL_String(getWreslText(ctx.expression()));
         return new VisitorResult(expr,null);
     }
 
@@ -799,7 +751,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     public VisitorResult visitSpecificationString(wreslParser.SpecificationStringContext ctx) {
         String tempString = getWreslText(ctx);
 //        WRIMS_String data = new WRIMS_String(ctx.getText().substring(0, ctx.getText().length() - 1).substring(1).toLowerCase());   // Remove first and last character;
-        WRIMS_String data = new WRIMS_String(tempString.substring(0, tempString.length() - 1).substring(1));   // Remove first and last character;
+        WRESL_String data = new WRESL_String(tempString.substring(0, tempString.length() - 1).substring(1));   // Remove first and last character;
         return new VisitorResult(data, null);
     }
 
@@ -812,7 +764,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     private String visitorResultToString(VisitorResult result) {
         String stringData;
 
-        if (result.data() instanceof WRIMS_String data) {
+        if (result.data() instanceof WRESL_String data) {
             stringData = data.getValue(); }
         else {
             stringData = null;
@@ -821,45 +773,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         return stringData;
     }
 
-    // Retrieve lowercase text from ParserRuleContext without stripping whitespaces
-    private String getWreslText(ParserRuleContext ctx) {
-        // Start and end of the character stream
-        int start = ctx.start.getStartIndex();
-        int stop = ctx.stop.getStopIndex();
 
-        // Retrieve text
-        return ctx.start.getInputStream().getText(new Interval(start, stop)).toLowerCase();
-    }
 
-    // Retrieve lowercase text from TerminalNode without stripping whitespaces
-    private String getWreslText(TerminalNode terminalNode) {
-        // Start and end of the character stream
-        Token token = terminalNode.getSymbol();
-        int start = token.getStartIndex();
-        int stop = token.getStopIndex();
 
-        // Retrieve text
-        return token.getInputStream().getText(new Interval(start, stop)).toLowerCase();
-    }
-
-    // Retrieve lowercase text from ParseTree without stripping whitespaces
-    private String getWreslText(ParseTree tree) {
-        // Retrieve text
-        return tree.getText().toLowerCase();
-    }
-
-    // Count number of occurences of a sub-rule in a parent rule
-    private <W extends ParserRuleContext, T extends ParserRuleContext> int countRuleOccurence(Class<T> findRule, List<W> ruleList) {
-
-        if (ruleList == null) return 0;
-
-        int count = 0;
-        for (W rule : ruleList) {
-            if (!rule.getRuleContexts(findRule).isEmpty()) {
-                count++;
-            }
-        }
-        return count;
-    }
 
 }

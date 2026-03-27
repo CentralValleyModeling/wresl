@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
 
-public class Goal extends WRIMSComponent implements Serializable {
+public class Goal extends WRESLComponent implements Serializable {
     private static final long serialVersionUID = 1L;
 
     public String scope;

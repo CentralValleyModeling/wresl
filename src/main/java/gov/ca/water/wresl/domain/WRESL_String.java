@@ -1,9 +1,9 @@
 package gov.ca.water.wresl.domain;
 
-public class WRIMS_String extends WRIMSComponent {
+public class WRESL_String extends WRESLComponent {
     private String text;
 
-    public WRIMS_String(String text) {
+    public WRESL_String(String text) {
         this.text = text;
     }
 

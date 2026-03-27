@@ -2,7 +2,7 @@ package gov.ca.water.wresl.domain;
 
 import java.io.Serializable;
 
-public class WeightElement extends WRIMSComponent implements Serializable  {
+public class WeightElement extends WRESLComponent implements Serializable  {
     private static final long serialVersionUID = 1L;
 
     private String weight;

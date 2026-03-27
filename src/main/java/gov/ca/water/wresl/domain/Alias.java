@@ -6,7 +6,7 @@ import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
 
-public class Alias extends WRIMSComponent implements Serializable {
+public class Alias extends WRESLComponent implements Serializable {
     private static final long serialVersionUID = 1L;
 
     public String condition = Param.always;

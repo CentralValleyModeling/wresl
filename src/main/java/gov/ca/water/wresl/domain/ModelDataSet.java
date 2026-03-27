@@ -1,12 +1,10 @@
 package gov.ca.water.wresl.domain;
 
-import gov.ca.water.wresl.grammar.wreslParser.ModelBodyContext;
-
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-public class ModelDataSet extends WRIMSComponent implements Serializable {
+public class ModelDataSet extends WRESLComponent implements Serializable {
     private static final long serialVersionUID = 1L;
 
     // Weight table   // <objName,  <itemName, value>>

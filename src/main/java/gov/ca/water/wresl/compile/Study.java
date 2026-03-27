@@ -21,6 +21,7 @@ public class Study {
     public Study(String name, Path mainFilePath) {
         this.name = name;
         this.mainFilePath = Path.of(mainFilePath.toString().toLowerCase());
+        this.mainFileFolder = this.mainFilePath.getParent();
     }
 
 
@@ -41,6 +42,7 @@ public class Study {
 
         // Parse WRESL input into WRIMS objects
         Antlr_To_WRIMS parse = new Antlr_To_WRIMS(this.mainFilePath, treesByFile);
+        Evaluator.setReferencePath(this.mainFileFolder.toString());
         VisitorResult study = parse.visit(studyTree);
         StudyDataSet sds = (StudyDataSet)study.data();
 
