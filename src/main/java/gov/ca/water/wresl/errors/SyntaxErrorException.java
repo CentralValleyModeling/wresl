@@ -4,14 +4,14 @@ import java.nio.file.Path;
 import java.util.List;
 
 public class SyntaxErrorException extends RuntimeException {
-    private Path sourceFile;
+    private String sourceFile;
     private int line;
     private List<String> errorMessages;
 
     // ------------------------------------------------------------
     // --- CONSTRUCTOR
     // ------------------------------------------------------------
-    public SyntaxErrorException(Path sourceFile, int line, List<String> errorMessages) {
+    public SyntaxErrorException(String sourceFile, int line, List<String> errorMessages) {
         this.sourceFile = sourceFile;
         this.line = line;
         this.errorMessages =  errorMessages;
@@ -29,7 +29,7 @@ public class SyntaxErrorException extends RuntimeException {
     // ------------------------------------------------------------
     // --- RETRIEVE FILENAME WHERE ERROR OCCURED
     // ------------------------------------------------------------
-    public Path getSourceFile() {
+    public String getSourceFile() {
         return this.sourceFile;
     }
 

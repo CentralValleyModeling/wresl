@@ -8,31 +8,31 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
 
     private String absMainFilePath;
 
-    private ArrayList<String> parameterList = new ArrayList<String>();
-    private LinkedHashMap<String, Svar> parameterMap = new LinkedHashMap<String, Svar>();
+    private ArrayList<String> parameterList = new ArrayList<>();
+    private LinkedHashMap<String, Svar> parameterMap = new LinkedHashMap<>();
 
-    private ArrayList<String> modelList = new ArrayList<String>();
-    private ArrayList<String> modelConditionList = new ArrayList<String>();
-    private ArrayList<String> modelTimeStepList = new ArrayList<String>();
-    private ArrayList<ValueEvaluatorParser_DUMMY> modelConditionParsers=new ArrayList<ValueEvaluatorParser_DUMMY>();
+    private ArrayList<String> modelList = new ArrayList<>();
+    private ArrayList<String> modelConditionList = new ArrayList<>();
+    private ArrayList<String> modelTimeStepList = new ArrayList<>();
+    private ArrayList<ValueEvaluatorParser_DUMMY> modelConditionParsers=new ArrayList<>();
 
     ///  < timeseries name, timeseries object >
-    private Map<String, Timeseries> timeseriesMap = new HashMap<String, Timeseries>();
-    private Map<String, ArrayList<String>> timeseriesTimeStepMap = new HashMap<String, ArrayList<String>>();
+    private Map<String, Timeseries> timeseriesMap = new HashMap<>();
+    private Map<String, ArrayList<String>> timeseriesTimeStepMap = new HashMap<>();
 
     ///  < modelName, modelDataSet >
-    private Map<String, ModelDataSet> modelDataSetMap = new HashMap<String, ModelDataSet>();
+    private Map<String, ModelDataSet> modelDataSetMap = new HashMap<>();
 
     /// this map contains value of vars needed for WRESL syntax: varName[cycleName]
     /// < VarName, < CycleName, Value >>
-    private Map<String, Map<String, IntDouble>> varCycleValueMap = new HashMap<String, Map<String, IntDouble>>();
-    private Map<String, Map<String, IntDouble>> varTimeArrayCycleValueMap = new HashMap<String, Map<String, IntDouble>>();
-    private Map<String, Map<String, IntDouble>> varCycleIndexValueMap = new HashMap<String, Map<String, IntDouble>>();
-    private ArrayList<String> varCycleIndexList = new ArrayList<String>();
-    private ArrayList<String> dvarTimeArrayCycleIndexList = new ArrayList<String>();
+    private Map<String, Map<String, IntDouble>> varCycleValueMap = new HashMap<>();
+    private Map<String, Map<String, IntDouble>> varTimeArrayCycleValueMap = new HashMap<>();
+    private Map<String, Map<String, IntDouble>> varCycleIndexValueMap = new HashMap<>();
+    private ArrayList<String> varCycleIndexList = new ArrayList<>();
+    private ArrayList<String> dvarTimeArrayCycleIndexList = new ArrayList<>();
 
-    public LinkedHashSet<String> allIntDv=new LinkedHashSet<String>();
-    public Map<Integer,LinkedHashSet<String>> cycIntDvMap=new HashMap<Integer,LinkedHashSet<String>>();
+    public LinkedHashSet<String> allIntDv=new LinkedHashSet<>();
+    public Map<Integer,LinkedHashSet<String>> cycIntDvMap=new HashMap<>();
 
 
     // -----------------

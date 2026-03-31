@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class LookUpTable {
-    private String name=null;
+    private String name = null;
     private HashMap<String, Integer> field = new HashMap<>();
     private ArrayList<Number[]> data=new ArrayList<>();
 
@@ -13,7 +13,7 @@ public class LookUpTable {
     }
 
     public void setName(String name) {
-        this.name=name;
+        this.name = name;
     }
 
     public HashMap<String, Integer> getField() {
@@ -21,7 +21,7 @@ public class LookUpTable {
     }
 
     public void setField(HashMap<String, Integer> field) {
-        this.field=field;
+        this.field = field;
     }
 
     public ArrayList<Number[]> getData() {

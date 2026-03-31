@@ -1,4 +1,5 @@
 import gov.ca.water.wresl.compile.*;
+import gov.ca.water.wresl.errors.EvaluationErrorException;
 import gov.ca.water.wresl.errors.SyntaxErrorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +24,10 @@ public class testParser {
             for (int i=0; i<syntaxErrors.size(); i++) {
                 System.err.println(syntaxErrors.get(i));
             }
+        }
+        catch (EvaluationErrorException e) {
+            System.err.println("Evaluation error: " + e.getErrorMessage());
+            System.err.println("                  " +"File " + e.getSourceFile() + ", line " + e.getLine());
         }
     }
 }

@@ -7,8 +7,6 @@ import gov.ca.water.wresl.grammar.wreslParser;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.file.Path;
@@ -17,12 +15,12 @@ import java.util.*;
 import static gov.ca.water.wresl.compile.Utilities.getWreslText;
 
 public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
-    private static final Logger logger = LoggerFactory.getLogger(Antlr_To_WRIMS.class);
-
+    // Main WRESL file, absolute folder that it resides, and list of WRESL files
     private final Path mainFilePath;
     private final Path absReferencePath;
     private final Map<Path, WRESLFile> wreslFilesMap;
 
+    // WRESL file that's being parsed
     private String currentFile;
 
     // Containers (data defined under INITIAL will be stored as "parameters" under sds
@@ -121,9 +119,11 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         LinkedHashMap<String,Svar> parameterMap = new LinkedHashMap<>();
 
         // Loop through children; they should all be SVARs
-        for (int i=0; i<=ctx.children.size()-1; i++) {
+        for (int i = 0; i <= ctx.children.size() - 1; i++) {
             // Skip anything that is not Svar definition
-            if (!(ctx.getChild(i) instanceof wreslParser.SvarContext svarCtx)) {continue;}
+            if (!(ctx.getChild(i) instanceof wreslParser.SvarContext svarCtx)) {
+                continue;
+            }
 
             VisitorResult result = visit(ctx.getChild(i));
             WRESLComponent data = result.data();
@@ -134,7 +134,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                 case Svar svar -> {
                     svar.setData(Evaluator.evaluate(data));
                     parameterList.add(name);
-                    parameterMap.put(name,svar);
+                    parameterMap.put(name, svar);
                 }
                 default -> {
                     // Do nothing since we are already skipping any non-Svar context
@@ -142,16 +142,9 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             }
         }
 
-        // Now, evaluate parameter values
-        for (String parameterName : parameterList) {
-            // TO DO: implement evaluation and store results in the IntDouble data field of svar associated with parameter
-        }
-
-
         // Store parameter data in permanently
         this.sds.setParameterList(parameterList);
         this.sds.setParameterMap(parameterMap);
-
 
         return null;
     }
@@ -197,38 +190,40 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         String modelName = getWreslText(ctx.OBJECT_NAME());
 
         // Visit modelBody
-        for (int i = 0; i <= ctx.modelBody().size()-1; i++) {
+        for (int i = 0; i <= ctx.modelBody().size() - 1; i++) {
             VisitorResult returnedData = visit(ctx.modelBody(i));
 
             // Copy returned data into ModelDataSet
             List<VisitorResult> dataList;
             if (returnedData.children().size() == 0) {
-                dataList = List.of(returnedData); }
-            else {
+                dataList = List.of(returnedData);
+            } else {
                 dataList = returnedData.children();
             }
-            for (int j=0; j<=dataList.size()-1; j++) {
+            for (int j = 0; j <= dataList.size() - 1; j++) {
                 WRESLComponent data = dataList.get(j).data();
                 if (data == null) continue;
                 String name = dataList.get(j).name();
                 switch (data) {
                     case Svar svar -> {
                         mds.svList.add(name);
-                        mds.svMap.put(name,(Svar)data);
+                        mds.svMap.put(name, (Svar) data);
                     }
-                    case Dvar dvar -> {}
+                    case Dvar dvar -> {
+                    }
                     case Timeseries ts -> {
                         mds.tsList.add(name);
-                        mds.tsMap.put(name,(Timeseries)data);
+                        mds.tsMap.put(name, (Timeseries) data);
                     }
-                    case Goal goal -> {}
+                    case Goal goal -> {
+                    }
                     case Alias alias -> {
                         mds.asList.add(name);
-                        mds.asMap.put(name,(Alias)data);
+                        mds.asMap.put(name, (Alias) data);
                     }
                     case External external -> {
                         mds.exList.add(name);
-                        mds.exMap.put(name,(External)data);
+                        mds.exMap.put(name, (External) data);
                     }
                     default -> System.err.println("error");
                 }
@@ -503,7 +498,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         count = ctx.kind().size();
         if (count > 1) {
             errorMessages.add("There cannot be more than one KIND keyword declared in an ALIAS statement!");
-            throw new SyntaxErrorException(Path.of(as.fromWresl), as.line, errorMessages);
+            throw new SyntaxErrorException(as.fromWresl, as.line, errorMessages);
         }
         else if (count == 1) {
             as.kind = visitorResultToString(visit(ctx.kind().get(0).specificationString()));
@@ -513,7 +508,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         count = ctx.units().size();
         if (count > 1) {
             errorMessages.add("There cannot be more than one UNITS keyword declared in an ALIAS statement!");
-            throw new SyntaxErrorException(Path.of(as.fromWresl), as.line, errorMessages);
+            throw new SyntaxErrorException(as.fromWresl, as.line, errorMessages);
         }
         else if (count == 1) {
             as.units = visitorResultToString(visit(ctx.units().get(0).specificationString()));
@@ -554,7 +549,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         // Process KIND; check that only one exists
         if (ctx.kind().size() != 1) {
             errorMessages.add("There must be one and only one KIND keyword in a TIMESERIES statement!");
-            throw new SyntaxErrorException(Path.of(this.currentFile), ts.line, errorMessages);
+            throw new SyntaxErrorException(this.currentFile, ts.line, errorMessages);
         }
         else {
             ts.kind = visitorResultToString(visit(ctx.kind().get(0).specificationString()));
@@ -563,7 +558,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         // Process UNITS; check that one exists
         if (ctx.units().size() != 1) {
             errorMessages.add("There must be one and only one UNITS keyword in a TIMESERIES statement!");
-            throw new SyntaxErrorException(Path.of(this.currentFile), ts.line, errorMessages);
+            throw new SyntaxErrorException(this.currentFile, ts.line, errorMessages);
         }
         else {
             ts.units = visitorResultToString(visit(ctx.units().get(0).specificationString()));
@@ -573,7 +568,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         if (!ctx.convert().isEmpty()) {
             if (ctx.convert().size() != 1) {
                 errorMessages.add("There must be one and only one CONVERT keyword in a TIMESERIES statement!");
-                throw new SyntaxErrorException(Path.of(this.currentFile), ts.line, errorMessages);
+                throw new SyntaxErrorException(this.currentFile, ts.line, errorMessages);
             }
             else {
                 ts.convertToUnits = visitorResultToString(visit(ctx.convert().get(0).specificationString()));
@@ -600,7 +595,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         if (!ctx.optionalBPart().isEmpty()) {
             if (ctx.optionalBPart().size() != 1) {
                 errorMessages.add("There must be one and only one optional B part defined in a TIMESERIES statement!");
-                throw new SyntaxErrorException(Path.of(ts.fromWresl), ts.line, errorMessages);
+                throw new SyntaxErrorException(ts.fromWresl, ts.line, errorMessages);
             } else {
                 ts.dssBPart = visitorResultToString(visit(ctx.optionalBPart().get(0).specificationString()));
             }
@@ -612,7 +607,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         // Process KIND; check that only one exists
         if (ctx.kind().size() != 1) {
             errorMessages.add("There must be one and only one KIND keyword in a TIMESERIES statement!");
-            throw new SyntaxErrorException(Path.of(this.currentFile), ts.line, errorMessages);
+            throw new SyntaxErrorException(this.currentFile, ts.line, errorMessages);
         }
         else {
             ts.kind = visitorResultToString(visit(ctx.kind().get(0).specificationString()));
@@ -621,7 +616,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         // Process UNITS; check that one exists
         if (ctx.units().size() != 1) {
             errorMessages.add("There must be one and only one UNITS keyword in a TIMESERIES statement!");
-            throw new SyntaxErrorException(Path.of(this.currentFile), ts.line, errorMessages);
+            throw new SyntaxErrorException(this.currentFile, ts.line, errorMessages);
         }
         else {
             ts.units = visitorResultToString(visit(ctx.units().get(0).specificationString()));
@@ -631,7 +626,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         if (!ctx.convert().isEmpty()) {
             if (ctx.convert().size() != 1) {
                 errorMessages.add("There must be one and only one CONVERT keyword in a TIMESERIES statement!");
-                throw new SyntaxErrorException(Path.of(this.currentFile), ts.line, errorMessages);
+                throw new SyntaxErrorException(this.currentFile, ts.line, errorMessages);
             }
             else {
                 ts.convertToUnits = visitorResultToString(visit(ctx.convert().get(0).specificationString()));
@@ -673,7 +668,22 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     public VisitorResult visitExpressionCall(wreslParser.ExpressionCallContext ctx) {
         // Return function name if it is not a predefined function
         if (ctx.preDefinedFunction() != null) {
-            return new VisitorResult(null, null); }
+            // Check that number of arguments match the requirements of the function
+            int nArguments = ctx.arguments().expression().size();
+            String function = getWreslText(ctx.preDefinedFunction());
+            switch (function) {
+                case "abs", "real", "int", "exp", "log", "log10", "sqrt", "round"-> {
+                    if (nArguments != 1) { throw new SyntaxErrorException(this.currentFile,ctx.OPEN_PAREN().getSymbol().getLine(), List.of(function.toUpperCase() + " function requires only 1 argument!")); }
+                }
+                case "pow", "mod" -> {
+                    if (nArguments != 2) { throw new SyntaxErrorException(this.currentFile,ctx.OPEN_PAREN().getSymbol().getLine(), List.of(function.toUpperCase() + " requires 2 arguments!")); }
+                }
+                case "max", "min" -> {
+                    if (nArguments < 2) { throw new SyntaxErrorException(this.currentFile,ctx.OPEN_PAREN().getSymbol().getLine(), List.of(function.toUpperCase() + " requires at least 2 arguments!")); }
+                }
+            }
+            return new VisitorResult(null, null);
+        }
         else {
             WRESL_String functionName = new WRESL_String(getWreslText(ctx.OBJECT_NAME()));
             return new VisitorResult(functionName, null);

@@ -82,7 +82,7 @@ public class WRESLFileCollector {
 
                 // Report syntax errors if any
                 if (customErrorListener.hasSyntaxError()) {
-                    throw new SyntaxErrorException(currentFile,-1,customErrorListener.getErrorMessages());
+                    throw new SyntaxErrorException(currentFile.toString(),-1,customErrorListener.getErrorMessages());
                 }
 
                 // Create new file data

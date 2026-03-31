@@ -229,7 +229,7 @@ variableReference
     | WATER_YEAR                         #waterYearReference
     | MONTH                              #monthReference
     | FUTURE_ARRAY_MAXIMUM               #arrayMaximumReference
-    | FLOAT                              #floatNumber
+    | DOUBLE                             #doubleNumber
     | INT                                #intNumber
     ;
 
@@ -416,7 +416,7 @@ DOUBLE_QUOTE_STRING:  '"'  STRING_BODY '"';
 fragment STRING_BODY: ~['"\r\n]+ ;
 
 // Numbers
-FLOAT
+DOUBLE
     : DIGITS? '.' DIGITS? ([e] [+-]? DIGITS)?
     ;
 INT: DIGITS ;  // references fragment only

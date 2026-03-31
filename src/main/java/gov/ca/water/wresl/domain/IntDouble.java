@@ -33,4 +33,13 @@ public class IntDouble {
     public Number getValue() {
         return this.data;
     }
+
+
+    // ------------------------------------------------------------
+    // --- PREDICATES
+    // ------------------------------------------------------------
+    public boolean isInt(){
+        return this.isInteger;
+    }
+
 }
