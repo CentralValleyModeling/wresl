@@ -21,11 +21,20 @@ extensions = [
 ]
 
 intersphinx_mapping = {
-    "wrims-docs": ("https://www.sphinx-doc.org/en/master/", None),
-    "wrims-gui": ("https://www.sphinx-doc.org/en/master/", None),
-    "wresl": ("https://www.sphinx-doc.org/en/master/", None),
+    "wrims-engine": (
+        "https://wrims-docs.readthedocs.io/projects/wrims-engine/en/latest",
+        None,
+    ),
+    "wrims-gui": (
+        "https://wrims-docs.readthedocs.io/projects/wrims-gui/en/latest",
+        None,
+    ),
+    "wrims-docs": (
+        "https://wrims-docs.readthedocs.io/en/latest",
+        None,
+    ),
 }
-intersphinx_disabled_reftypes = ["*"]
+intersphinx_disabled_reftypes = ["std:doc", "std:label"]
 
 templates_path = ["_templates"]
 
