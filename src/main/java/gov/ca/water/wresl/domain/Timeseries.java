@@ -1,7 +1,5 @@
 package gov.ca.water.wresl.domain;
 
-import gov.ca.water.wresl.compile.Param;
-
 import java.io.Serializable;
 
 public class Timeseries extends WRESLComponent implements Serializable {

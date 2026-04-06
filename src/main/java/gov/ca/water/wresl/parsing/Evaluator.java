@@ -1,6 +1,7 @@
-package gov.ca.water.wresl.compile;
+package gov.ca.water.wresl.parsing;
 
 import gov.ca.water.wresl.domain.IntDouble;
+import gov.ca.water.wresl.domain.StudyDataSet;
 import gov.ca.water.wresl.domain.Svar;
 import gov.ca.water.wresl.domain.WRESLComponent;
 import gov.ca.water.wresl.errors.EvaluationErrorException;
@@ -9,32 +10,27 @@ import gov.ca.water.wresl.grammar.wreslParser;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.io.*;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static gov.ca.water.wresl.compile.Utilities.*;
+import static gov.ca.water.wresl.parsing.Utilities.*;
 
 public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
     private static String absReferencePath = null;                         // Absolute path of the folder that the main WRESL file is located
     private final Map<String,LookUpTable> tableSeries = new HashMap<>();   // Map that stores lookup table data
 
-
     // Enumerators
-    private enum MathSigns {
-        PLUS(1),
-        MINUS(2);
-        private final int value;
-        MathSigns(int value) {this.value = value;}
-    }
     private enum Logical {
         TRUE(1),
         FALSE(-1);
         private final int value;
         Logical(int value) {this.value = value;}
     }
+
+    // Temporary variables that will be used by multiple methods
+    Map<String,Svar> commonSvarsMap;
 
     // Singleton constructor
     // This setup allows us to treat Evaluator class as if it is a static class (even though
@@ -49,6 +45,55 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // ------------------------------------------------------------
     public static void setReferencePath(String referenceFolder) {
         INSTANCE.absReferencePath = referenceFolder;
+    }
+
+
+    // ------------------------------------------------------------
+    // --- EVALUATE INITIAL DATA
+    // ------------------------------------------------------------
+    public static void evaluateInitialData(Map<String, Svar> parameterMap) throws EvaluationErrorException {
+        // Copy parameter map into common memory
+        INSTANCE.commonSvarsMap = parameterMap;
+
+        // Loop over parameter list and evaluate
+        for (String parameter : parameterMap.keySet()) {
+            Svar svar = INSTANCE.commonSvarsMap.get(parameter);
+            try {
+                INSTANCE.commonSvarsMap.get(parameter).setData(INSTANCE.evaluate(svar));
+            }
+            catch (EvaluationErrorException e) {
+                throw new EvaluationErrorException(svar.fromWresl, svar.line, e.getErrorMessage());
+            }
+        }
+
+        // Update parameter values
+        parameterMap = INSTANCE.commonSvarsMap;
+
+        // Clear common memory
+        INSTANCE.commonSvarsMap = null;
+    }
+
+
+    // ------------------------------------------------------------
+    // --- EVALUATE A CONDITION
+    // ------------------------------------------------------------
+    public static boolean evaluateCondition(wreslParser.ExpressionContext expCompareParseTree, Map<String, Svar> parameterMap) {
+        // Store parameter map in common memory
+        INSTANCE.commonSvarsMap = parameterMap;
+
+        IntDouble condition = INSTANCE.visit(expCompareParseTree);
+        boolean result;
+        if (condition.getValue().intValue() == Logical.TRUE.value) {
+            result = true;
+        }
+        else {
+            result = false;
+        }
+
+        // Clear scratch memory
+        INSTANCE.commonSvarsMap = null;
+
+        return result;
     }
 
 
@@ -75,7 +120,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                             break;
                         }
                         // Process case conditions until one of them turns true
-                        else if (INSTANCE.evaluateCaseCondition(svar.caseConditionTree.get(i))) {
+                        else if (INSTANCE.evaluateCaseCondition(svar.caseConditionParseTree.get(i))) {
                             index = i;
                             break;
                         }
@@ -87,7 +132,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                     }
 
                     // We know which expression to evaluate; evaluate caseExpression
-                    return INSTANCE.visit(svar.caseExpressionTree.get(index));
+                    return INSTANCE.visit(svar.caseExpressionParseTree.get(index));
                 }
 
                 default -> {
@@ -298,7 +343,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     }
 
     @Override
-    public IntDouble visitExpressionNot(wreslParser.ExpressionNotContext ctx) {
+    public IntDouble visitExpressionNot(wreslParser.ExpressionNotContext ctx) throws EvaluationErrorException {
         IntDouble logicalResult = visit(ctx.expression());
 
         // Check that returned value is understood as a logical value
@@ -321,8 +366,9 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         IntDouble value = visit(ctx.expression());
 
         // If sign is negative, multiply value with -1
-        int sign = visit(ctx.opAdditionSubtraction()).getValue().intValue();
-        if (sign == MathSigns.MINUS.value) {
+        boolean isNegative = false;
+        if (ctx.MINUS() != null) { isNegative = true; }
+        if (isNegative) {
             if (value.isInt()) {
                 Number valueTemp = Integer.valueOf(-value.getValue().intValue());
                 return new IntDouble(valueTemp, true);
@@ -338,7 +384,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     }
 
     @Override
-    public IntDouble visitExpressionCall(wreslParser.ExpressionCallContext ctx) {
+    public IntDouble visitExpressionCall(wreslParser.ExpressionCallContext ctx) throws EvaluationErrorException {
         // Retrieve arguments
         ArrayList<IntDouble> arguments = new ArrayList<>();
         if (ctx.arguments() != null) {
@@ -476,7 +522,29 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // --- VARIABLE REFERENCE VISITOR METHODS
     // ------------------------------------------------------------
     @Override
-    // doubleValue
+    // objectReference
+    public IntDouble visitObjectReference(wreslParser.ObjectReferenceContext ctx) {
+        // Variable name
+        String varName = getWreslText(ctx.OBJECT_NAME());
+
+        // Find the variable in common variables
+        Svar var = INSTANCE.commonSvarsMap.get(varName);
+        if (var == null) {
+            throw new EvaluationErrorException("Variable " + varName + " is not defined!");
+        }
+
+        // Make sure variable value is already computed
+        IntDouble varData = var.getData();
+        if (varData == null) {
+            throw new EvaluationErrorException("Variable " + varName + " is being used before its value is computed!");
+        }
+
+        // Return data
+        return varData;
+    }
+
+    @Override
+    // doubleNumber
     public IntDouble visitDoubleNumber(wreslParser.DoubleNumberContext ctx) {
         Number doubleValue = Double.valueOf(Double.parseDouble(ctx.DOUBLE().getText()));
         return new IntDouble(doubleValue,false);
@@ -500,23 +568,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             return new IntDouble(Logical.TRUE.value, true);
         }
         else {
-            return visit(ctx.CONDITION());
-        }
-    }
-
-
-    // ------------------------------------------------------------
-    // --- MISCELLENOUS VISITOR METHODS
-    // ------------------------------------------------------------
-    @Override
-    public IntDouble visitOpAdditionSubtraction(wreslParser.OpAdditionSubtractionContext ctx) {
-        if (ctx.PLUS() != null) {
-            Number intValueForPlus = Integer.valueOf(MathSigns.PLUS.value);
-            return new IntDouble(intValueForPlus, true);
-        }
-        else {
-            Number intValueForMinus = Integer.valueOf(MathSigns.MINUS.value);
-            return new IntDouble(intValueForMinus, true);
+            return visit(ctx.expression());
         }
     }
 

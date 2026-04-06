@@ -1,6 +1,5 @@
 package gov.ca.water.wresl.domain;
 
-import gov.ca.water.wresl.compile.Param;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.io.Serializable;
@@ -24,7 +23,7 @@ public class Svar extends WRESLComponent implements Serializable {
 
     // default is zero
     public String timeArraySize = "0";
-    public ValueEvaluatorParser_DUMMY timeArraySizeParser;
+    public ParseTree timeArraySizeParseTree = null;
 
     // These are for:
     // (1) normal Svar if timeArraySize=0
@@ -34,11 +33,9 @@ public class Svar extends WRESLComponent implements Serializable {
     //      e.g.,  define(3) someSvar { value $m }
     public List<String> caseName = new ArrayList<>();
     public List<String> caseCondition = new ArrayList<>();
-    public List<ParseTree> caseConditionTree = new ArrayList<>();
-    public List<ValueEvaluatorParser_DUMMY> caseConditionParsers = new ArrayList<>();
+    public List<ParseTree> caseConditionParseTree = new ArrayList<>();
     public List<String> caseExpression = new ArrayList<>();
-    public List<ParseTree> caseExpressionTree = new ArrayList<>();
-    public List<ValueEvaluatorParser_DUMMY> caseExpressionParsers = new ArrayList<>();
+    public List<ParseTree> caseExpressionParseTree = new ArrayList<>();
 
 
     // These maps are for time array of Svar if future definitions have different expressions
@@ -66,16 +63,27 @@ public class Svar extends WRESLComponent implements Serializable {
     }
 
     // Set case condition related data
-    public void addCaseData(String caseName, String caseCondition, String caseExpression, ParseTree caseConditionTree, ParseTree caseExpressionTree) {
+    public void addCaseData(String caseName, String caseCondition, String caseExpression, ParseTree caseConditionParseTree, ParseTree caseExpressionParseTree) {
         this.caseName.add(caseName);
         this.caseCondition.add(caseCondition);
         this.caseExpression.add(caseExpression);
-        this.caseConditionTree.add(caseConditionTree);
-        this.caseExpressionTree.add(caseExpressionTree);
+        this.caseConditionParseTree.add(caseConditionParseTree);
+        this.caseExpressionParseTree.add(caseExpressionParseTree);
     }
 
     // Set data
     public void setData(IntDouble data) {
         this.data = data;
     }
+
+
+    // --------------------
+    // --- GETTERS
+    // --------------------
+
+    // Get data
+    public IntDouble getData() {
+        return this.data;
+    }
+
 }

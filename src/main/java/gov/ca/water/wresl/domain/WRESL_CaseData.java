@@ -2,8 +2,6 @@ package gov.ca.water.wresl.domain;
 
 import org.antlr.v4.runtime.tree.ParseTree;
 
-
-
 public class WRESL_CaseData extends WRESLComponent {
     public String caseCondition;
     public String caseExpression;

@@ -1,7 +1,6 @@
-package gov.ca.water.wresl.compile;
+package gov.ca.water.wresl.parsing;
 
 import gov.ca.water.wresl.domain.StudyDataSet;
-import gov.ca.water.wresl.errors.SyntaxErrorException;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +27,7 @@ public class Study {
     // ------------------------------------------------------------
     // --- COMPILE WRIMS DATA FROM WRESL FILES
     // ------------------------------------------------------------
-    public void compile() throws SyntaxErrorException {
+    public void compile() {
         // Track time
         long start = System.currentTimeMillis();
 
@@ -42,7 +41,6 @@ public class Study {
 
         // Parse WRESL input into WRIMS objects
         Antlr_To_WRIMS parse = new Antlr_To_WRIMS(this.mainFilePath, treesByFile);
-        Evaluator.setReferencePath(this.mainFileFolder.toString());
         VisitorResult study = parse.visit(studyTree);
         StudyDataSet sds = (StudyDataSet)study.data();
 
@@ -66,7 +64,7 @@ public class Study {
     // ------------------------------------------------------------
     // --- COLLECT STUDY WRESL FILES, COMPILE THEIR PARSE TREES AS WELL AS THEIR PARENT AND CHILD FILES
     // ------------------------------------------------------------
-    private static Map<Path, WRESLFile> collectTrees(Path entryFile) throws SyntaxErrorException{
+    private static Map<Path, WRESLFile> collectTrees(Path entryFile) {
         // Begin by parsing all the files into separate trees
         long start = System.currentTimeMillis();
         WRESLFileCollector studyFileCollector = new WRESLFileCollector();

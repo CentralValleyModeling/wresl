@@ -1,4 +1,4 @@
-import gov.ca.water.wresl.compile.*;
+import gov.ca.water.wresl.parsing.*;
 import gov.ca.water.wresl.errors.EvaluationErrorException;
 import gov.ca.water.wresl.errors.SyntaxErrorException;
 import org.slf4j.Logger;

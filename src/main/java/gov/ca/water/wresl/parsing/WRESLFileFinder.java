@@ -1,4 +1,4 @@
-package gov.ca.water.wresl.compile;
+package gov.ca.water.wresl.parsing;
 
 import gov.ca.water.wresl.grammar.wreslBaseVisitor;
 import gov.ca.water.wresl.grammar.wreslParser;

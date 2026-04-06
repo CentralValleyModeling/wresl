@@ -1,19 +1,24 @@
 package gov.ca.water.wresl.errors;
 
-import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 public class SyntaxErrorException extends RuntimeException {
-    private String sourceFile;
-    private int line;
-    private List<String> errorMessages;
+    private String sourceFile = "";
+    private int line = -1;
+    private List<String> errorMessages = new ArrayList<>();
+
 
     // ------------------------------------------------------------
-    // --- CONSTRUCTOR
+    // --- CONSTRUCTORS
     // ------------------------------------------------------------
     public SyntaxErrorException(String sourceFile, int line, List<String> errorMessages) {
         this.sourceFile = sourceFile;
         this.line = line;
+        this.errorMessages =  errorMessages;
+    }
+
+    public SyntaxErrorException(List<String> errorMessages) {
         this.errorMessages =  errorMessages;
     }
 

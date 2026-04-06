@@ -2,6 +2,7 @@ grammar wresl;
 
 options { caseInsensitive = true; }
 
+// Entry point for parsing Main File
 mainStart
     : ( initial
       | group
@@ -10,32 +11,8 @@ mainStart
       | include
       )+ EOF
     ;
-
-// SEQUENCE
-sequence
-    : SEQUENCE OBJECT_NAME OPEN_BRACE sequenceBody CLOSE_BRACE
-    ;
-sequenceBody
-    : MODEL OBJECT_NAME sequenceCondition? ORDER INT timestepSpecification?
-    ;
-sequenceCondition: CONDITION expression ;
-timestepSpecification: TIMESTEP (STEP_1MON | STEP_1DAY) ;
-
-// MODEL
-model: MODEL OBJECT_NAME OPEN_BRACE modelBody+ CLOSE_BRACE ;
-modelBody
-    : include
-    | svar
-    | dvar
-    | external
-    | alias
-    | timeSeries
-    | goal
-    | objective
-    | ifStatement
-    ;
-
-// INCLUDE
+    
+// Entry point for parsing Include File
 includeStart
     : ( initial
       | ifStatement
@@ -52,6 +29,35 @@ includeStart
       | timeSeries
       )* EOF
     ;
+
+
+// SEQUENCE
+sequence
+    : SEQUENCE OBJECT_NAME OPEN_BRACE sequenceBody CLOSE_BRACE
+    ;
+sequenceBody
+    : MODEL OBJECT_NAME sequenceCondition? ORDER INT timestepSpecification?
+    ;
+sequenceCondition: CONDITION expression ;
+timestepSpecification: TIMESTEP (STEP_1MON | STEP_1DAY) ;
+
+
+// MODEL
+model: MODEL OBJECT_NAME OPEN_BRACE modelBody+ CLOSE_BRACE ;
+modelBody
+    : include
+    | svar
+    | dvar
+    | external
+    | alias
+    | timeSeries
+    | goal
+    | objective
+    | ifStatement
+    ;
+
+
+// INCLUDE
 include: INCLUDE scope? includeBody ;
 includeBody
     : groupReference       # IncludeGroup
@@ -60,6 +66,7 @@ includeBody
     ;
 groupReference: GROUP OBJECT_NAME ;
 modelReference: MODEL OBJECT_NAME ;
+
 
 // GOAL
 goal: GOAL scope? arraySizeDefinition? OBJECT_NAME OPEN_BRACE goalBody CLOSE_BRACE ;
@@ -72,6 +79,7 @@ goalShortForm: expression opCompare expression ;
 goalViaPenalty: SIDE expression SIDE expression penalty* ;
 goalViaCase: SIDE expression caseStatement+ ;
 
+
 // OBJECTIVE
 objective: OBJECTIVE OBJECT_NAME EQUALS_SIGN OPEN_BRACE objectiveBody CLOSE_BRACE ;
 objectiveBody: weightsByPair | commonWeights ;
@@ -80,6 +88,7 @@ varWeightPair: OPEN_BRACKET expression COMMA expression CLOSE_BRACKET ;
 commonWeights: weight variables ;
 weight: WEIGHT expression ;
 variables: VARIABLE expression+ ;
+
 
 // GROUP
 group: GROUP OBJECT_NAME OPEN_BRACE groupBody+ CLOSE_BRACE ;
@@ -94,6 +103,7 @@ groupBody
     | objective
     | ifStatement
     ;
+
 
 // DEFINE (SVAR or DVAR)
 dvar: (DVAR | DEFINE) scope? arraySizeDefinition? OBJECT_NAME OPEN_BRACE defineBoundLimits definitionSpecifics+ CLOSE_BRACE ;
@@ -148,8 +158,10 @@ timeSeries
     | DEFINE     OBJECT_NAME OPEN_BRACE TIMESERIES (optionalBPart | kind | units | convert)+ CLOSE_BRACE  #timeSeriesTypeDef
     ;
 
+
 // INITIAL
 initial: INITIAL OPEN_BRACE svar+ CLOSE_BRACE ;
+
 
 // IF STATEMENT
 ifStatement: ifClause elseIfClause* elseClause? ;
@@ -157,6 +169,7 @@ ifClause: IF expression ifBlock ;
 elseIfClause: ELSEIF expression ifBlock ;
 elseClause: ELSE ifBlock ;
 ifBlock: OPEN_BRACE (include | svar | dvar | external | alias | timeSeries | external | goal | objective)+ CLOSE_BRACE ;
+
 
 // CASE STATEMENT
 caseStatement: CASE caseName OPEN_BRACE caseCondition? caseBody CLOSE_BRACE ;
@@ -181,6 +194,7 @@ penaltyValue
     | (PENALTY expression)
     ;
 
+
 // SELECT
 select: SELECT columnName FROM OBJECT_NAME given? use? where? ;
 given: GIVEN columnName EQUALS_SIGN expression ;
@@ -198,16 +212,17 @@ columnName
     | nonReservedKeywords
     ;
 
+
+
 // -----------------------------
 // Expressions
 // -----------------------------
-
 expression
     : expression opCompare expression                                       #expressionComparison
     | expression opMultiplicationDivision expression                        #expressionMultDiv
     | expression opAdditionSubtraction expression                           #expressionAddSub
     | NOT expression                                                        #expressionNot
-    | opAdditionSubtraction expression                                      #expressionSigned // +1, or -1 without a left hand side
+    | (PLUS | MINUS) expression                                             #expressionSigned // +1, or -1 without a left hand side
     | sumExpressionBody                                                     #expressionSum
     | (preDefinedFunction | OBJECT_NAME) OPEN_PAREN arguments? CLOSE_PAREN  #expressionCall
     | expression COLON expression                                           #expressionSlice

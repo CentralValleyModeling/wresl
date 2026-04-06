@@ -1,6 +1,7 @@
-package gov.ca.water.wresl.compile;
+package gov.ca.water.wresl.parsing;
 
 import gov.ca.water.wresl.domain.*;
+import gov.ca.water.wresl.errors.EvaluationErrorException;
 import gov.ca.water.wresl.errors.SyntaxErrorException;
 import gov.ca.water.wresl.grammar.wreslBaseVisitor;
 import gov.ca.water.wresl.grammar.wreslParser;
@@ -12,7 +13,7 @@ import java.io.*;
 import java.nio.file.Path;
 import java.util.*;
 
-import static gov.ca.water.wresl.compile.Utilities.getWreslText;
+import static gov.ca.water.wresl.parsing.Utilities.getWreslText;
 
 public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     // Main WRESL file, absolute folder that it resides, and list of WRESL files
@@ -20,14 +21,17 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     private final Path absReferencePath;
     private final Map<Path, WRESLFile> wreslFilesMap;
 
-    // WRESL file that's being parsed
-    private String currentFile;
-
     // Containers (data defined under INITIAL will be stored as "parameters" under sds
     private Map<Integer,Sequence> sequenceData;
     private Map<String, ModelDataSet> groups;  // Store GROUPs as ModelDataSet to be included in actual ModelDataSets
     private Map<String, ModelDataSet> models;
     private StudyDataSet sds;
+
+    // Scratch memory used for data that needs to be access by multiple methods
+    private String currentFile;                                   // WRESL file that's being parsed
+    private Map<String, ArrayList<String>> modelsWithinModelsMap; // List of models included in each model/group
+    private String currentModelOrGroupName = "";                  // Name of model or group that is currently being parsed
+    private LinkedHashMap<String, Svar> tempParameterMap;         // Temporary map of Svars defined in the INITIAL statement
 
 
     // ------------------------------------------------------------
@@ -42,6 +46,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         this.groups = new HashMap<>();
         this.models = new HashMap<>();
         this.sds = new StudyDataSet();
+
+        this.modelsWithinModelsMap = new HashMap<>();
     }
 
 
@@ -57,6 +63,9 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         // File related data
         this.sds.setAbsMainFilePath(this.mainFilePath.toString());
 
+        // Instantiate Evaluator
+        Evaluator.setReferencePath(this.absReferencePath.toString());
+
         // Loop through Study children nodes
         for (int i = 0; i <= ctx.getChildCount(); i++) {
             ParseTree child = ctx.getChild(i);
@@ -69,11 +78,57 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             // Visit child
             VisitorResult data = visit(child);
             if (data == null) continue;
-
-            // Proceed based on child node type
         }
 
-        return new VisitorResult(sds,null);
+        // Process SEQUENCE data, compile ordered modelList in StudyDataSet
+        ArrayList<String> modelList = new ArrayList<>();
+        ArrayList<String> modelConditionList = new ArrayList<>();
+        ArrayList<String> modelTimeStepList = new ArrayList<>();
+        for (int i=0; i<this.sequenceData.size(); i++) {
+            Sequence sq = this.sequenceData.get(i+1);
+            // Check that a model is not refernced in multiple SEQUENCEs
+            if (modelList.contains(sq.modelName)) {
+                throw new EvaluationErrorException("Each SEQUENCE must define a unique model. Model '" + sq.modelName + "' is used in multiple SEQUENCEs!");
+            }
+            modelList.add(sq.modelName);
+            modelConditionList.add(sq.condition);
+            modelTimeStepList.add(sq.timeStep);
+        }
+        this.sds.setModelList(modelList);
+        this.sds.setModelConditionList(modelConditionList);
+        this.sds.setModelTimeStepList(modelTimeStepList);
+
+        // Check that models/groups included in other models/groups exist
+        for (String thisModel: this.modelsWithinModelsMap.keySet()) {
+            List<String> includedModelsList = this.modelsWithinModelsMap.get(thisModel);
+            for (String includedModel: includedModelsList) {
+                if (!modelList.contains(includedModel)) {
+                    throw new EvaluationErrorException("Model " + includedModel + " referenced from model " + thisModel + " is not defined!");
+                }
+            }
+        }
+
+        // Check for duplicate Dvars within each model
+
+        // Check for duplicate Svars within each model
+
+        // Check for duplicate Goals within each model
+
+        // Check for duplicate aliases within each model
+
+        // Check for duplicate External within each model
+
+        // Check for duplicate Timeseries within each model
+
+        // Check for duplicate weight tables within each model
+
+
+        // Clear data that is no longer needed
+        this.sequenceData = null;
+        this.groups = null;
+        this.models = null;
+
+        return new VisitorResult(this.sds,null);
     }
 
     @Override
@@ -115,8 +170,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     @Override
     // INITIAL; Svars listed under INITIAL statement are stored as parameters in StudyDataSet
     public VisitorResult visitInitial(wreslParser.InitialContext ctx) {
-        ArrayList<String> parameterList = new ArrayList<>();
-        LinkedHashMap<String,Svar> parameterMap = new LinkedHashMap<>();
+        ArrayList<String> tempParameterList = new ArrayList<>();
+        this.tempParameterMap = new LinkedHashMap<>();
 
         // Loop through children; they should all be SVARs
         for (int i = 0; i <= ctx.children.size() - 1; i++) {
@@ -132,9 +187,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             // WRESL component can only be an SVAR as dictated by the grammar
             switch (data) {
                 case Svar svar -> {
-                    svar.setData(Evaluator.evaluate(data));
-                    parameterList.add(name);
-                    parameterMap.put(name, svar);
+                    tempParameterList.add(name);
+                    this.tempParameterMap.put(name, svar);
                 }
                 default -> {
                     // Do nothing since we are already skipping any non-Svar context
@@ -142,9 +196,12 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             }
         }
 
+        // Process parameters (Svars)
+        Evaluator.evaluateInitialData(this.tempParameterMap);
+
         // Store parameter data in permanently
-        this.sds.setParameterList(parameterList);
-        this.sds.setParameterMap(parameterMap);
+        this.sds.setParameterList(tempParameterList);
+        this.sds.setParameterMap(this.tempParameterMap);
 
         return null;
     }
@@ -164,9 +221,6 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         sq.modelName = getWreslText(sqBodyCtx.OBJECT_NAME());
         sq.order = Integer.parseInt(getWreslText(sqBodyCtx.INT()));
 
-        // Source file
-        sq.fromWresl = this.currentFile;
-
         // Condition, if exists
         if (sqBodyCtx.sequenceCondition() != null) {
             sq.condition = getWreslText(sqBodyCtx.sequenceCondition().expression()).toLowerCase();
@@ -185,9 +239,14 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
     @Override
     // MODEL
-    public VisitorResult visitModel(wreslParser.ModelContext ctx) {
+    public VisitorResult visitModel(wreslParser.ModelContext ctx) throws EvaluationErrorException {
         ModelDataSet mds = new ModelDataSet();
-        String modelName = getWreslText(ctx.OBJECT_NAME());
+        this.currentModelOrGroupName = getWreslText(ctx.OBJECT_NAME());
+
+        // Check that model is not defined more than once
+        if (this.models.get(this.currentModelOrGroupName) != null) {
+            throw new EvaluationErrorException(this.currentFile, ctx.OBJECT_NAME().getSymbol().getLine(), "Model " + this.currentModelOrGroupName + " is defined more than once!");
+        }
 
         // Visit modelBody
         for (int i = 0; i <= ctx.modelBody().size() - 1; i++) {
@@ -231,7 +290,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         }
 
         // Store the data for the model
-        this.models.put(modelName, mds);
+        this.models.put(this.currentModelOrGroupName, mds);
 
         // Return null; we have already collected all the data into "models" field
         return null;
@@ -239,13 +298,16 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
     @Override
     // GROUP
-    public VisitorResult visitGroup(wreslParser.GroupContext ctx) {
+    public VisitorResult visitGroup(wreslParser.GroupContext ctx) throws EvaluationErrorException {
         ModelDataSet mds = new ModelDataSet();
-        String groupName = getWreslText(ctx.OBJECT_NAME());
+        this.currentModelOrGroupName = getWreslText(ctx.OBJECT_NAME());
 
         // Visit groupBody
         for (int i = 0; i <= ctx.groupBody().size()-1; i++) {
             VisitorResult result = visit(ctx.groupBody(i));
+
+            // Continue if null value is returned as VisitorResult (such as the result of an IF statement)
+            if (result == null) { continue; }
 
             // Copy returned data into ModelDataSet
             List<VisitorResult> dataList;
@@ -261,29 +323,32 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                 switch (data) {
                     case Svar svar -> {
                         mds.svList.add(name);
-                        mds.svMap.put(name,(Svar)data);
+                        mds.svMap.put(name,svar);
                     }
-                    case Dvar dvar -> {}
+                    case Dvar dvar -> {
+                        mds.dvList.add(name);
+                        mds.dvMap.put(name, dvar);
+                    }
                     case Timeseries ts -> {
                         mds.tsList.add(name);
-                        mds.tsMap.put(name,(Timeseries)data);
+                        mds.tsMap.put(name, ts);
                     }
                     case Goal goal -> {}
                     case Alias alias    -> {
                         mds.asList.add(name);
-                        mds.asMap.put(name,(Alias)data);
+                        mds.asMap.put(name, alias);
                     }
                     case External external -> {
                         mds.exList.add(name);
-                        mds.exMap.put(name,(External)data);
+                        mds.exMap.put(name, external);
                     }
-                    default -> System.out.println("error");
+                    default -> throw new EvaluationErrorException("Error in processing WRESL data for group " + this.currentModelOrGroupName);
                 }
             }
         }
 
         // Store the data for the model
-        this.groups.put(groupName, mds);
+        this.groups.put(this.currentModelOrGroupName, mds);
 
         // Return null; we have already collected all the data into "groups" field
         return null;
@@ -330,6 +395,43 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
         // Return collected data
         return result;
+    }
+
+    @Override
+    // includeModel
+    public VisitorResult visitIncludeModel(wreslParser.IncludeModelContext ctx) {
+        // Included model name
+        String includedModel = getWreslText(ctx.modelReference().OBJECT_NAME());
+
+        // Add included model to list of models referenced by a model
+        if (this.currentModelOrGroupName.contains(this.currentModelOrGroupName)) {
+            this.modelsWithinModelsMap.get(this.currentModelOrGroupName).add(includedModel);
+        }
+        else {
+            ArrayList<String> includedModels = new ArrayList<>(List.of(includedModel));
+            this.modelsWithinModelsMap.put(this.currentModelOrGroupName, includedModels);
+        }
+
+        // Return null since we have already stored the necessary data in modelsWithinModelsMap data
+        return null;
+    }
+
+    @Override
+    public VisitorResult visitIncludeGroup(wreslParser.IncludeGroupContext ctx) {
+        // Included model name
+        String includedModel = getWreslText(ctx.groupReference().OBJECT_NAME());
+
+        // Add included model to list of models referenced by a model
+        if (this.currentModelOrGroupName.contains(this.currentModelOrGroupName)) {
+            this.modelsWithinModelsMap.get(this.currentModelOrGroupName).add(includedModel);
+        }
+        else {
+            ArrayList<String> includedModels = new ArrayList<>(List.of(includedModel));
+            this.modelsWithinModelsMap.put(this.currentModelOrGroupName, includedModels);
+        }
+
+        // Return null since we have already stored the necessary data in modelsWithinModelsMap data
+        return null;
     }
 
 
@@ -747,6 +849,74 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
 
     // ------------------------------------------------------------
+    // --- IF STATEMENT (CAN ONLY USE SVARs DEFINED IN INITIAL STATEMENT)
+    // ------------------------------------------------------------
+    @Override
+    // ifStatement
+    public VisitorResult visitIfStatement(wreslParser.IfStatementContext ctx) {
+        VisitorResult result;
+
+        // Process first IF clause
+        if (Evaluator.evaluateCondition(ctx.ifClause().expression(), this.tempParameterMap)) {
+            return visit(ctx.ifClause().ifBlock());
+        }
+
+        // Process ELSE IF clauses
+        for (int i=0; i<ctx.elseIfClause().size(); i++) {
+            if (Evaluator.evaluateCondition(ctx.elseIfClause(i).expression(), this.tempParameterMap)) {
+                return visit(ctx.elseIfClause(i).ifBlock());
+            }
+        }
+
+        // If made it this far, check that ELSE clause exists, and return result
+        if (ctx.elseClause() != null) {
+            return visit(ctx.elseClause().ifBlock());
+        }
+
+        // If made this far, none of the IF statements were evaluated as true; return null
+        return null;
+
+    }
+
+    @Override
+    // ifBlock
+    public VisitorResult visitIfBlock(wreslParser.IfBlockContext ctx) {
+        List<VisitorResult> ifBlockContents = new ArrayList<>();
+        List<VisitorResult> dataList;
+        for (int i=1; i<ctx.getChildCount()-1; i++) {
+            // Visit child
+            VisitorResult result = visit(ctx.getChild(i));
+
+            // Accumulate returned data into return variable
+            // ... when only one data is returned
+            if (result.children().size() == 0) {
+                dataList = List.of(result);
+            }
+            // ... when multiple data are returned
+            else {
+                dataList = result.children();
+            }
+            ifBlockContents.addAll(dataList);
+        //    switch (ctx.getChild(i)) {
+        //        case wreslParser.IncludeContext incCtx -> {
+        //            ifBlockContents.add(visit(incCtx));
+        //        }
+        //        case wreslParser.SvarContext svarCtx -> {
+        //            ifBlockContents.add(visit(svarCtx));
+        //        }
+        //        case wreslParser.DvarContext dvarCtx -> {
+        //            ifBlockContents.add(visit(dvarCtx));
+        //        }
+        //        default -> { // Do nothing
+        //        }
+        //    }
+
+        }
+
+        return new VisitorResult(null, null, ifBlockContents);
+    }
+
+    // ------------------------------------------------------------
     // --- MISCELLANEOUS VISIT METHODS
     // ------------------------------------------------------------
     @Override
@@ -782,9 +952,6 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
         return stringData;
     }
-
-
-
 
 
 }
