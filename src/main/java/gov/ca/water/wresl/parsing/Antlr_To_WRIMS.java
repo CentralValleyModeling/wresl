@@ -249,8 +249,11 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         }
 
         // Visit modelBody
-        for (int i = 0; i <= ctx.modelBody().size() - 1; i++) {
+        for (int i = 0; i < ctx.modelBody().size(); i++) {
             VisitorResult returnedData = visit(ctx.modelBody(i));
+
+            // Continue if returnedData is null, for instance, after evaluation of an IF statement
+            if (returnedData == null) { continue; }
 
             // Copy returned data into ModelDataSet
             List<VisitorResult> dataList;
