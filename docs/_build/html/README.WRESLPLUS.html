@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WRESL+ User Documentation &mdash; wreslplus documentation 0.1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=e031e9a9"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="WRESL+" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            wreslplus documentation
+          </a>
+              <div class="version">
+                0.1.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">WRESL+ User Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#contents">Contents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#explanation">Explanation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#how-wresl-based-built-models-are-passed-to-solvers">How WRESL+ based built models are passed to solvers?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#key-concepts">Key Concepts</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#state-variables-svar">State Variables (SVAR)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#decision-variables-dvar">Decision Variables (DVAR)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#goals-constraints">Goals (Constraints)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#objectives">Objectives</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#constants-and-aliases">Constants and Aliases</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#model-structure">Model Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#how-the-solver-works-conceptual">How the Solver Works (Conceptual)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#design-philosophy">Design Philosophy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#common-pitfalls-explained">Common Pitfalls Explained</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#wresl-vs-wresl">WRESL vs. WRESL+</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#tutorials">Tutorials</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#getting-started-with-wresl">Getting Started with WRESL+</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#your-first-model">Your First Model</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#what-just-happened">What Just Happened?</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#tutorial-shasta-reservoir-mass-balance">Tutorial: Shasta Reservoir Mass Balance</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tutorial-conditional-operations-with-case-condition">Tutorial: Conditional Operations with Case/Condition</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tutorial-multi-file-model-organization">Tutorial: Multi-File Model Organization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#practical-guides">Practical Guides</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#how-to-define-state-variables-svars">How to Define State Variables (SVARs)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#how-to-define-decision-variables-dvars">How to Define Decision Variables (DVARs)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#how-to-define-constants">How to Define Constants</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#how-to-define-goals-constraints">How to Define Goals (Constraints)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#how-to-define-aliases">How to Define Aliases</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#how-to-define-objectives">How to Define Objectives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#how-to-include-files">How to Include Files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#how-to-structure-a-model">How to Structure a Model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#how-to-use-table-lookups">How to Use Table Lookups</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#how-to-use-conditional-includes">How to Use Conditional Includes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#how-to-use-unit-conversions">How to Use Unit Conversions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#how-to-reference-variables-across-model-cycles">How to Reference Variables Across Model Cycles</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#how-to-use-the-range-function">How to Use the Range Function</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#reference">Reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#wresl-syntax-reference">WRESL+ Syntax Reference</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#keywords">Keywords</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#variable-definition-syntax">Variable Definition Syntax</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#goal-syntax">Goal Syntax</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#objective-syntax">Objective Syntax</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#model-structure-syntax">Model Structure Syntax</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#data-types">Data Types</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#operators">Operators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comments">Comments</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#strings">Strings</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#supported-functions">Supported Functions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#special-built-in-identifiers">Special Built-in Identifiers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#variable-cross-references">Variable Cross-References</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#debugging-tips">Debugging Tips</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#common-error-messages">Common Error Messages</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#troubleshooting-workflow">Troubleshooting Workflow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#frequently-asked-questions-faq">Frequently Asked Questions (FAQ)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#contributing-to-the-documentation">Contributing to the Documentation</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">wreslplus documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">WRESL+ User Documentation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/README.WRESLPLUS.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="wresl-user-documentation">
+<h1>WRESL+ User Documentation<a class="headerlink" href="#wresl-user-documentation" title="Permalink to this heading"></a></h1>
+<p>WRESL+ (Water Resources Engineering Scripting Language Plus) is a domain-specific language for water resources modeling, used within the WRIMS (Water Resources Integrated Modeling System). It enables users to define state variables, decision variables, goals, and optimization objectives for complex water resource simulations. WRESL+ is designed to support reproducible, modular, and transparent modeling for hydrologic and operations studies.</p>
+<hr class="docutils" />
+<section id="contents">
+<h2>Contents<a class="headerlink" href="#contents" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="#explanation">Explanation</a>: Background, concepts, and rationale</p>
+<ul>
+<li><p><a class="reference internal" href="#wresl-vs-wresl">WRESL vs. WRESL+</a>: Key differences between the two</p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#tutorials">Tutorials</a>: Step-by-step lessons for beginners</p></li>
+<li><p><a class="reference internal" href="#practical-guides">Practical Guides</a>: Recipes for common tasks and goals</p></li>
+<li><p><a class="reference internal" href="#reference">Reference</a>: Technical details and valid syntax</p></li>
+<li><p><a class="reference internal" href="#debugging-tips">Debugging Tips</a>: Advice for solving common issues</p></li>
+<li><p><a class="reference internal" href="#contributing-to-the-documentation">Contributing</a>: How to help improve this documentation</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="explanation">
+<h2>Explanation<a class="headerlink" href="#explanation" title="Permalink to this heading"></a></h2>
+<p><em>Understanding-oriented: background, concepts, and design rationale.</em></p>
+<p>This section introduces the core ideas behind WRESL+ to the readers to have a solid conceptual foundation about the LP model structure and utilized syntaxes.</p>
+<section id="how-wresl-based-built-models-are-passed-to-solvers">
+<h3>How WRESL+ based built models are passed to solvers?<a class="headerlink" href="#how-wresl-based-built-models-are-passed-to-solvers" title="Permalink to this heading"></a></h3>
+<p>At each simulation time step, WRESL+ defines a <strong>linear programming (LP) problem</strong>, a set of known inputs, unknown decision variables, and constraints, that a solver optimizes. The language cleanly separates three concerns:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Concern</p></th>
+<th class="head"><p>WRESL+ construct</p></th>
+<th class="head"><p>Role</p></th>
+<th class="head"><p>CalSim example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Known inputs</p></td>
+<td><p>State Variables (SVAR)</p></td>
+<td><p>Provide data to the solver</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">I_SHSTA</span></code> (Shasta inflow)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Unknowns to solve</p></td>
+<td><p>Decision Variables (DVAR)</p></td>
+<td><p>Values determined by the solver</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">C_SHSTA</span></code> (channel flow at Shasta)</p></td>
+</tr>
+<tr class="row-even"><td><p>Rules &amp; objectives</p></td>
+<td><p>Goals / Objectives</p></td>
+<td><p>Constraints the solver must satisfy or optimize</p></td>
+<td><p>Mass balance, minimum instream flow</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="key-concepts">
+<h3>Key Concepts<a class="headerlink" href="#key-concepts" title="Permalink to this heading"></a></h3>
+<section id="state-variables-svar">
+<h4>State Variables (SVAR)<a class="headerlink" href="#state-variables-svar" title="Permalink to this heading"></a></h4>
+<p>State variables represent known or precomputed values at each time step. They can be:</p>
+<ul class="simple">
+<li><p><strong>Fixed values</strong> (<code class="docutils literal notranslate"><span class="pre">value</span></code>): constants or expressions computed from other variables</p></li>
+<li><p><strong>Time series</strong> (<code class="docutils literal notranslate"><span class="pre">timeseries</span></code>): data read from HEC-DSS files (e.g., historical inflows like <code class="docutils literal notranslate"><span class="pre">I_SHSTA</span></code>)</p></li>
+<li><p><strong>Table lookups</strong> (<code class="docutils literal notranslate"><span class="pre">select...from...where</span></code>): values interpolated from external data tables</p></li>
+<li><p><strong>Conditional</strong> (<code class="docutils literal notranslate"><span class="pre">case</span></code>/<code class="docutils literal notranslate"><span class="pre">condition</span></code>): values that vary based on runtime conditions (e.g., wet vs. dry year operations)</p></li>
+<li><p><strong>Summations</strong> (<code class="docutils literal notranslate"><span class="pre">sum</span></code>): aggregated values over an index range</p></li>
+</ul>
+<p>SVARs are fully determined <em>before</em> the solver runs — they provide inputs and parameters to the optimization.</p>
+</section>
+<section id="decision-variables-dvar">
+<h4>Decision Variables (DVAR)<a class="headerlink" href="#decision-variables-dvar" title="Permalink to this heading"></a></h4>
+<p>Decision variables are the unknowns that the linear programming solver determines. They have:</p>
+<ul class="simple">
+<li><p><strong>Bounds</strong> (<code class="docutils literal notranslate"><span class="pre">lower</span></code>/<code class="docutils literal notranslate"><span class="pre">upper</span></code>): feasible range for the variable</p></li>
+<li><p><strong>Standard form</strong> (<code class="docutils literal notranslate"><span class="pre">std</span></code>): non-negative by default (lower=0, upper=unbounded)</p></li>
+<li><p><strong>Integer option</strong> (<code class="docutils literal notranslate"><span class="pre">integer</span></code>): restricts the variable to integer values</p></li>
+<li><p><strong>Metadata</strong> (<code class="docutils literal notranslate"><span class="pre">kind</span></code>/<code class="docutils literal notranslate"><span class="pre">units</span></code>): descriptive labels for output (e.g., <code class="docutils literal notranslate"><span class="pre">kind</span> <span class="pre">'FLOW-CHANNEL'</span></code>, <code class="docutils literal notranslate"><span class="pre">units</span> <span class="pre">'CFS'</span></code>)</p></li>
+</ul>
+<p>The solver adjusts DVARs (e.g., <code class="docutils literal notranslate"><span class="pre">C_SHSTA</span></code>, <code class="docutils literal notranslate"><span class="pre">D_REDBLF</span></code>) to satisfy goals while optimizing the objective function.</p>
+</section>
+<section id="goals-constraints">
+<h4>Goals (Constraints)<a class="headerlink" href="#goals-constraints" title="Permalink to this heading"></a></h4>
+<p>Goals define linear constraints that the solver must satisfy or approximate. They can be:</p>
+<ul class="simple">
+<li><p><strong>Simple constraints</strong>: equality (<code class="docutils literal notranslate"><span class="pre">=</span></code>) or inequality (<code class="docutils literal notranslate"><span class="pre">&lt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&gt;</span></code>) between expressions (e.g., mass balance at a reservoir)</p></li>
+<li><p><strong>Penalty-based</strong>: when a constraint cannot be strictly enforced, a penalty cost is applied for violation (e.g., relaxing minimum instream flow requirements)</p></li>
+<li><p><strong>Conditional</strong>: different constraints apply under different conditions using <code class="docutils literal notranslate"><span class="pre">case</span></code>/<code class="docutils literal notranslate"><span class="pre">condition</span></code> (e.g., summer vs. winter operating rules)</p></li>
+</ul>
+</section>
+<section id="objectives">
+<h4>Objectives<a class="headerlink" href="#objectives" title="Permalink to this heading"></a></h4>
+<p>Objectives define the optimization direction by assigning weights to decision variables. The solver minimizes the total weighted cost, so higher-weighted violations are more strongly discouraged.</p>
+</section>
+<section id="constants-and-aliases">
+<h4>Constants and Aliases<a class="headerlink" href="#constants-and-aliases" title="Permalink to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>Constants</strong> (<code class="docutils literal notranslate"><span class="pre">const</span></code>): fixed numeric values that never change during a simulation (e.g., reservoir dead pool level).</p></li>
+<li><p><strong>Aliases</strong> (<code class="docutils literal notranslate"><span class="pre">alias</span></code>): alternative names for computed expressions, primarily used to tag output for post-processing (e.g., defining <code class="docutils literal notranslate"><span class="pre">OMFlow</span></code> as an alias for <code class="docutils literal notranslate"><span class="pre">C_OMR014</span></code> to label Old and Middle River flow output).</p></li>
+</ul>
+</section>
+</section>
+<section id="model-structure">
+<h3>Model Structure<a class="headerlink" href="#model-structure" title="Permalink to this heading"></a></h3>
+<p>A WRESL+ model is organized hierarchically. Here is the structure from the CalSim3 main file (<code class="docutils literal notranslate"><span class="pre">mainCS3_ReOrg_UWplusVF.wresl</span></code>):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>mainCS3_ReOrg_UWplusVF.wresl
+├── initial { ... }                                  ! Switchboard flags &amp; start year
+├── SEQUENCE CYCLE01 { model GENTables order 1 }     ! Generate tables (conditional)
+├── SEQUENCE CYCLE02 { model SWPForecast order 2 }   ! SWP forecast (Jan–May)
+├── SEQUENCE CYCLE33 { model UPSTREAM order 33 }      ! North of Delta operations
+├── SEQUENCE CYCLE35 { model DELTA order 35 }         ! Delta operations
+├── group Tdomain { ... }                             ! Shared conversion factors
+├── group Common_All { ... }                          ! Common includes for all models
+├── MODEL UPSTREAM { ... }                            ! Upstream model includes
+└── MODEL DELTA { ... }                               ! Delta model includes
+</pre></div>
+</div>
+<ol class="arabic simple">
+<li><p><strong>Sequences</strong> define the order in which models are solved.</p></li>
+<li><p><strong>Models</strong> group related variables and goals into a solvable unit for one solver pass.</p></li>
+<li><p><strong>Groups</strong> organize shared definitions that can be included by multiple models.</p></li>
+<li><p><strong>Initial blocks</strong> set up variables and conditions evaluated once before the main simulation loop.</p></li>
+<li><p><strong>Include files</strong> modularize definitions across multiple <code class="docutils literal notranslate"><span class="pre">.wresl</span></code> files.</p></li>
+</ol>
+<p>This structure supports <strong>multi-cycle solving</strong>, where results from an upstream model feed into downstream calculations (e.g., upstream reservoir releases feeding into downstream Delta operations).</p>
+</section>
+<section id="how-the-solver-works-conceptual">
+<h3>How the Solver Works (Conceptual)<a class="headerlink" href="#how-the-solver-works-conceptual" title="Permalink to this heading"></a></h3>
+<p>At each time step, WRIMS:</p>
+<ol class="arabic simple">
+<li><p>Evaluates all SVARs (inputs, time series, table lookups, conditional values).</p></li>
+<li><p>Constructs the LP problem from DVARs (unknowns) and goals (constraints).</p></li>
+<li><p>Applies the objective function weights.</p></li>
+<li><p>Solves the LP to determine optimal DVAR values.</p></li>
+<li><p>Advances to the next time step and repeats.</p></li>
+</ol>
+<p>Understanding this cycle is essential: SVARs must be resolvable <em>before</em> the solver runs, while DVARs are only determined <em>by</em> the solver.</p>
+</section>
+<section id="design-philosophy">
+<h3>Design Philosophy<a class="headerlink" href="#design-philosophy" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Declarative:</strong> Users declare <em>what</em> to solve, not <em>how</em> to solve it — the optimizer handles the mechanics.</p></li>
+<li><p><strong>Modularity:</strong> Models are composed from reusable <code class="docutils literal notranslate"><span class="pre">.wresl</span></code> files via <code class="docutils literal notranslate"><span class="pre">include</span></code>.</p></li>
+<li><p><strong>Reproducibility:</strong> All logic is explicit, text-based, and version-controllable.</p></li>
+<li><p><strong>Extensibility:</strong> External functions (DLLs), table lookups, and time series data can be integrated.</p></li>
+<li><p><strong>Case-insensitivity:</strong> All keywords can be written in any case (<code class="docutils literal notranslate"><span class="pre">define</span></code>, <code class="docutils literal notranslate"><span class="pre">DEFINE</span></code>, <code class="docutils literal notranslate"><span class="pre">Define</span></code>).</p></li>
+</ul>
+</section>
+<section id="common-pitfalls-explained">
+<h3>Common Pitfalls Explained<a class="headerlink" href="#common-pitfalls-explained" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Missing <code class="docutils literal notranslate"><span class="pre">kind</span></code> and <code class="docutils literal notranslate"><span class="pre">units</span></code>:</strong> DVAR and timeseries definitions require <code class="docutils literal notranslate"><span class="pre">kind</span></code> and <code class="docutils literal notranslate"><span class="pre">units</span></code> metadata. Omitting them causes parser errors.</p></li>
+<li><p><strong>Incorrect string quotes:</strong> WRESL+ uses <strong>single quotes</strong> (<code class="docutils literal notranslate"><span class="pre">'...'</span></code>), not double quotes. Using double quotes will cause syntax errors.</p></li>
+<li><p><strong>Wrong comment syntax:</strong> Comments use <code class="docutils literal notranslate"><span class="pre">!</span></code> or <code class="docutils literal notranslate"><span class="pre">/*</span> <span class="pre">*/</span></code> not <code class="docutils literal notranslate"><span class="pre">//</span></code>.</p></li>
+<li><p><strong>Wrong logical operators:</strong> Use <code class="docutils literal notranslate"><span class="pre">.and.</span></code>, <code class="docutils literal notranslate"><span class="pre">.or.</span></code>, <code class="docutils literal notranslate"><span class="pre">.not.</span></code> — not <code class="docutils literal notranslate"><span class="pre">&amp;&amp;</span></code>, <code class="docutils literal notranslate"><span class="pre">||</span></code>, <code class="docutils literal notranslate"><span class="pre">!</span></code>.</p></li>
+<li><p><strong>Case order matters:</strong> In <code class="docutils literal notranslate"><span class="pre">case</span></code>/<code class="docutils literal notranslate"><span class="pre">condition</span></code> blocks, conditions are evaluated top-to-bottom. The first matching condition is used, so place the <code class="docutils literal notranslate"><span class="pre">condition</span> <span class="pre">always</span></code> case last as a default.</p></li>
+<li><p><strong>Circular dependencies:</strong> Avoid SVARs that reference each other in a cycle, as this creates unresolvable definitions.</p></li>
+<li><p><strong>Include path errors:</strong> File paths in <code class="docutils literal notranslate"><span class="pre">include</span></code> statements use single quotes and are relative to the model root.</p></li>
+</ul>
+</section>
+<section id="wresl-vs-wresl">
+<h3>WRESL vs. WRESL+<a class="headerlink" href="#wresl-vs-wresl" title="Permalink to this heading"></a></h3>
+<p>WRESL+ is a modernized superset of the original WRESL language. Key similarities and differences:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Feature</p></th>
+<th class="head"><p>WRESL</p></th>
+<th class="head"><p>WRESL+</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Variable keywords</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">define</span></code> for all variable types</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">define</span></code> plus dedicated <code class="docutils literal notranslate"><span class="pre">dvar</span></code>, <code class="docutils literal notranslate"><span class="pre">svar</span></code>, <code class="docutils literal notranslate"><span class="pre">const</span></code> keywords</p></td>
+</tr>
+<tr class="row-odd"><td><p>File extension</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">.wresl</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">.wresl</span></code> (same extension, different parser)</p></td>
+</tr>
+<tr class="row-even"><td><p>Comments</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">!</span></code>, <code class="docutils literal notranslate"><span class="pre">//</span></code>, and <code class="docutils literal notranslate"><span class="pre">/*</span> <span class="pre">...</span> <span class="pre">*/</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">!</span></code> and <code class="docutils literal notranslate"><span class="pre">/*</span> <span class="pre">...</span> <span class="pre">*/</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Case-sensitivity</p></td>
+<td><p>Case-insensitive</p></td>
+<td><p>Case-insensitive</p></td>
+</tr>
+<tr class="row-even"><td><p>Model organization</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sequence</span></code>, <code class="docutils literal notranslate"><span class="pre">model</span></code>, <code class="docutils literal notranslate"><span class="pre">include</span></code></p></td>
+<td><p>Adds <code class="docutils literal notranslate"><span class="pre">group</span></code> and <code class="docutils literal notranslate"><span class="pre">initial</span></code> blocks</p></td>
+</tr>
+<tr class="row-odd"><td><p>Multi-cycle support</p></td>
+<td><p>Built-in via <code class="docutils literal notranslate"><span class="pre">sequence</span></code> / <code class="docutils literal notranslate"><span class="pre">model</span></code></p></td>
+<td><p>Same, plus optional <code class="docutils literal notranslate"><span class="pre">timestep</span></code> (1MON/1DAY) per cycle</p></td>
+</tr>
+<tr class="row-even"><td><p>Objective function</p></td>
+<td><p>Defined through goal weights</p></td>
+<td><p>Dedicated <code class="docutils literal notranslate"><span class="pre">objective</span></code> keyword with weight syntax</p></td>
+</tr>
+<tr class="row-odd"><td><p>Conditional includes</p></td>
+<td><p>Not supported</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">if</span></code> / <code class="docutils literal notranslate"><span class="pre">elseif</span></code> / <code class="docutils literal notranslate"><span class="pre">else</span></code> blocks</p></td>
+</tr>
+<tr class="row-even"><td><p>Goal syntax</p></td>
+<td><p>Full <code class="docutils literal notranslate"><span class="pre">lhs</span></code>/<code class="docutils literal notranslate"><span class="pre">rhs</span></code>, <code class="docutils literal notranslate"><span class="pre">case</span></code>/<code class="docutils literal notranslate"><span class="pre">condition</span></code>, <code class="docutils literal notranslate"><span class="pre">penalty</span></code>/<code class="docutils literal notranslate"><span class="pre">constrain</span></code></p></td>
+<td><p>Same</p></td>
+</tr>
+<tr class="row-odd"><td><p>External functions</p></td>
+<td><p>Supported via <code class="docutils literal notranslate"><span class="pre">external</span></code> keyword (<code class="docutils literal notranslate"><span class="pre">DLL</span></code>, <code class="docutils literal notranslate"><span class="pre">F90</span></code>)</p></td>
+<td><p>Supported via <code class="docutils literal notranslate"><span class="pre">external</span></code> keyword (<code class="docutils literal notranslate"><span class="pre">DLL</span></code>, <code class="docutils literal notranslate"><span class="pre">F90</span></code>)</p></td>
+</tr>
+<tr class="row-even"><td><p>Future arrays</p></td>
+<td><p>Not supported</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dvar(N)</span></code>, <code class="docutils literal notranslate"><span class="pre">svar(N)</span></code>, <code class="docutils literal notranslate"><span class="pre">goal(N)</span></code> for multi-step definitions</p></td>
+</tr>
+</tbody>
+</table>
+<p>In practice, WRESL+ files are backward-compatible with most WRESL constructs, but WRESL+ adds structured model organization (<code class="docutils literal notranslate"><span class="pre">group</span></code>, <code class="docutils literal notranslate"><span class="pre">initial</span></code>), a dedicated <code class="docutils literal notranslate"><span class="pre">objective</span></code> keyword, conditional includes, future arrays, and explicit variable-type keywords (<code class="docutils literal notranslate"><span class="pre">dvar</span></code>, <code class="docutils literal notranslate"><span class="pre">svar</span></code>) that the original WRESL lacks.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="tutorials">
+<h2>Tutorials<a class="headerlink" href="#tutorials" title="Permalink to this heading"></a></h2>
+<p><em>Learning-oriented: step-by-step lessons for beginners.</em></p>
+<p>Before starting these tutorials, review the <a class="reference internal" href="#explanation">Explanation</a> section above to understand the core concepts of SVARs, DVARs, goals, and model structure.</p>
+<section id="getting-started-with-wresl">
+<h3>Getting Started with WRESL+<a class="headerlink" href="#getting-started-with-wresl" title="Permalink to this heading"></a></h3>
+<section id="prerequisites">
+<h4>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this heading"></a></h4>
+<ul class="simple">
+<li><p>Download and install the WRIMS GUI from the <a class="reference external" href="https://data.cnra.ca.gov/dataset/wrims-2-gui/resource/93b6243c-57eb-47b5-ad62-7209c0acdfb6">official source</a>.</p></li>
+<li><p>Ensure Java is installed and available in your PATH.</p></li>
+<li><p>Familiarize yourself with the WRIMS IDE (Eclipse-based environment).</p></li>
+</ul>
+</section>
+<section id="your-first-model">
+<h4>Your First Model<a class="headerlink" href="#your-first-model" title="Permalink to this heading"></a></h4>
+<p>This tutorial walks through a simple study adapted from the WRESL+ Language Reference (2018) Quick Start example.</p>
+<ol class="arabic">
+<li><p>Create a main file <code class="docutils literal notranslate"><span class="pre">main.wresl</span></code> with sequences, models, variables, goals, and an objective:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: WRESL+ Language Reference (2018), Quick Start
+sequence CYCLE1 { model First order 1 }
+sequence CYCLE2 { model Second order 2 }
+
+model First {
+  timeseries I01 { kind &#39;FLOW-INFLOW&#39; units &#39;TAF&#39; }
+  dvar X1 { std kind &#39;FLOW-CHANNEL&#39; units &#39;CFS&#39; }
+  dvar X2 { std kind &#39;FLOW-CHANNEL&#39; units &#39;CFS&#39; }
+  svar C { value I02*5 }
+  goal Test { X1 + X2 &lt; C }
+  include &#39;allocation\test1.wresl&#39;
+  objective XGroup {
+    [ X1, 10 ]
+    [ X2, 20 ]
+  }
+}
+
+model Second {
+  timeseries I02 { kind &#39;FLOW-INFLOW&#39; units &#39;TAF&#39; }
+  dvar Y1 { std kind &#39;FLOW-CHANNEL&#39; units &#39;CFS&#39; }
+  dvar Y2 { std kind &#39;FLOW-CHANNEL&#39; units &#39;CFS&#39; }
+  svar X1_Upstream { value X1[First] }
+  goal Test2 { Y1 + Y2 &lt; I02 + X1_Upstream }
+  include &#39;allocation\test2.wresl&#39;
+  objective YGroup {
+    [ Y1, 10 ]
+    [ Y2, 20 ]
+  }
+}
+</pre></div>
+</div>
+</li>
+<li><p>Run the model using the WRIMS GUI or command-line interface.</p></li>
+<li><p>Examine the output: the solver determines <code class="docutils literal notranslate"><span class="pre">X1</span></code>, <code class="docutils literal notranslate"><span class="pre">X2</span></code>, <code class="docutils literal notranslate"><span class="pre">Y1</span></code>, and <code class="docutils literal notranslate"><span class="pre">Y2</span></code> values that satisfy the constraints while optimizing the weighted objectives.</p></li>
+</ol>
+</section>
+<section id="what-just-happened">
+<h4>What Just Happened?<a class="headerlink" href="#what-just-happened" title="Permalink to this heading"></a></h4>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">timeseries</span> <span class="pre">I01</span> <span class="pre">{</span> <span class="pre">kind</span> <span class="pre">'FLOW-INFLOW'</span> <span class="pre">units</span> <span class="pre">'TAF'</span> <span class="pre">}</span></code> declared a <strong>time series input</strong> read from HEC-DSS.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dvar</span> <span class="pre">X1</span> <span class="pre">{</span> <span class="pre">std</span> <span class="pre">kind</span> <span class="pre">'FLOW-CHANNEL'</span> <span class="pre">units</span> <span class="pre">'CFS'</span> <span class="pre">}</span></code> created a <strong>decision variable</strong> — an unknown for the solver.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">svar</span> <span class="pre">C</span> <span class="pre">{</span> <span class="pre">value</span> <span class="pre">I02*5</span> <span class="pre">}</span></code> created a <strong>state variable</strong> (known value computed from inputs).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">goal</span> <span class="pre">Test</span> <span class="pre">{</span> <span class="pre">X1</span> <span class="pre">+</span> <span class="pre">X2</span> <span class="pre">&lt;</span> <span class="pre">C</span> <span class="pre">}</span></code> created a <strong>constraint</strong> the solver must satisfy.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">objective</span> <span class="pre">XGroup</span> <span class="pre">{</span> <span class="pre">[X1,</span> <span class="pre">10]</span> <span class="pre">[X2,</span> <span class="pre">20]</span> <span class="pre">}</span></code> defined an <strong>objective function</strong> with weighted decision variables.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">svar</span> <span class="pre">X1_Upstream</span> <span class="pre">{</span> <span class="pre">value</span> <span class="pre">X1[First]</span> <span class="pre">}</span></code> in the second model references the result of <code class="docutils literal notranslate"><span class="pre">X1</span></code> from the <code class="docutils literal notranslate"><span class="pre">First</span></code> cycle — demonstrating <strong>cross-cycle variable access</strong>.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">sequence</span></code> / <code class="docutils literal notranslate"><span class="pre">model</span></code> / <code class="docutils literal notranslate"><span class="pre">include</span></code> structure told WRIMS which files to load and in what order.</p></li>
+</ul>
+</section>
+</section>
+<section id="tutorial-shasta-reservoir-mass-balance">
+<h3>Tutorial: Shasta Reservoir Mass Balance<a class="headerlink" href="#tutorial-shasta-reservoir-mass-balance" title="Permalink to this heading"></a></h3>
+<p>This example demonstrates a realistic reservoir mass balance using actual variable definitions and the continuity goal from CalSim3.</p>
+<p>First, the variables are declared across system files:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: CalSim3 DCR 9.5.0 — arcs-Inflows.wresl, arcs-Reservoirs.wresl, arcs-Channels.wresl, arcs-Diversions.wresl
+
+! State variable: known input
+define I_SHSTA {timeseries kind &#39;INFLOW&#39; units &#39;TAF&#39; convert &#39;CFS&#39;}   ! Sacramento River inflow
+
+! Decision variables
+define S_SHSTA       {std kind &#39;STORAGE&#39; units &#39;TAF&#39;}                 ! reservoir storage
+define S_SHSTAlevel1 {value 550}                                      ! dead pool (TAF)
+define S_SHSTAlevel6 {value 4552}                                     ! full pool (TAF)
+define C_SHSTA       {std kind &#39;CHANNEL&#39; units &#39;CFS&#39;}                 ! channel flow below dam
+define D_SHSTA_WTPJMS {std kind &#39;DIVERSION&#39; units &#39;CFS&#39;}              ! diversion to water treatment plant
+define E_SHSTA       {lower unbounded kind &#39;EVAPORATION&#39; units &#39;CFS&#39;} ! evaporation loss
+</pre></div>
+</div>
+<p>Then the continuity constraint ties them together:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Mass balance at Shasta: inflow - outflows = change in storage
+goal continuitySHSTA {
+  I_SHSTA - C_SHSTA - D_SHSTA_WTPJMS - E_SHSTA = S_SHSTA * taf_cfs - S_SHSTA(-1) * taf_cfs + 0.
+}
+</pre></div>
+</div>
+<p><strong>Key points:</strong></p>
+<ul class="simple">
+<li><p>CalSim models conventionally use <strong>CFS</strong> (cubic feet per second) for flows and <strong>TAF</strong> (thousand acre-feet) for storage. The built-in conversion factor <code class="docutils literal notranslate"><span class="pre">taf_cfs</span></code> converts TAF to CFS for the current time step, ensuring consistent units within constraints.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">S_SHSTA(-1)</span></code> references the storage from the previous time step.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">+</span> <span class="pre">0.</span></code> at the end is a CalSim convention for consistency in the continuity equations.</p></li>
+</ul>
+</section>
+<section id="tutorial-conditional-operations-with-case-condition">
+<h3>Tutorial: Conditional Operations with Case/Condition<a class="headerlink" href="#tutorial-conditional-operations-with-case-condition" title="Permalink to this heading"></a></h3>
+<p>Real-world operations often depend on conditions such as hydrology, time of year, or regulatory requirements. This example from the WRESL+ Language Reference (2018) assigns values based on the current month:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: WRESL+ Language Reference (2018), Conditional Value State Variable
+svar NMTest {
+  case February {
+    condition month == feb
+    value S10(-12) + sumI10_part
+  }
+  case Others {
+    condition always
+    value S10(prevfeb) + sumI10_part
+  }
+}
+</pre></div>
+</div>
+<p>Here is a real-world example from the CalSim3 study that determines CVP allocation based on water supply index:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: CalSim3 DCR 9.5.0 — cvpcut.wresl
+define WSI_NOD_Alloc {
+  case MarchAprilMay {
+    condition month &gt;= MAR .and. month &lt;= MAY
+    select Alloc from WSI_CVP_NODAg given WSI=WSI_CVP_NOD use linear where month=month
+  }
+  case otherwise {
+    condition always
+    value 0.
+  }
+}
+</pre></div>
+</div>
+<p>And another from CVP operations that sets seasonal balancing targets:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: CalSim3 DCR 9.5.0 — CVP_Balancing.wresl
+define S_WKYTN_Septarget {
+  case dry {
+    condition wyt_SAC == 5
+    value 180
+  }
+  case other {
+    condition always
+    value 235
+  }
+}
+</pre></div>
+</div>
+<p><strong>Key points:</strong></p>
+<ul class="simple">
+<li><p>Conditions are evaluated top-to-bottom; the first match is used.</p></li>
+<li><p>Always end with <code class="docutils literal notranslate"><span class="pre">condition</span> <span class="pre">always</span></code> as a default/fallback.</p></li>
+<li><p>You can have as many <code class="docutils literal notranslate"><span class="pre">case</span></code> blocks as needed.</p></li>
+</ul>
+</section>
+<section id="tutorial-multi-file-model-organization">
+<h3>Tutorial: Multi-File Model Organization<a class="headerlink" href="#tutorial-multi-file-model-organization" title="Permalink to this heading"></a></h3>
+<p>As models grow, splitting definitions across files keeps things manageable. Here is an excerpt from the actual CalSim3 main file showing how the study is organized:</p>
+<p><strong>mainCS3_ReOrg_UWplusVF.wresl</strong> (entry point — abbreviated):</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: CalSim3 DCR 9.5.0 — mainCS3_ReOrg_UWplusVF.wresl
+
+SEQUENCE CYCLE33 {
+    model   UPSTREAM
+    condition simulateSacramentoValley &gt;= 0.5
+    order   33
+}
+SEQUENCE CYCLE35 {
+    model   DELTA
+    condition simulateSacramentoValley &gt;= 0.5
+    order   35
+}
+
+group Tdomain {
+    define SGPHIGH {value 77777}
+    define daysindv { alias daysin kind &#39;DAYS&#39; units &#39;days&#39;}
+    define cfs_cfm  { value daysin * 86400.0}
+}
+
+group Common_All {
+    include &#39;CVGroundwater\CalSim3GWregionIndex.wresl&#39;
+    include &#39;Other\NewFacilitySwitches.wresl&#39;
+    include &#39;Other\wytypes\WyTypesGeneral.wresl&#39;
+    include &#39;CVGroundwater\CVGroundwater_ExtFuncs.wresl&#39;
+    include &#39;NorthOfDelta\hydrology\forecast\forecast.wresl&#39;
+    include &#39;System\System_Sac_cycle1.wresl&#39;
+}
+</pre></div>
+</div>
+<p><strong>System/SystemTables_Sac/arcs-Reservoirs.wresl</strong> (variable declarations):</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: CalSim3 DCR 9.5.0 — arcs-Reservoirs.wresl
+define S_SHSTAlevel1 {value 550}
+define S_SHSTA_1     {std kind &#39;STORAGE-ZONE&#39; units &#39;TAF&#39;}
+define S_SHSTAlevel2 {timeseries kind &#39;STORAGE-LEVEL&#39; units &#39;TAF&#39;}
+define S_SHSTA_2     {std kind &#39;STORAGE-ZONE&#39; units &#39;TAF&#39;}
+define S_SHSTAlevel6 {value 4552}
+define S_SHSTA_6     {std kind &#39;STORAGE-ZONE&#39; units &#39;TAF&#39;}
+define S_SHSTA       {std kind &#39;STORAGE&#39; units &#39;TAF&#39;}           !SHASTA LAKE
+define E_SHSTA       {lower unbounded kind &#39;EVAPORATION&#39; units &#39;CFS&#39;}
+</pre></div>
+</div>
+<p><strong>System/SystemTables_Sac/constraints-Connectivity.wresl</strong> (goals):</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: CalSim3 DCR 9.5.0 — constraints-Connectivity.wresl
+goal continuitySHSTA  {I_SHSTA - C_SHSTA - D_SHSTA_WTPJMS - E_SHSTA = S_SHSTA * taf_cfs - S_SHSTA(-1) * taf_cfs + 0.}
+goal continuityKSWCK  {C_SAC301 + SR_02_KSWCK + SR_03_KSWCK + R_03_PU1_KSWCK - C_KSWCK - E_KSWCK
+                       = S_KSWCK * taf_cfs - S_KSWCK(-1) * taf_cfs + 0.}
+</pre></div>
+</div>
+<p>This pattern — separating variables from goals, organizing by geographic location and system component, and using <code class="docutils literal notranslate"><span class="pre">include</span></code> with <code class="docutils literal notranslate"><span class="pre">group</span></code> — is the standard way to organize WRESL+ models.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="practical-guides">
+<h2>Practical Guides<a class="headerlink" href="#practical-guides" title="Permalink to this heading"></a></h2>
+<p><em>Task-oriented: recipes for accomplishing specific goals.</em></p>
+<p>Each guide below addresses a specific task. Skim the headings to find what you need.</p>
+<section id="how-to-define-state-variables-svars">
+<h3>How to Define State Variables (SVARs)<a class="headerlink" href="#how-to-define-state-variables-svars" title="Permalink to this heading"></a></h3>
+<p>State variables hold known or computed values. They can be defined using <code class="docutils literal notranslate"><span class="pre">define</span></code> or <code class="docutils literal notranslate"><span class="pre">svar</span></code>:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Simple fixed value — Source: WRESL+ Language Reference (2018)
+svar X {value 9.0}
+svar Y {value max(X, 5.0)}
+
+! Time series from HEC-DSS — Source: CalSim3 DCR 9.5.0 — arcs-Inflows.wresl
+define I_SHSTA {timeseries kind &#39;INFLOW&#39; units &#39;TAF&#39; convert &#39;CFS&#39;}
+
+! Table lookup — Source: CalSim3 DCR 9.5.0 — arcs-Reservoirs.wresl
+define A_SHSTAlast {
+  select area from res_info
+    given storage = 1000*S_SHSTA(-1)
+    use linear
+    where res_num = 4
+}
+
+! Case-based (conditional) — Source: CalSim3 DCR 9.5.0 — CVP_Balancing.wresl
+define S_WKYTN_Septarget {
+  case dry {
+    condition wyt_SAC == 5
+    value 180
+  }
+  case other {
+    condition always
+    value 235
+  }
+}
+
+! Summation over an index range — Source: WRESL+ Language Reference (2018)
+svar Z {sum(i=1, 5, 1) S03(-i) + I10(-i)}
+
+! Summation looking ahead — Source: WRESL+ Language Reference (2018)
+svar OroDivEst {sum(i=0,sep-month,1) D_PWR(i)}
+</pre></div>
+</div>
+</section>
+<section id="how-to-define-decision-variables-dvars">
+<h3>How to Define Decision Variables (DVARs)<a class="headerlink" href="#how-to-define-decision-variables-dvars" title="Permalink to this heading"></a></h3>
+<p>Decision variables are determined by the optimization solver:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Standard decision variable (non-negative by default) — Source: WRESL+ Language Reference (2018)
+dvar C_Delta_SWP {std kind &#39;FLOW-CHANNEL&#39; units &#39;CFS&#39;}
+
+! With explicit bounds — Source: WRESL+ Language Reference (2018)
+dvar QPD {lower -100. upper unbounded kind &#39;FLOW&#39; units &#39;CFS&#39;}
+
+! Binary decision variable — Source: WRESL+ Language Reference (2018)
+dvar B {binary kind &#39;BINARY&#39; units &#39;NA&#39;}
+
+! Integer decision variable — Source: WRESL+ Language Reference (2018)
+dvar Integer2 {integer lower 0 upper 3 kind &#39;INTEGER&#39; units &#39;NA&#39;}
+
+! Integer from CalSim3 — Source: CalSim3 DCR 9.5.0 — AprMayExport.wresl
+define Pulse_int_Apr {INTEGER std kind &#39;INTEGER&#39; units &#39;NONE&#39;}
+</pre></div>
+</div>
+</section>
+<section id="how-to-define-constants">
+<h3>How to Define Constants<a class="headerlink" href="#how-to-define-constants" title="Permalink to this heading"></a></h3>
+<p>Constants can be defined using <code class="docutils literal notranslate"><span class="pre">define</span></code> with a <code class="docutils literal notranslate"><span class="pre">value</span></code>; this approach works in both WRESL and WRESL+:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: CalSim3 DCR 9.5.0 — arcs-Reservoirs.wresl
+define S_SHSTAlevel1 {value 550}    ! dead pool (TAF)
+define S_SHSTAlevel6 {value 4552}   ! full pool (TAF)
+</pre></div>
+</div>
+</section>
+<section id="how-to-define-goals-constraints">
+<h3>How to Define Goals (Constraints)<a class="headerlink" href="#how-to-define-goals-constraints" title="Permalink to this heading"></a></h3>
+<p>Goals define constraints for the optimizer:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Simple equality constraint: mass balance — Source: CalSim3 DCR 9.5.0 — constraints-Connectivity.wresl
+goal continuitySHSTA {
+  I_SHSTA - C_SHSTA - D_SHSTA_WTPJMS - E_SHSTA = S_SHSTA * taf_cfs - S_SHSTA(-1) * taf_cfs + 0.
+}
+
+! Goal with lhs/rhs and penalty structure — Source: WRESL+ Language Reference (2018)
+goal NMTest {
+  lhs X + Y
+  rhs Z
+  lhs &gt; rhs constrain          ! hard: do not exceed
+  lhs &lt; rhs penalty 0           ! soft: free slack
+}
+
+! Goal with case-based conditions — Source: WRESL+ Language Reference (2018)
+goal TestAction1 {
+  lhs D_J1 + D_B1
+  case April {
+    condition month == apr
+    rhs CNW + X
+    lhs &lt; rhs penalty 0
+  }
+  case Others {
+    condition always
+    rhs 3000. * 16.0 / daysin + Z
+    lhs &lt; rhs penalty 0
+    lhs &gt; rhs constrain
+  }
+}
+</pre></div>
+</div>
+</section>
+<section id="how-to-define-aliases">
+<h3>How to Define Aliases<a class="headerlink" href="#how-to-define-aliases" title="Permalink to this heading"></a></h3>
+<p>Aliases provide alternative names for computed expressions and are useful for output:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: CalSim3 DCR 9.5.0 — SoDeltaChannels.wresl
+define OMFlow {alias C_OMR014 kind &#39;FLOW-CHANNEL&#39; units &#39;CFS&#39;}
+
+! Alias with an expression — Source: WRESL+ Language Reference (2018)
+alias Estlim3 {max(300., Est_rel) kind &#39;DEBUG&#39; units &#39;CFS&#39;}
+</pre></div>
+</div>
+</section>
+<section id="how-to-define-objectives">
+<h3>How to Define Objectives<a class="headerlink" href="#how-to-define-objectives" title="Permalink to this heading"></a></h3>
+<p>Objectives specify what the model should optimize, with weighted decision variables:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: WRESL+ Language Reference (2018)
+objective XGroup {[X1, 10] [X2, 20]}
+
+! Common weight shorthand — Source: WRESL+ Language Reference (2018)
+objective XGroup {weight 10 variable X1 X2 X3}
+
+! Real CalSim3 objective (abbreviated) — Source: CalSim3 DCR 9.5.0 — Weight-table.wresl
+Objective obj_SYS = {
+  [S_TRNTY_1, 200000*taf_cfs],
+  [S_TRNTY_2, 93*taf_cfs],
+  [S_SHSTA_1, 200000*taf_cfs],
+  [S_SHSTA_2, 93*taf_cfs]
+}
+</pre></div>
+</div>
+</section>
+<section id="how-to-include-files">
+<h3>How to Include Files<a class="headerlink" href="#how-to-include-files" title="Permalink to this heading"></a></h3>
+<p>Use <code class="docutils literal notranslate"><span class="pre">include</span></code> to modularize your model across multiple files:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: CalSim3 DCR 9.5.0 — mainCS3_ReOrg_UWplusVF.wresl
+include &#39;CVGroundwater\CalSim3GWregionIndex.wresl&#39;
+include &#39;Other\NewFacilitySwitches.wresl&#39;
+
+! Local include: definitions scoped to the current model only
+include [local] &#39;local_adjustments.wresl&#39;
+</pre></div>
+</div>
+</section>
+<section id="how-to-structure-a-model">
+<h3>How to Structure a Model<a class="headerlink" href="#how-to-structure-a-model" title="Permalink to this heading"></a></h3>
+<p>A complete WRESL+ model uses <code class="docutils literal notranslate"><span class="pre">sequence</span></code>, <code class="docutils literal notranslate"><span class="pre">model</span></code>, and <code class="docutils literal notranslate"><span class="pre">group</span></code> blocks:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: CalSim3 DCR 9.5.0 — mainCS3_ReOrg_UWplusVF.wresl (abbreviated)
+
+! Initial block for pre-simulation setup
+initial {
+  include &#39;System\SystemTables_Sac\arcs-Reservoirs.wresl&#39;
+  include &#39;CVGroundwater\CVGroundwater_init1_SJRBASE.wresl&#39;
+}
+
+SEQUENCE CYCLE01 {
+  model   GENTables
+  order   1
+}
+SEQUENCE CYCLE02 {
+  model   SWPForecast
+  order   2
+}
+SEQUENCE CYCLE33 {
+  model   UPSTREAM
+  condition simulateSacramentoValley &gt;= 0.5
+  order   33
+}
+SEQUENCE CYCLE35 {
+  model   DELTA
+  condition simulateSacramentoValley &gt;= 0.5
+  order   35
+}
+
+! Shared definitions available to all models
+group Common_All {
+  include &#39;CVGroundwater\CalSim3GWregionIndex.wresl&#39;
+  include &#39;Other\NewFacilitySwitches.wresl&#39;
+  include &#39;Other\wytypes\WyTypesGeneral.wresl&#39;
+  include &#39;NorthOfDelta\hydrology\forecast\forecast.wresl&#39;
+}
+
+model UPSTREAM {
+  include group Tdomain
+  include group Common_All
+  include &#39;System\System_Sac_cycle1.wresl&#39;
+}
+</pre></div>
+</div>
+</section>
+<section id="how-to-use-table-lookups">
+<h3>How to Use Table Lookups<a class="headerlink" href="#how-to-use-table-lookups" title="Permalink to this heading"></a></h3>
+<p>Look up values from external data tables:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Simple table lookup — Source: WRESL+ Language Reference (2018)
+svar D_M {select DCU_M from DCU_MAC where MON = jan}
+
+! Lookup with interpolation — Source: CalSim3 DCR 9.5.0 — arcs-Reservoirs.wresl
+define A_SHSTAlast {
+  select area from res_info
+    given storage = 1000*S_SHSTA(-1)
+    use linear
+    where res_num = 4
+}
+</pre></div>
+</div>
+<blockquote>
+<div><p><strong>Note:</strong> Using single-quoted string values in <code class="docutils literal notranslate"><span class="pre">where</span></code> clauses (e.g., <code class="docutils literal notranslate"><span class="pre">reservoir</span> <span class="pre">=</span> <span class="pre">'SHSTA'</span></code>) is a WRESL+ feature. In classic WRESL, string matching in table lookups was handled differently.</p>
+</div></blockquote>
+</section>
+<section id="how-to-use-conditional-includes">
+<h3>How to Use Conditional Includes<a class="headerlink" href="#how-to-use-conditional-includes" title="Permalink to this heading"></a></h3>
+<p>Include files conditionally based on runtime logic:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: CalSim3 DCR 9.5.0 — system_Sac2.wresl
+if simulateSacVA_TisdaleWeir &lt; 0.5 {
+  include &#39;SystemTables_Sac\constraints-Weirs2.wresl&#39;
+}
+
+! Source: WRESL+ Language Reference (2018)
+if A + B &gt; 15. {
+  include &#39;swp_dellogic\allocation\co_extfcn.wresl&#39;
+  include &#39;Delta\DeltaExtFuncs_7inpANN.wresl&#39;
+}
+</pre></div>
+</div>
+</section>
+<section id="how-to-use-unit-conversions">
+<h3>How to Use Unit Conversions<a class="headerlink" href="#how-to-use-unit-conversions" title="Permalink to this heading"></a></h3>
+<p>WRESL+ provides built-in conversion identifiers for flows and volumes:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Convert CFS to TAF (thousand acre-feet)
+define I_SHSTA_TAF {value I_SHSTA * cfs_taf}
+
+! Convert TAF to CFS
+define C_SHSTA_CFS {value C_SHSTA_TAF * taf_cfs}
+
+! Convert AF to CFS
+define D_REDBLF_CFS {value D_REDBLF_AF * af_cfs}
+</pre></div>
+</div>
+</section>
+<section id="how-to-reference-variables-across-model-cycles">
+<h3>How to Reference Variables Across Model Cycles<a class="headerlink" href="#how-to-reference-variables-across-model-cycles" title="Permalink to this heading"></a></h3>
+<p>When a downstream model needs a value computed in an upstream cycle:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Cross-cycle reference — Source: WRESL+ Language Reference (2018)
+svar Y {value X[Upstream] + 100.}
+
+! Fixed operations from upstream cycle — Source: CalSim3 DCR 9.5.0 — ITP/FixedOperations.wresl
+goal fixC_CAA003_EXP1 {
+  lhs C_CAA003_EXP1
+  rhs C_CAA003_EXP1[WHEELJPOD]
+  lhs &lt; rhs penalty 999.
+  lhs &gt; rhs constrain
+}
+
+! Previous time step reference
+define S_SHSTA_prev {value S_SHSTA(-1)}
+</pre></div>
+</div>
+</section>
+<section id="how-to-use-the-range-function">
+<h3>How to Use the Range Function<a class="headerlink" href="#how-to-use-the-range-function" title="Permalink to this heading"></a></h3>
+<p>Check if the current month falls within a range:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: WRESL+ Language Reference (2018) — range() wraps around the water year
+define floodSeason {
+  case inRange {
+    condition range(month, oct, mar) == 1
+    value 1
+  }
+  case outOfRange {
+    condition always
+    value 0
+  }
+}
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="reference">
+<h2>Reference<a class="headerlink" href="#reference" title="Permalink to this heading"></a></h2>
+<p><em>Information-oriented: technical details and valid syntax.</em></p>
+<p>This section is a comprehensive reference for the WRESL+ language. Use it to look up exact syntax, available keywords, and supported functions.</p>
+<section id="wresl-syntax-reference">
+<h3>WRESL+ Syntax Reference<a class="headerlink" href="#wresl-syntax-reference" title="Permalink to this heading"></a></h3>
+<section id="keywords">
+<h4>Keywords<a class="headerlink" href="#keywords" title="Permalink to this heading"></a></h4>
+<p>The following keywords are recognized by the WRESL+ parser (case-insensitive):</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Category</p></th>
+<th class="head"><p>Keywords</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Variable definition</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">define</span></code>, <code class="docutils literal notranslate"><span class="pre">svar</span></code>, <code class="docutils literal notranslate"><span class="pre">dvar</span></code>, <code class="docutils literal notranslate"><span class="pre">const</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Variable content</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">value</span></code>, <code class="docutils literal notranslate"><span class="pre">timeseries</span></code>, <code class="docutils literal notranslate"><span class="pre">alias</span></code>, <code class="docutils literal notranslate"><span class="pre">external</span></code>, <code class="docutils literal notranslate"><span class="pre">std</span></code>, <code class="docutils literal notranslate"><span class="pre">integer</span></code>, <code class="docutils literal notranslate"><span class="pre">binary</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Bounds</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">lower</span></code>, <code class="docutils literal notranslate"><span class="pre">upper</span></code>, <code class="docutils literal notranslate"><span class="pre">unbounded</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Metadata</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">kind</span></code>, <code class="docutils literal notranslate"><span class="pre">units</span></code>, <code class="docutils literal notranslate"><span class="pre">convert</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Goals/Objectives</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">goal</span></code>, <code class="docutils literal notranslate"><span class="pre">objective</span></code>, <code class="docutils literal notranslate"><span class="pre">lhs</span></code>, <code class="docutils literal notranslate"><span class="pre">rhs</span></code>, <code class="docutils literal notranslate"><span class="pre">penalty</span></code>, <code class="docutils literal notranslate"><span class="pre">constrain</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Table lookups</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">select</span></code>, <code class="docutils literal notranslate"><span class="pre">from</span></code>, <code class="docutils literal notranslate"><span class="pre">given</span></code>, <code class="docutils literal notranslate"><span class="pre">use</span></code>, <code class="docutils literal notranslate"><span class="pre">where</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Summation</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sum</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Conditions</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">condition</span></code>, <code class="docutils literal notranslate"><span class="pre">always</span></code>, <code class="docutils literal notranslate"><span class="pre">case</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Logical operators</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">.and.</span></code>, <code class="docutils literal notranslate"><span class="pre">.or.</span></code>, <code class="docutils literal notranslate"><span class="pre">.not.</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Control flow</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">if</span></code>, <code class="docutils literal notranslate"><span class="pre">elseif</span></code>, <code class="docutils literal notranslate"><span class="pre">else</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Model structure</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">model</span></code>, <code class="docutils literal notranslate"><span class="pre">group</span></code>, <code class="docutils literal notranslate"><span class="pre">sequence</span></code>, <code class="docutils literal notranslate"><span class="pre">initial</span></code>, <code class="docutils literal notranslate"><span class="pre">include</span></code>, <code class="docutils literal notranslate"><span class="pre">order</span></code>, <code class="docutils literal notranslate"><span class="pre">timestep</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Special identifiers</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">month</span></code>, <code class="docutils literal notranslate"><span class="pre">wateryear</span></code>, <code class="docutils literal notranslate"><span class="pre">day</span></code>, <code class="docutils literal notranslate"><span class="pre">daysin</span></code>, <code class="docutils literal notranslate"><span class="pre">daysinmonth</span></code>, <code class="docutils literal notranslate"><span class="pre">daysintimestep</span></code>*</p></td>
+</tr>
+<tr class="row-even"><td><p>Unit conversions</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">taf_cfs</span></code>, <code class="docutils literal notranslate"><span class="pre">cfs_taf</span></code>, <code class="docutils literal notranslate"><span class="pre">af_cfs</span></code>, <code class="docutils literal notranslate"><span class="pre">cfs_af</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Calendar months</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">jan</span></code>, <code class="docutils literal notranslate"><span class="pre">feb</span></code>, <code class="docutils literal notranslate"><span class="pre">mar</span></code>, <code class="docutils literal notranslate"><span class="pre">apr</span></code>, <code class="docutils literal notranslate"><span class="pre">may</span></code>, <code class="docutils literal notranslate"><span class="pre">jun</span></code>, <code class="docutils literal notranslate"><span class="pre">jul</span></code>, <code class="docutils literal notranslate"><span class="pre">aug</span></code>, <code class="docutils literal notranslate"><span class="pre">sep</span></code>, <code class="docutils literal notranslate"><span class="pre">oct</span></code>, <code class="docutils literal notranslate"><span class="pre">nov</span></code>, <code class="docutils literal notranslate"><span class="pre">dec</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Previous months</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">prevjan</span></code>, <code class="docutils literal notranslate"><span class="pre">prevfeb</span></code>, …, <code class="docutils literal notranslate"><span class="pre">prevdec</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="variable-definition-syntax">
+<h4>Variable Definition Syntax<a class="headerlink" href="#variable-definition-syntax" title="Permalink to this heading"></a></h4>
+<blockquote>
+<div><p><strong>TimeArray</strong> — An optional parenthesized integer or identifier, e.g., <code class="docutils literal notranslate"><span class="pre">(12)</span></code>, that declares the variable as a time array with multiple slots (one per sub-timestep). When omitted, the variable holds a single value per timestep. This is used for variables that need to store values across multiple sub-periods within a timestep.</p>
+</div></blockquote>
+<p><strong>State Variable (SVAR):</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">define</span><span class="o">|</span><span class="n">svar</span> <span class="p">[(</span><span class="n">TimeArray</span><span class="p">)]</span> <span class="p">[[</span><span class="n">local</span><span class="p">]]</span> <span class="n">Name</span> <span class="p">{</span> <span class="n">SvarContent</span> <span class="p">}</span>
+</pre></div>
+</div>
+<p>Where <code class="docutils literal notranslate"><span class="pre">SvarContent</span></code> is one of:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">value</span> <span class="pre">Expression</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">timeseries</span> <span class="pre">['BPart']</span> <span class="pre">kind</span> <span class="pre">'K'</span> <span class="pre">units</span> <span class="pre">'U'</span> <span class="pre">[convert</span> <span class="pre">'C']</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">select</span> <span class="pre">Column</span> <span class="pre">from</span> <span class="pre">Table</span> <span class="pre">[given</span> <span class="pre">Assign</span> <span class="pre">use</span> <span class="pre">ID]</span> <span class="pre">[where</span> <span class="pre">Assignments]</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sum(i=Expr1,Expr2)</span> <span class="pre">Expression</span></code></p></li>
+<li><p>One or more <code class="docutils literal notranslate"><span class="pre">case</span> <span class="pre">Name</span> <span class="pre">{</span> <span class="pre">condition</span> <span class="pre">LogicalExpr|always</span>&#160; <span class="pre">value|select|sum</span> <span class="pre">...</span> <span class="pre">}</span></code></p></li>
+</ul>
+<p>Examples:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: CalSim3 DCR 9.5.0 — arcs-Inflows.wresl
+define I_SHSTA {timeseries kind &#39;INFLOW&#39; units &#39;TAF&#39; convert &#39;CFS&#39;}
+
+! Source: CalSim3 DCR 9.5.0 — arcs-Reservoirs.wresl
+define S_SHSTAlevel1 {value 550}
+
+! Source: CalSim3 DCR 9.5.0 — arcs-Reservoirs.wresl
+define A_SHSTAlast {
+  select area from res_info
+    given storage = 1000*S_SHSTA(-1)
+    use linear
+    where res_num = 4
+}
+
+! Source: WRESL+ Language Reference (2018)
+svar Z {sum(i=1, 5, 1) S03(-i) + I10(-i)}
+
+! Source: WRESL+ Language Reference (2018)
+svar NMTest {
+  case February {
+    condition month == feb
+    value S10(-12) + sumI10_part
+  }
+  case Others {
+    condition always
+    value S10(prevfeb) + sumI10_part
+  }
+}
+</pre></div>
+</div>
+<p><strong>Decision Variable (DVAR):</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">define</span><span class="o">|</span><span class="n">dvar</span> <span class="p">[(</span><span class="n">TimeArray</span><span class="p">)]</span> <span class="p">[[</span><span class="n">local</span><span class="p">]]</span> <span class="n">Name</span> <span class="p">{</span> <span class="n">DvarContent</span> <span class="p">}</span>
+</pre></div>
+</div>
+<p>Where <code class="docutils literal notranslate"><span class="pre">DvarContent</span></code> is one of:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">std</span> <span class="pre">kind</span> <span class="pre">'K'</span> <span class="pre">units</span> <span class="pre">'U'</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">[lower</span> <span class="pre">Expr]</span> <span class="pre">[upper</span> <span class="pre">Expr]</span> <span class="pre">kind</span> <span class="pre">'K'</span> <span class="pre">units</span> <span class="pre">'U'</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">binary</span> <span class="pre">kind</span> <span class="pre">'K'</span> <span class="pre">units</span> <span class="pre">'U'</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">integer</span> <span class="pre">std</span> <span class="pre">kind</span> <span class="pre">'K'</span> <span class="pre">units</span> <span class="pre">'U'</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">integer</span> <span class="pre">[lower</span> <span class="pre">Expr]</span> <span class="pre">[upper</span> <span class="pre">Expr]</span> <span class="pre">kind</span> <span class="pre">'K'</span> <span class="pre">units</span> <span class="pre">'U'</span></code></p></li>
+</ul>
+<p>Examples:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: WRESL+ Language Reference (2018)
+dvar C_Delta_SWP {std kind &#39;FLOW-CHANNEL&#39; units &#39;CFS&#39;}
+dvar QPD {lower -100. upper unbounded kind &#39;FLOW&#39; units &#39;CFS&#39;}
+dvar Integer2 {integer lower 0 upper 3 kind &#39;INTEGER&#39; units &#39;NA&#39;}
+</pre></div>
+</div>
+<p><strong>Constant:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">const</span> <span class="p">[[</span><span class="n">local</span><span class="p">]]</span> <span class="n">Name</span> <span class="p">{</span> <span class="n">Number</span> <span class="p">}</span>
+</pre></div>
+</div>
+<p>Example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: CalSim3 DCR 9.5.0 — arcs-Reservoirs.wresl
+define S_SHSTAlevel1 {value 550}
+</pre></div>
+</div>
+<p><strong>Alias:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">define</span> <span class="p">[(</span><span class="n">TimeArray</span><span class="p">)]</span> <span class="p">[[</span><span class="n">local</span><span class="p">]]</span> <span class="n">Name</span> <span class="p">{</span> <span class="n">alias</span> <span class="n">Expression</span> <span class="p">[</span><span class="n">kind</span> <span class="s1">&#39;K&#39;</span><span class="p">]</span> <span class="p">[</span><span class="n">units</span> <span class="s1">&#39;U&#39;</span><span class="p">]</span> <span class="p">}</span>
+</pre></div>
+</div>
+<p>Example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: CalSim3 DCR 9.5.0 — SoDeltaChannels.wresl
+define OMFlow {alias C_OMR014 kind &#39;FLOW-CHANNEL&#39; units &#39;CFS&#39;}
+
+! Source: WRESL+ Language Reference (2018)
+alias Estlim3 {max(300., Est_rel) kind &#39;DEBUG&#39; units &#39;CFS&#39;}
+</pre></div>
+</div>
+<p><strong>External:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">define</span> <span class="p">[[</span><span class="n">local</span><span class="p">]]</span> <span class="n">Name</span> <span class="p">{</span> <span class="n">external</span> <span class="n">LibraryName</span><span class="p">[</span><span class="o">.</span><span class="n">dll</span><span class="o">|.</span><span class="n">f90</span><span class="p">]</span> <span class="p">}</span>
+</pre></div>
+</div>
+<p>Where <code class="docutils literal notranslate"><span class="pre">LibraryName</span></code> is the filename of an external DLL or Fortran 90 library (e.g., <code class="docutils literal notranslate"><span class="pre">interfacetogw_x64.dll</span></code>). The external function is called by the evaluator at runtime.</p>
+<p>Example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: CalSim3 DCR 9.5.0 — CVGroundwater_ExtFuncs.wresl
+define InitGWSystem {EXTERNAL interfacetogw_x64.dll}
+</pre></div>
+</div>
+</section>
+<section id="goal-syntax">
+<h4>Goal Syntax<a class="headerlink" href="#goal-syntax" title="Permalink to this heading"></a></h4>
+<p><strong>Simple goal:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">goal</span> <span class="p">[(</span><span class="n">TimeArray</span><span class="p">)]</span> <span class="p">[[</span><span class="n">local</span><span class="p">]]</span> <span class="n">Name</span> <span class="p">{</span> <span class="n">Expression</span> <span class="o">&lt;</span> <span class="o">|</span> <span class="o">&gt;</span> <span class="o">|</span> <span class="o">=</span> <span class="n">Expression</span> <span class="p">}</span>
+</pre></div>
+</div>
+<p>Examples:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: CalSim3 DCR 9.5.0 — constraints-Connectivity.wresl
+goal continuitySHSTA {I_SHSTA - C_SHSTA - D_SHSTA_WTPJMS - E_SHSTA = S_SHSTA * taf_cfs - S_SHSTA(-1) * taf_cfs + 0.}
+
+! Source: WRESL+ Language Reference (2018)
+goal Test {X &gt; Y}
+</pre></div>
+</div>
+<p><strong>Complex goal with LHS/RHS:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">goal</span> <span class="p">[(</span><span class="n">TimeArray</span><span class="p">)]</span> <span class="p">[[</span><span class="n">local</span><span class="p">]]</span> <span class="n">Name</span> <span class="p">{</span>
+  <span class="n">lhs</span> <span class="n">Expression</span>
+  <span class="n">rhs</span> <span class="n">Expression</span>
+  <span class="p">[</span><span class="n">lhs</span> <span class="o">&gt;</span> <span class="n">rhs</span>  <span class="n">constrain</span> <span class="o">|</span> <span class="n">penalty</span> <span class="n">Expression</span><span class="p">]</span>
+  <span class="p">[</span><span class="n">lhs</span> <span class="o">&lt;</span> <span class="n">rhs</span>  <span class="n">constrain</span> <span class="o">|</span> <span class="n">penalty</span> <span class="n">Expression</span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: WRESL+ Language Reference (2018)
+goal NMTest {
+  lhs X + Y
+  rhs Z
+  lhs &gt; rhs constrain
+  lhs &lt; rhs penalty 0
+}
+</pre></div>
+</div>
+<p><strong>Complex goal with cases:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">goal</span> <span class="p">[(</span><span class="n">TimeArray</span><span class="p">)]</span> <span class="p">[[</span><span class="n">local</span><span class="p">]]</span> <span class="n">Name</span> <span class="p">{</span>
+  <span class="n">lhs</span> <span class="n">Expression</span>
+  <span class="k">case</span> <span class="n">CaseName</span> <span class="p">{</span>
+    <span class="n">condition</span> <span class="n">LogicalExpression</span> <span class="o">|</span> <span class="n">always</span>
+    <span class="n">rhs</span> <span class="n">Expression</span>
+    <span class="p">[</span><span class="n">lhs</span> <span class="o">&gt;</span> <span class="n">rhs</span>  <span class="n">constrain</span> <span class="o">|</span> <span class="n">penalty</span> <span class="n">Expression</span><span class="p">]</span>
+    <span class="p">[</span><span class="n">lhs</span> <span class="o">&lt;</span> <span class="n">rhs</span>  <span class="n">constrain</span> <span class="o">|</span> <span class="n">penalty</span> <span class="n">Expression</span><span class="p">]</span>
+  <span class="p">}</span>
+  <span class="o">...</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: WRESL+ Language Reference (2018)
+goal TestAction1 {
+  lhs D_J1 + D_B1
+  case April {
+    condition month == apr
+    rhs CNW + X
+    lhs &lt; rhs penalty 0
+  }
+  case Others {
+    condition always
+    rhs 3000. * 16.0 / daysin + Z
+    lhs &lt; rhs penalty 0
+    lhs &gt; rhs constrain
+  }
+}
+</pre></div>
+</div>
+</section>
+<section id="objective-syntax">
+<h4>Objective Syntax<a class="headerlink" href="#objective-syntax" title="Permalink to this heading"></a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">objective</span> <span class="p">[[</span><span class="n">local</span><span class="p">]]</span> <span class="n">Name</span> <span class="p">[</span><span class="o">=</span><span class="p">]</span> <span class="p">{</span>
+  <span class="p">[</span><span class="n">VarRef</span> <span class="p">[(</span><span class="n">TimeArray</span><span class="p">)],</span> <span class="n">WeightExpression</span><span class="p">],</span>
+  <span class="o">...</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>When a DVAR is declared as a time array (e.g., <code class="docutils literal notranslate"><span class="pre">dvar(12)</span> <span class="pre">myVar</span> <span class="pre">{...}</span></code>), the <code class="docutils literal notranslate"><span class="pre">(TimeArray)</span></code> in the objective entry must match that declaration to correctly assign the weight to each sub-timestep slot. For non-time-array DVARs, omit it.</p>
+<p>Example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: WRESL+ Language Reference (2018)
+objective XGroup {[X1, 10] [X2, 20]}
+
+! Source: CalSim3 DCR 9.5.0 — Weight-table.wresl (abbreviated)
+Objective obj_SYS = {
+  [S_TRNTY_1, 200000*taf_cfs],
+  [S_TRNTY_2, 93*taf_cfs],
+  [S_SHSTA_1, 200000*taf_cfs],
+  [S_SHSTA_2, 93*taf_cfs]
+}
+</pre></div>
+</div>
+</section>
+<section id="model-structure-syntax">
+<h4>Model Structure Syntax<a class="headerlink" href="#model-structure-syntax" title="Permalink to this heading"></a></h4>
+<p><strong>Sequence:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sequence</span> <span class="n">Name</span> <span class="p">{</span> <span class="n">model</span> <span class="n">ModelRef</span> <span class="p">[</span><span class="n">condition</span> <span class="n">LogicalExpr</span><span class="p">]</span> <span class="p">[</span><span class="n">order</span> <span class="n">INT</span><span class="p">]</span> <span class="p">[</span><span class="n">timestep</span> <span class="mi">1</span><span class="n">MON</span><span class="o">|</span><span class="mi">1</span><span class="n">DAY</span><span class="p">]</span> <span class="p">}</span>
+</pre></div>
+</div>
+<p>Example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: WRESL+ Language Reference (2018)
+sequence CYCLE1 {model Upstream order 1}
+sequence CYCLE4 {model Test2 condition MON==jun order 4}
+
+! Source: CalSim3 DCR 9.5.0 — mainCS3_ReOrg_UWplusVF.wresl
+SEQUENCE CYCLE33 {model UPSTREAM condition simulateSacramentoValley &gt;= 0.5 order 33}
+</pre></div>
+</div>
+<p><strong>Model:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="n">Name</span> <span class="p">{</span> <span class="p">(</span><span class="n">Pattern</span> <span class="o">|</span> <span class="n">IfIncItems</span><span class="p">)</span><span class="o">+</span> <span class="p">}</span>
+</pre></div>
+</div>
+<p>Where <code class="docutils literal notranslate"><span class="pre">Pattern</span></code> is one or more of the following content items: <code class="docutils literal notranslate"><span class="pre">include</span></code> file, <code class="docutils literal notranslate"><span class="pre">define</span></code>/<code class="docutils literal notranslate"><span class="pre">svar</span></code>, <code class="docutils literal notranslate"><span class="pre">dvar</span></code>, <code class="docutils literal notranslate"><span class="pre">goal</span></code>, <code class="docutils literal notranslate"><span class="pre">alias</span></code>, <code class="docutils literal notranslate"><span class="pre">objective</span></code>, <code class="docutils literal notranslate"><span class="pre">external</span></code>, or <code class="docutils literal notranslate"><span class="pre">timeseries</span></code> declarations. <code class="docutils literal notranslate"><span class="pre">IfIncItems</span></code> are conditional include blocks (<code class="docutils literal notranslate"><span class="pre">if</span></code>/<code class="docutils literal notranslate"><span class="pre">elseif</span></code>/<code class="docutils literal notranslate"><span class="pre">else</span></code> wrapping any of the above).
+Example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: CalSim3 DCR 9.5.0 — mainCS3_ReOrg_UWplusVF.wresl (abbreviated)
+model UPSTREAM {
+  include group Tdomain
+  include group Common_All
+  include &#39;System\System_Sac_cycle1.wresl&#39;
+  if simulateSacVA_TisdaleWeir &lt; 0.5 {
+    include &#39;SystemTables_Sac\constraints-Weirs2.wresl&#39;
+  }
+}
+</pre></div>
+</div>
+<p><strong>Group:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">group</span> <span class="n">Name</span> <span class="p">{</span> <span class="p">(</span><span class="n">Pattern</span> <span class="o">|</span> <span class="n">IfIncItems</span><span class="p">)</span><span class="o">+</span> <span class="p">}</span>
+</pre></div>
+</div>
+<p>Example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: CalSim3 DCR 9.5.0 — mainCS3_ReOrg_UWplusVF.wresl
+group Common_All {
+  include &#39;CVGroundwater\CalSim3GWregionIndex.wresl&#39;
+  include &#39;Other\NewFacilitySwitches.wresl&#39;
+  include &#39;Other\wytypes\WyTypesGeneral.wresl&#39;
+}
+</pre></div>
+</div>
+<p><strong>Initial:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">initial</span> <span class="p">{</span> <span class="p">(</span><span class="n">SimpleValueSvar</span> <span class="o">|</span> <span class="n">LookupTableSvar</span> <span class="o">|</span> <span class="n">IncludeStatement</span><span class="p">)</span><span class="o">+</span> <span class="p">}</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">initial</span></code> block runs once before the main simulation loop. Per the WRESL+ Language Reference, the <code class="docutils literal notranslate"><span class="pre">initial</span></code> block allows only <strong>simple value state variables</strong> and <strong>lookup table state variables</strong>. In practice, CalSim3 also uses <code class="docutils literal notranslate"><span class="pre">include</span></code> statements within <code class="docutils literal notranslate"><span class="pre">initial</span></code> to bring in files containing these variable types. It is typically used to set flags, switches, and starting conditions that are evaluated once before the simulation begins.
+Example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Source: WRESL+ Language Reference (2018)
+initial {
+  svar A {value 10.}
+  svar B {value A * 5}
+  svar C {value B + 6.0}
+}
+
+! Source: CalSim3 DCR 9.5.0 — mainCS3_ReOrg_UWplusVF.wresl (abbreviated)
+initial {
+  include &#39;System\SystemTables_Sac\arcs-Reservoirs.wresl&#39;
+  include &#39;CVGroundwater\CVGroundwater_init1_SJRBASE.wresl&#39;
+}
+</pre></div>
+</div>
+<p><strong>Include:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">include</span> <span class="p">[[</span><span class="n">local</span><span class="p">]]</span> <span class="s1">&#39;filepath.wresl&#39;</span>
+<span class="n">include</span> <span class="n">model</span> <span class="n">ModelName</span>
+<span class="n">include</span> <span class="n">group</span> <span class="n">GroupName</span>
+</pre></div>
+</div>
+</section>
+<section id="data-types">
+<h4>Data Types<a class="headerlink" href="#data-types" title="Permalink to this heading"></a></h4>
+<ul class="simple">
+<li><p>Integer (e.g., <code class="docutils literal notranslate"><span class="pre">42</span></code>, <code class="docutils literal notranslate"><span class="pre">550</span></code>)</p></li>
+<li><p>Float (e.g., <code class="docutils literal notranslate"><span class="pre">3.14</span></code>, <code class="docutils literal notranslate"><span class="pre">.5</span></code>, <code class="docutils literal notranslate"><span class="pre">1.98347</span></code>)</p></li>
+</ul>
+</section>
+<section id="operators">
+<h4>Operators<a class="headerlink" href="#operators" title="Permalink to this heading"></a></h4>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Type</p></th>
+<th class="head"><p>Operators</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Arithmetic</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">+</span></code>, <code class="docutils literal notranslate"><span class="pre">-</span></code>, <code class="docutils literal notranslate"><span class="pre">*</span></code>, <code class="docutils literal notranslate"><span class="pre">/</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Comparison</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">==</span></code>, <code class="docutils literal notranslate"><span class="pre">/=</span></code> (not equal), <code class="docutils literal notranslate"><span class="pre">&lt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&lt;=</span></code>, <code class="docutils literal notranslate"><span class="pre">&gt;=</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Logical</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">.and.</span></code>, <code class="docutils literal notranslate"><span class="pre">.or.</span></code>, <code class="docutils literal notranslate"><span class="pre">.not.</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="comments">
+<h4>Comments<a class="headerlink" href="#comments" title="Permalink to this heading"></a></h4>
+<p>Single-line comments begin with <code class="docutils literal notranslate"><span class="pre">!</span></code>:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>! Sacramento River inflow to Shasta
+define I_SHSTA {value 10000}   ! CFS
+</pre></div>
+</div>
+</section>
+<section id="strings">
+<h4>Strings<a class="headerlink" href="#strings" title="Permalink to this heading"></a></h4>
+<p>Strings use <strong>single quotes</strong>:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>kind &#39;FLOW-CHANNEL&#39;
+units &#39;CFS&#39;
+include &#39;System\SystemTables_Sac\arcs-Reservoirs.wresl&#39;
+</pre></div>
+</div>
+</section>
+</section>
+<section id="supported-functions">
+<h3>Supported Functions<a class="headerlink" href="#supported-functions" title="Permalink to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Function</p></th>
+<th class="head"><p>Description</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">min(a,</span> <span class="pre">b,</span> <span class="pre">...)</span></code></p></td>
+<td><p>Minimum of values</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">min(I_SHSTA,</span> <span class="pre">maxCapacity)</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">max(a,</span> <span class="pre">b,</span> <span class="pre">...)</span></code></p></td>
+<td><p>Maximum of values</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">max(C_SHSTA,</span> <span class="pre">0)</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">abs(x)</span></code></p></td>
+<td><p>Absolute value</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">abs(S_SHSTA</span> <span class="pre">-</span> <span class="pre">target)</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">round(x)</span></code></p></td>
+<td><p>Round to nearest integer</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">round(ratio)</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">int(x)</span></code></p></td>
+<td><p>Truncate to integer</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">int(2.9)</span></code> → 2</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">mod(a,</span> <span class="pre">b)</span></code></p></td>
+<td><p>Modulo (remainder)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">mod(month,</span> <span class="pre">12)</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pow(a,</span> <span class="pre">b)</span></code></p></td>
+<td><p>Power (a raised to b)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">pow(base,</span> <span class="pre">exp)</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">log(x)</span></code></p></td>
+<td><p>Logarithm (also <code class="docutils literal notranslate"><span class="pre">log10</span></code>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">log(value)</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sin(x)</span></code></p></td>
+<td><p>Sine</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sin(angle)</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">cos(x)</span></code></p></td>
+<td><p>Cosine</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">cos(angle)</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">tan(x)</span></code></p></td>
+<td><p>Tangent</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">tan(angle)</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">cot(x)</span></code></p></td>
+<td><p>Cotangent</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">cot(angle)</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">asin(x)</span></code></p></td>
+<td><p>Arc sine</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">asin(ratio)</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">acos(x)</span></code></p></td>
+<td><p>Arc cosine</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">acos(ratio)</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">atan(x)</span></code></p></td>
+<td><p>Arc tangent</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">atan(slope)</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">acot(x)</span></code></p></td>
+<td><p>Arc cotangent</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">acot(value)</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">range(var,</span> <span class="pre">start,</span> <span class="pre">end)</span></code></p></td>
+<td><p>Check if month/year is in range</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">range(month,</span> <span class="pre">oct,</span> <span class="pre">mar)</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="special-built-in-identifiers">
+<h3>Special Built-in Identifiers<a class="headerlink" href="#special-built-in-identifiers" title="Permalink to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Identifier</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">month</span></code></p></td>
+<td><p>Current simulation month (numeric)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">wateryear</span></code></p></td>
+<td><p>Current water year</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">day</span></code></p></td>
+<td><p>Current simulation day</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">daysin</span></code> / <code class="docutils literal notranslate"><span class="pre">daysinmonth</span></code></p></td>
+<td><p>Number of days in current month</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">daysintimestep</span></code></p></td>
+<td><p>Number of days in current timestep. <strong>Note:</strong> This is a built-in evaluator keyword, not a parser-level keyword. It is case-sensitive and must be written in lowercase only.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">jan</span></code> … <code class="docutils literal notranslate"><span class="pre">dec</span></code></p></td>
+<td><p>Calendar month constants</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">prevjan</span></code> … <code class="docutils literal notranslate"><span class="pre">prevdec</span></code></p></td>
+<td><p>Previous year’s month references</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">taf_cfs</span></code></p></td>
+<td><p>TAF to CFS conversion factor for the current timestep</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">cfs_taf</span></code></p></td>
+<td><p>CFS to TAF conversion factor for the current timestep</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">af_cfs</span></code></p></td>
+<td><p>AF to CFS conversion factor for the current timestep</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">cfs_af</span></code></p></td>
+<td><p>CFS to AF conversion factor for the current timestep</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">$m</span></code></p></td>
+<td><p>Multi-step reference</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">i</span></code></p></td>
+<td><p>Loop variable (used inside <code class="docutils literal notranslate"><span class="pre">sum</span></code> expressions)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="variable-cross-references">
+<h3>Variable Cross-References<a class="headerlink" href="#variable-cross-references" title="Permalink to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Syntax</p></th>
+<th class="head"><p>Meaning</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">varName[modelName]</span></code></p></td>
+<td><p>Reference variable as solved in another model cycle</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">C_CAA003_EXP1[WHEELJPOD]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">varName(-1)</span></code></p></td>
+<td><p>Reference variable from the previous time step</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">S_SHSTA(-1)</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">varName[modelName](offset)</span></code></p></td>
+<td><p>Cross-model reference with time offset</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">EiExpCtrl[PRESETUP](-1)</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">varName[-1]</span></code></p></td>
+<td><p>Index-based variable reference</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">S_SHSTA[-1]</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="debugging-tips">
+<h2>Debugging Tips<a class="headerlink" href="#debugging-tips" title="Permalink to this heading"></a></h2>
+<p><em>Advice for solving common issues.</em></p>
+<section id="common-error-messages">
+<h3>Common Error Messages<a class="headerlink" href="#common-error-messages" title="Permalink to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Error Message</p></th>
+<th class="head"><p>Likely Cause</p></th>
+<th class="head"><p>Solution</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Undefined variable</p></td>
+<td><p>Variable not declared or typo in name</p></td>
+<td><p>Check spelling; ensure variable is defined with <code class="docutils literal notranslate"><span class="pre">define</span></code>, <code class="docutils literal notranslate"><span class="pre">svar</span></code>, <code class="docutils literal notranslate"><span class="pre">dvar</span></code>, or <code class="docutils literal notranslate"><span class="pre">const</span></code> (e.g., <code class="docutils literal notranslate"><span class="pre">I_SHSTA</span></code> vs. <code class="docutils literal notranslate"><span class="pre">I_Shsta</span></code>)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Syntax error</p></td>
+<td><p>Missing brace <code class="docutils literal notranslate"><span class="pre">{}</span></code>, wrong quotes, or invalid keyword</p></td>
+<td><p>Review line for correct syntax; use single quotes <code class="docutils literal notranslate"><span class="pre">'...'</span></code> for strings</p></td>
+</tr>
+<tr class="row-even"><td><p>Circular reference detected</p></td>
+<td><p>SVARs reference each other in a loop</p></td>
+<td><p>Refactor definitions to break the cycle</p></td>
+</tr>
+<tr class="row-odd"><td><p>File not found</p></td>
+<td><p>Incorrect path in <code class="docutils literal notranslate"><span class="pre">include</span></code> statement</p></td>
+<td><p>Check the file path (single-quoted, relative to model root, e.g., <code class="docutils literal notranslate"><span class="pre">'System\SystemTables_Sac\arcs-Reservoirs.wresl'</span></code>)</p></td>
+</tr>
+<tr class="row-even"><td><p>Missing kind/units</p></td>
+<td><p>DVAR or timeseries missing required metadata</p></td>
+<td><p>Add <code class="docutils literal notranslate"><span class="pre">kind</span> <span class="pre">'...'</span></code> and <code class="docutils literal notranslate"><span class="pre">units</span> <span class="pre">'...'</span></code> to the definition</p></td>
+</tr>
+<tr class="row-odd"><td><p>Infeasible solution</p></td>
+<td><p>Constraints cannot all be satisfied simultaneously</p></td>
+<td><p>Review goals for conflicting constraints; consider using <code class="docutils literal notranslate"><span class="pre">penalty</span></code> instead of <code class="docutils literal notranslate"><span class="pre">constrain</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="troubleshooting-workflow">
+<h3>Troubleshooting Workflow<a class="headerlink" href="#troubleshooting-workflow" title="Permalink to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>Read the error message carefully and note the file name and line number.</p></li>
+<li><p>Check the referenced line for syntax issues (braces, quotes, keywords).</p></li>
+<li><p>Verify all referenced variables are declared before use.</p></li>
+<li><p>Simplify your model to isolate the issue and comment out sections with <code class="docutils literal notranslate"><span class="pre">!</span></code>.</p></li>
+<li><p>Check that <code class="docutils literal notranslate"><span class="pre">case</span></code> blocks end with a <code class="docutils literal notranslate"><span class="pre">condition</span> <span class="pre">always</span></code> default.</p></li>
+<li><p>Verify <code class="docutils literal notranslate"><span class="pre">include</span></code> file paths exist and are correctly quoted.</p></li>
+<li><p>Consult the <a class="reference internal" href="#reference">Reference</a> and <a class="reference internal" href="#explanation">Explanation</a> sections.</p></li>
+</ol>
+</section>
+<section id="frequently-asked-questions-faq">
+<h3>Frequently Asked Questions (FAQ)<a class="headerlink" href="#frequently-asked-questions-faq" title="Permalink to this heading"></a></h3>
+<p><strong>Q: How do I write comments in WRESL+?</strong>
+A: Use <code class="docutils literal notranslate"><span class="pre">!</span></code> for single-line comments — everything after <code class="docutils literal notranslate"><span class="pre">!</span></code> on that line is ignored. For multi-line comments, use <code class="docutils literal notranslate"><span class="pre">/*</span> <span class="pre">...</span> <span class="pre">*/</span></code> to wrap a block of text. Note: the original WRESL also supported <code class="docutils literal notranslate"><span class="pre">//</span></code> for single-line comments, but <code class="docutils literal notranslate"><span class="pre">//</span></code> is not part of the WRESL+ specification.</p>
+<p><strong>Q: How do I include external data?</strong>
+A: Use <code class="docutils literal notranslate"><span class="pre">timeseries</span></code> for HEC-DSS data (e.g., <code class="docutils literal notranslate"><span class="pre">define</span> <span class="pre">I_SHSTA</span> <span class="pre">{timeseries</span> <span class="pre">kind</span> <span class="pre">'FLOW'</span> <span class="pre">units</span> <span class="pre">'CFS'}</span></code>) or <code class="docutils literal notranslate"><span class="pre">select...from...where</span></code> for lookup tables. Use <code class="docutils literal notranslate"><span class="pre">include</span></code> to bring in other <code class="docutils literal notranslate"><span class="pre">.wresl</span></code> files.</p>
+<p><strong>Q: What kind of quotes does WRESL+ use?</strong>
+A: Single quotes only: <code class="docutils literal notranslate"><span class="pre">'FLOW-CHANNEL'</span></code>. Double quotes are not valid.</p>
+<p><strong>Q: What are the logical operators?</strong>
+A: <code class="docutils literal notranslate"><span class="pre">.and.</span></code>, <code class="docutils literal notranslate"><span class="pre">.or.</span></code>, <code class="docutils literal notranslate"><span class="pre">.not.</span></code> — not <code class="docutils literal notranslate"><span class="pre">&amp;&amp;</span></code>, <code class="docutils literal notranslate"><span class="pre">||</span></code>, <code class="docutils literal notranslate"><span class="pre">!</span></code>.</p>
+<p><strong>Q: How do I make a variable local to a model cycle?</strong>
+A: Add the <code class="docutils literal notranslate"><span class="pre">[local]</span></code> modifier: <code class="docutils literal notranslate"><span class="pre">define</span> <span class="pre">[local]</span> <span class="pre">myVar</span> <span class="pre">{value</span> <span class="pre">42}</span></code> or <code class="docutils literal notranslate"><span class="pre">include</span> <span class="pre">[local]</span> <span class="pre">'file.wresl'</span></code>.</p>
+<p><strong>Q: Where can I find more examples?</strong>
+A: See the Tutorials and How-to Guides sections above, or examine existing CalSim3 study files for real-world patterns.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="contributing-to-the-documentation">
+<h2>Contributing to the Documentation<a class="headerlink" href="#contributing-to-the-documentation" title="Permalink to this heading"></a></h2>
+<p>If you find errors or have suggestions for improving this documentation:</p>
+<ol class="arabic simple">
+<li><p>Open an issue or pull request on the <a class="reference external" href="https://github.com/CentralValleyModeling/wrims-gui">wrims-gui repository</a>.</p></li>
+<li><p>Reference the <a class="reference external" href="https://github.com/CentralValleyModeling/wrims-gui/blob/main/xtext-editor/src/main/resources/gov/ca/dwr/wresl/xtext/editor/WreslEditor.xtext">WRESL+ Xtext grammar</a> as the authoritative syntax source.</p></li>
+<li><p>Follow the <a class="reference external" href="https://diataxis.fr/">Diátaxis</a> framework when adding content — place material in the appropriate section (Explanation, Tutorials, How-to, or Reference).</p></li>
+<li><p>Use clear, descriptive variable names in examples for consistency.</p></li>
+</ol>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="WRESL+" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, CA Department of Water Resources.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

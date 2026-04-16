@@ -2,9 +2,9 @@
 
 # -- Project information
 
-project = "wrims-gui"
+project = "wreslplus documentation"
 copyright = "2026, CA Department of Water Resources"
-author = "Zachary Roy"
+author = "Development Team"
 
 release = "0.1"
 version = "0.1.0"
@@ -35,6 +35,8 @@ intersphinx_mapping = {
     ),
 }
 intersphinx_disabled_reftypes = ["std:doc", "std:label"]
+
+myst_heading_anchors = 4
 
 templates_path = ["_templates"]
 
