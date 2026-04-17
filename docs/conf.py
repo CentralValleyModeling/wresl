@@ -2,9 +2,9 @@
 
 # -- Project information
 
-project = "wreslplus documentation"
+project = "WRESL+"
 copyright = "2026, CA Department of Water Resources"
-author = "Development Team"
+author = "Zachary Roy"
 
 release = "0.1"
 version = "0.1.0"
