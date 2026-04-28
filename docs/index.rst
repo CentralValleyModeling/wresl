@@ -1,4 +1,5 @@
 .. _home:
+
 WRESL+
 ============
 
@@ -7,3 +8,8 @@ WRESL+
 
 Contents
 --------
+
+.. toctree::
+   :maxdepth: 2
+
+   README.WRESLPLUS
