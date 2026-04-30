@@ -34,7 +34,6 @@ intersphinx_mapping = {
         None,
     ),
 }
-intersphinx_disabled_reftypes = ["std:doc", "std:label"]
 
 myst_heading_anchors = 4
 
