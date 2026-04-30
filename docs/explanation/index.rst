@@ -63,6 +63,7 @@ Goals
 ~~~~~
 
 Goals define linear constraints that the solver must satisfy or approximate. They can be:
+
 - **Simple constraints**: equality (``=``) or inequality (``<``, ``>``) between expressions (e.g., mass balance at a reservoir)
 - **Penalty-based**: when a constraint cannot be strictly enforced, a penalty cost is applied for violation (e.g., relaxing minimum instream flow requirements)
 - **Conditional**: different constraints apply under different conditions using :wresl:`case` or :wresl:`condition` (e.g., summer vs. winter operating rules)
@@ -107,6 +108,7 @@ How the Solver Works
 --------------------
 
 At each time step, WRIMS:
+
 1. Evaluates all State Variables (inputs, time series, table lookups, conditional values).
 2. Constructs the LP problem from Decision Variables (unknowns) and goals (constraints).
 3. Applies the objective function weights.

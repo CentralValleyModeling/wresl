@@ -35,6 +35,7 @@ Then the continuity constraint ties them together:
 
 
 **Key points:**
+
 - CalSim models conventionally use **CFS** (cubic feet per second) for flows and **TAF** (thousand acre-feet) for storage. The built-in conversion factor `taf_cfs` converts TAF to CFS for the current time step, ensuring consistent units within constraints.
 - :wresl:`S_SHSTA(-1)` references the storage from the previous time step.
 - The `+ 0.` at the end is a CalSim convention for consistency in the continuity equations.
@@ -88,6 +89,7 @@ And another from CVP operations that sets seasonal balancing targets:
 
 
 **Key points:**
+
 - Conditions are evaluated top-to-bottom; the first match is used.
 - Always end with :wresl:`condition always` as a default/fallback.
 - You can have as many :wresl:`case` blocks as needed.
