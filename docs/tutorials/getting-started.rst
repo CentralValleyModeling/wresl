@@ -129,5 +129,5 @@ Within the ``Second`` model, you did pretty much the same thing as in the ``Firs
 
 :wresl:`svar X1_Upstream { value X1[First] }` 
 
-You referenced the result of `X1` from the `First` sequence, demonstrating **cross-cycle variable access**.
+You referenced the result of ``X1`` from the ``First`` sequence, demonstrating **cross-cycle variable access**.
 

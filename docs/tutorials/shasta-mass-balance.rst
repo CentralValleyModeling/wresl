@@ -168,4 +168,4 @@ As models grow, splitting definitions across files keeps things manageable. Here
    }
 
 
-This pattern — separating variables from goals, organizing by geographic location and system component, and using `include` with `group` — is the standard way to organize WRESL+ models.
+This pattern — separating variables from goals, organizing by geographic location and system component, and using :wresl:`include` with :wresl:`group` — is the standard way to organize WRESL+ models.

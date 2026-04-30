@@ -1,5 +1,9 @@
 .. _how-to-index:
 
+
+.. role:: wresl(code)
+   :language: wresl
+
 How-To
 ======
 *Task-oriented: recipes for accomplishing specific goals.*
@@ -9,7 +13,7 @@ Each guide below addresses a specific task. Skim the headings to find what you n
 How to Define State Variables
 -----------------------------
 
-State variables hold known or computed values. They can be defined using `define` or `svar`:
+State variables hold known or computed values. They can be defined using ``define`` or ``svar``:
 
 .. code-block:: wresl
 
@@ -74,7 +78,8 @@ Decision variables have their values determined by the optimization solver:
 How to Define Constants
 -----------------------
 
-Constants can be defined using `define` with a `value`; this approach works in both WRESL and WRESL+:
+Constants can be defined using :wresl:`define` with a :wresl:`value`; this approach works in both WRESL and WRESL+:
+
 .. code-block:: wresl
 
     ! Source: CalSim3 DCR 9.5.0 — arcs-Reservoirs.wresl

@@ -261,8 +261,8 @@ Objective Syntax
 
 Notes:
 
-- For DVARs declared as a time array, the ``(TimeArray)`` in the objective entry must match the declaration.
-- For non-time-array DVARs, omit the time array specifier.
+- For Decision Variables declared as a time array, the ``(TimeArray)`` in the objective entry must match the declaration.
+- For non-time-array Decision Variables, omit the time array specifier.
 
 Example:
 
