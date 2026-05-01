@@ -4,7 +4,7 @@
 
 project = "WRESL+"
 copyright = "2026, CA Department of Water Resources"
-author = "Zachary Roy"
+author = "CA Department of Water Resources, Modeling Support Office"
 
 release = "0.1"
 version = "0.1.0"
