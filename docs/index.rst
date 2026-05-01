@@ -1,6 +1,12 @@
 WRESL+
 ======
 
+.. _GitHub Discussions: https://github.com/CentralValleyModeling/wresl/discussions
+.. _GitHub Issues: https://github.com/CentralValleyModeling/wresl/issues
+
+Introduction
+~~~~~~~~~~~~
+
 WRESL+ is a domain-specific language for water resources modeling, used 
 within the WRIMS (Water Resources Integrated Modeling System). It 
 enables users to define state variables, decision variables, goals, and
@@ -21,6 +27,46 @@ the various resources:
 +-------------+---------------------------------------+------------------------------------+
 | *Cognition* | :ref:`Explanation<explanation-index>` | :ref:`Reference<reference-index>`  |
 +-------------+---------------------------------------+------------------------------------+
+
+:ref:`Tutorials<tutorials-index>`
+---------------------------------
+
+Tutorials are intended to help new users of WRESL+ to learn the basics. 
+These tutorials are not a complete learning experience; learners will 
+likely need to refresh their understanding of WRIMS, linear programming,
+and water resources concepts as they think about these tutorials.
+
+.. note::
+
+    These tutorials are being expanded. If you have ideas for new ways 
+    of learning WRESL+, please let us know via our `GitHub Discussions`_!
+
+:ref:`How-To Guides<how-to-index>`
+----------------------------------
+
+How-To guides are intended to help users complete common workflows. 
+These are not focused on learning, but more on documenting the preferred
+styles for using the language. 
+
+.. note::
+
+    Some workflows here are not the **only** way to complete these 
+    tasks, and there are good reasons to do things differently than how 
+    we have presented them here. If you think we are suggesting bad 
+    practice, please let us know (`GitHub Issues`_).
+
+:ref:`Explanation<explanation-index>`
+-------------------------------------
+
+These explanations are give a greater understanding of how WRESL+ was 
+designed, how it fits within the WRIMS toolkit.
+
+:ref:`Reference<reference-index>`
+---------------------------------
+
+The reference section is intended to be a repository of detailed 
+information useful mostly to those already familair with WRESL+, and 
+need quick reminders of very specific information.
 
 Legacy documentation
 --------------------
