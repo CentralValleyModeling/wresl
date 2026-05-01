@@ -1,0 +1,40 @@
+[build-system]
+    requires = ["setuptools"]
+    build-backend = "setuptools.build_meta"
+
+[project]
+    authors = [
+        {name = "Zachary Roy", email = "zachary.roy@water.ca.gov"}
+    ]
+    description = "Syntax highlighting support for WRESL+"
+    license = {text = "MIT"}
+    name = "wresl-pygment"
+    version = "0.1.0"
+
+[project.entry-points."pygments.lexers"]
+    wresl = "wresl_pygment:WreslLexer"
+
+[tool.pytest.ini_options]
+  log_cli = true
+  log_cli_level = "DEBUG"
+  addopts = [
+    "-vv",
+    "--color=yes",
+    "--tb=native",
+    "--strict-markers",
+    "--durations=20",
+  ]
+  norecursedirs = [
+    ".*", 
+    "*.egg*", 
+    "build", 
+    "dist", 
+    "conda.recipe", 
+    "examples", 
+    "env", 
+    "envs", 
+    "scripts",
+  ]
+  pythonpath = [
+    "src"
+  ]
