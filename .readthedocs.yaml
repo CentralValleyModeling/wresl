@@ -13,3 +13,6 @@ python:
     - method: pip
       path: wresl-pygment
     - requirements: docs/requirements.txt
+
+formats:
+  - pdf
