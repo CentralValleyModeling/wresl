@@ -109,20 +109,23 @@ groupBody
 dvar: (DVAR | DEFINE) scope? arraySizeDefinition? OBJECT_NAME OPEN_BRACE defineBoundLimits definitionSpecifics+ CLOSE_BRACE ;
 svar: (SVAR | DEFINE) scope? arraySizeDefinition? OBJECT_NAME OPEN_BRACE svarBody CLOSE_BRACE ;
 svarBody
-    : caseStatement+                                         #svarCase
-    | select                                                 #svarLookup
-    | sumExpressionBody                                      #svarSum
-    | VALUE expression                                       #svarValue
+    : caseStatement+           #svarCase
+    | select                   #svarLookup
+    | sumExpressionBody        #svarSum
+    | VALUE expression         #svarValue
     ;
 
-defineBoundLimits: INTEGER? (STD | defineBoundUl) ;
-defineBoundUl: boundSide boundType (boundSide boundType)? ;
-boundSide: UPPER | LOWER;
+defineBoundLimits: INTEGER? (STD | defineBoundUpperLower+) ;
+defineBoundUpperLower
+    : defineLowerBound
+    | defineUpperBound
+    ;
+defineLowerBound: LOWER boundType ;
+defineUpperBound: UPPER boundType ;
 boundType
-    : UNBOUNDED    #unbounded
-    | expression   #expressionBounded
+    : UNBOUNDED    
+    | expression   
     ;
-
 definitionSpecifics
     : kind
     | units

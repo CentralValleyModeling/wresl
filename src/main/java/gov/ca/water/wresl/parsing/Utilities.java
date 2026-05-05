@@ -1,12 +1,13 @@
 package gov.ca.water.wresl.parsing;
 
-import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.Token;
+import gov.ca.water.wresl.grammar.wreslLexer;
+import gov.ca.water.wresl.grammar.wreslParser;
+import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
-import java.util.HashMap;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
@@ -112,5 +113,27 @@ public final class Utilities {
         }
         return count;
     }
+
+
+    // ------------------------------------------------------------
+    // --- CREATE PARSE TREE FROM A GIVEN STRING AND WRESL GRAMMAR RULE
+    // ------------------------------------------------------------
+    public static  ParseTree generateParseTree(String inString, String ruleName) {
+        CodePointCharStream charStream = CharStreams.fromString(inString);
+        wreslLexer lexer = new wreslLexer(charStream);
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        wreslParser parser = new wreslParser(tokens);
+
+        try {
+            Method ruleMethod = wreslParser.class.getMethod(ruleName);
+            return (ParseTree) ruleMethod.invoke(parser);
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException("Rule " + ruleName + " in WRESL grammar is not defined!");
+        } catch (Exception e) {
+            throw new RuntimeException(" Error parsing string with rule " + ruleName);
+        }
+
+    }
+
 
 }

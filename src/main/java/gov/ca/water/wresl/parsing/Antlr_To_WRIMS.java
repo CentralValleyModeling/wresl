@@ -526,15 +526,10 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     // --- DVAR
     // ------------------------------------------------------------
     @Override
-    // Gateway to devar visitors
+    // Gateway for DVAR visitors
     public VisitorResult visitDvar(wreslParser.DvarContext ctx) {
         Dvar dvar = new Dvar();
-
-        // Collect data from dvarBody; this will visit all possible Dvar definitions
-        //VisitorResult result = visit(ctx.dvarBody());
-        //if (result.data() instanceof Dvar tempDvar) {
-        //    dvar = tempDvar;
-        //}
+        String errorMessage;
 
         // Is this a future array?
         if (ctx.arraySizeDefinition() != null) {
@@ -548,8 +543,158 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         // Dvar name
         String name = getWreslText(ctx.OBJECT_NAME());
 
+        // Integer dvar, and bounds
+        WRESLComponent data = visit(ctx.defineBoundLimits()).data();
+        Dvar dvarTemp = (Dvar)data;
+        dvar.integer = dvarTemp.integer;
+        dvar.lowerBound = dvarTemp.lowerBound;
+        dvar.lowerBoundValue = dvarTemp.lowerBoundValue;
+        dvar.lowerBoundExpressionParseTree = dvarTemp.lowerBoundExpressionParseTree;
+        dvar.upperBound = dvarTemp.upperBound;
+        dvar.upperBoundValue = dvarTemp.upperBoundValue;
+        dvar.upperBoundExpressionParseTree = dvarTemp.upperBoundExpressionParseTree;
+
+        // Process KIND and UNITS keyword; there has to be only one KIND and one UNITS keyword
+        int countKind = 0;
+        int countUnits = 0;
+        for (wreslParser.DefinitionSpecificsContext defSpec : ctx.definitionSpecifics()) {
+            // Process KIND keyword
+            if (defSpec.kind() != null) {
+                countKind = countKind + 1;
+                dvar.kind = visitorResultToString(visit(defSpec.kind().specificationString()));
+            }
+            // Process UNITS keyword
+            if (defSpec.units() != null) {
+                countUnits = countUnits + 1;
+                dvar.units = visitorResultToString(visit(defSpec.units().specificationString()));
+            }
+        }
+        if (countKind != 1) {
+            errorMessage = "There must be one and only one KIND keyword declared in a DVAR statement!";
+            throw new SyntaxErrorException(dvar.fromWresl, dvar.line, errorMessage);
+        }
+        if (countUnits != 1) {
+            errorMessage = "There must be one and only one UNITS keyword declared in a DVAR statement!";
+            throw new SyntaxErrorException(dvar.fromWresl, dvar.line, errorMessage);
+        }
+
         // Return data
         return new VisitorResult(dvar, name);
+    }
+
+    @Override
+    // defineBoundLimits
+    public VisitorResult visitDefineBoundLimits(wreslParser.DefineBoundLimitsContext ctx) {
+        Dvar dvar = new Dvar();
+        String errorMessage;
+
+        // Integer DVAR?
+        if (ctx.INTEGER() != null) {
+            dvar.integer = Param.yes;
+        }
+
+        // STD type bounds
+        if (ctx.STD() != null) {
+            if (ctx.INTEGER() != null) {
+                dvar.lowerBound = Param.dv_std_lowerBound;
+                dvar.lowerBoundValue = Integer.valueOf(dvar.lowerBound);
+                dvar.upperBound = Param.dv_std_integer_upperBound;
+                dvar.upperBoundValue = Integer.valueOf(dvar.upperBound);
+            }
+            else {
+                dvar.lowerBound = Param.dv_std_lowerBound;
+                dvar.lowerBoundValue = Double.valueOf(dvar.lowerBound);
+                dvar.upperBound = Param.dv_std_upperBound;
+                dvar.upperBoundValue = Double.valueOf(Param.dv_upper_unbounded);
+            }
+
+            // That's it! Return the value
+            return new VisitorResult(dvar, null);
+        }
+
+        // Initially assume standard bounds
+        if (ctx.INTEGER() != null) {
+            dvar.lowerBound = Param.dv_std_integer_lowerBound;
+            dvar.lowerBoundValue = Integer.valueOf(dvar.lowerBound);
+            dvar.upperBound = Param.dv_std_integer_upperBound;
+            dvar.upperBoundValue = Integer.valueOf(dvar.upperBound);
+        } else {
+            dvar.lowerBound = Param.dv_std_lowerBound;
+            dvar.lowerBoundValue = Double.valueOf(dvar.lowerBound);
+            dvar.upperBound = Param.dv_std_upperBound;
+            dvar.upperBoundValue = Double.valueOf(dvar.upperBound);
+        }
+
+        // Process bounds
+        int iLowerCount = 0;
+        int iUpperCount = 0;
+        for (wreslParser.DefineBoundUpperLowerContext defBound : ctx.defineBoundUpperLower()) {
+            // Process LOWER BOUND
+            if (defBound.defineLowerBound() != null) {
+                iLowerCount = iLowerCount + 1;
+
+                // Cannot have more than 1 lower bound
+                if (iLowerCount > 1) {
+                    errorMessage = "There cannot be more than one lower bound defined for a decision variable!";
+                    throw new SyntaxErrorException(dvar.fromWresl, dvar.line, errorMessage);
+                }
+
+                // Lower unbounded
+                if (defBound.defineLowerBound().boundType().UNBOUNDED() != null) {
+                    dvar.lowerBound = Param.dv_lower_unbounded;
+                    dvar.lowerBoundValue = Double.valueOf(dvar.lowerBound);
+                }
+                // Lower bounded
+                else {
+                    dvar.lowerBound = defBound.defineLowerBound().boundType().expression().getText();
+                }
+                dvar.lowerBoundExpressionParseTree = Utilities.generateParseTree(dvar.lowerBound, "expression");
+
+                // Check that integer Dvar has proper lower bound
+                if (ctx.INTEGER() != null) {
+                    if (dvar.lowerBound != Param.dv_std_lowerBound) {
+                        errorMessage = "An integer decision variable can only have 0  as the lower bound!";
+                        throw new SyntaxErrorException(dvar.fromWresl, dvar.line, errorMessage);
+                    }
+                }
+            }
+
+            // Process UPPER BOUND
+            if (defBound.defineUpperBound() != null) {
+                iUpperCount = iUpperCount + 1;
+
+                // Cannot have more than 1 upper bound
+                if (iUpperCount > 1) {
+                    errorMessage = "There cannot be more than one upper bound defined for a decision variable!";
+                    throw new SyntaxErrorException(dvar.fromWresl, dvar.line, errorMessage);
+                }
+
+                // Upper unbounded
+                if (defBound.defineUpperBound().boundType().UNBOUNDED() != null) {
+                    // Do nothing; this is how upper bound was initialized anyways
+                }
+                // Upper bounded
+                else {
+                    dvar.upperBound = defBound.defineUpperBound().boundType().expression().getText();
+                }
+                dvar.upperBoundExpressionParseTree = Utilities.generateParseTree(dvar.upperBound, "expression");
+
+                // Check that integer Dvar has proper lower bound
+                if (ctx.INTEGER() != null) {
+                    if (dvar.lowerBound != Param.dv_std_lowerBound) {
+                        errorMessage = "An integer decision variable can only have 0 as the lower bound!";
+                        throw new SyntaxErrorException(dvar.fromWresl, dvar.line, errorMessage);
+                    }
+                    if (dvar.upperBound != Param.dv_std_upperBound) {
+                        errorMessage = "An integer decision variable can only have 1 as the upper bound!";
+                        throw new SyntaxErrorException(dvar.fromWresl, dvar.line, errorMessage);
+                    }
+                }
+            }
+        }
+
+        // Return a dvar object only for the upper and lower bounds and if it is an integer or not
+        return new VisitorResult(dvar, null);
     }
 
 

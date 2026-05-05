@@ -18,6 +18,12 @@ public class SyntaxErrorException extends RuntimeException {
         this.errorMessages =  errorMessages;
     }
 
+    public SyntaxErrorException(String sourceFile, int line, String errorMessage) {
+        this.sourceFile = sourceFile;
+        this.line = line;
+        this.errorMessages.add(errorMessage);
+    }
+
     public SyntaxErrorException(List<String> errorMessages) {
         this.errorMessages =  errorMessages;
     }
