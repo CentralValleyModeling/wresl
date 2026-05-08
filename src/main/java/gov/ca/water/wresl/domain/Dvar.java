@@ -9,7 +9,6 @@ import java.util.Set;
 public class Dvar extends WRESLComponent implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    public String scope = Param.undefined;
     public String integer = Param.no;
     public String format = Param.undefined;
     public String kind = Param.undefined;

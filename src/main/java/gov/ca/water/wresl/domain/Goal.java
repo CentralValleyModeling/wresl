@@ -1,31 +1,29 @@
 package gov.ca.water.wresl.domain;
 
+import org.antlr.v4.runtime.tree.ParseTree;
+
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class Goal extends WRESLComponent implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    public String scope;
-    public String lhs;
-    public ArrayList<String> caseName;
+    public List<String> caseName = new ArrayList<>();
 
-    public ArrayList<Map<String,String>> dvarWeightMapList;
-    public ArrayList<ArrayList<String>> dvarSlackSurplusList;
-    public ArrayList<String> dvarName; // from slack or surplus
-    public ArrayList<String> dvarWeight; // for the slack or surplus. Negative penalty leads to positive weight
-    public ArrayList<String> caseCondition;
-    public ArrayList<ValueEvaluatorParser_DUMMY> caseConditionParsers;
-    public ArrayList<String> caseExpression;
-    public Set<String> expressionDependants;
-    public ArrayList<EvaluatorParser_DUMMY> caseExpressionParsers;
-    public Set<String> neededVarInCycleSet;
-    public boolean needVarFromEarlierCycle;
+    public List<Map<String,String>> dvarWeightMapList = new ArrayList<>();
+    public List<List<String>> dvarSlackSurplusList = new ArrayList<>();
+    public List<String> dvarName = new ArrayList<>(); // from slack or surplus
+    public List<String> dvarWeight = new ArrayList<>(); // for the slack or surplus. Negative penalty leads to positive weight
+    public List<String> caseCondition = new ArrayList<>();
+    public List<ParseTree> caseConditionParseTrees = new ArrayList<>();
+    public List<String> caseExpression = new ArrayList<>();
+    public Set<String> expressionDependants = new HashSet<>();
+    public List<ParseTree> caseExpressionParseTrees = new ArrayList<>();
+    public Set<String> neededVarInCycleSet = new HashSet<>();
+    public boolean needVarFromEarlierCycle = false;
 
     // default is zero
-    public String timeArraySize;
-    public ValueEvaluatorParser_DUMMY timeArraySizeParser;
+    public String timeArraySize = Param.zero;
+    public ParseTree timeArraySizeParseTree;
 
 }

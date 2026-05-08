@@ -71,9 +71,9 @@ modelReference: MODEL OBJECT_NAME ;
 // GOAL
 goal: GOAL scope? arraySizeDefinition? OBJECT_NAME OPEN_BRACE goalBody CLOSE_BRACE ;
 goalBody
-    : goalShortForm
-    | goalViaPenalty
-    | goalViaCase
+    : goalShortForm            
+    | goalViaPenalty           
+    | goalViaCase                
     ;
 goalShortForm: expression opCompare expression ;
 goalViaPenalty: SIDE expression SIDE expression penalty* ;
@@ -182,18 +182,16 @@ caseName
     ;
 caseCondition: CONDITION (expression | ALWAYS) ;
 caseBody
-    : VALUE expression          #caseViaValue       
-    | SIDE expression penalty*  #caseViaGoal           
-    | select                    #caseViaSelect      
-    | expression                #caseViaExpression  
+    : VALUE expression          #caseViaValue
+    | SIDE expression penalty*  #caseViaGoal
+    | select                    #caseViaSelect
+    | expression                #caseViaExpression
     ;
-
 
 // PENALTY
 penalty: SIDE (LESS_THAN | GREATER_THAN) SIDE penaltyValue? ;
 penaltyValue
-    : NEVER
-    | CONSTRAIN
+    : CONSTRAIN
     | (PENALTY expression)
     ;
 
@@ -381,7 +379,6 @@ VARIABLE: 'variable';
 LINEAR: 'linear';
 MAXIMUM: 'maximum';
 MINIMUM: 'minimum';
-NEVER: 'never';
 UNBOUNDED: 'unbounded';
 CONSTRAIN: 'constrain';
 UPPER: 'upper';
@@ -410,7 +407,7 @@ NOT: '.not.';
 AND: '.and.';
 OR: '.or.';
 NOT_EQUAL: '.ne.';
-SIDE: [lr] 'hs' ;
+SIDE: 'lhs' | 'rhs' ;
 // Keywords - operators (math)
 PLUS: '+';
 MINUS: '-';

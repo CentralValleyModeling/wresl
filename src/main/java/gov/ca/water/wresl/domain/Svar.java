@@ -9,7 +9,6 @@ public class Svar extends WRESLComponent implements Serializable {
     private static final long serialVersionUID = 1L;
 
     // These properties are the same for all Svar time array
-    public String scope = Param.undefined;
     public String dssBPart = Param.undefined;
     public String format = Param.undefined;
     public String kind = Param.undefined;

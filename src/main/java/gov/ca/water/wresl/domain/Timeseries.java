@@ -5,7 +5,6 @@ import java.io.Serializable;
 public class Timeseries extends WRESLComponent implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    public String scope = Param.undefined;
     public String dssBPart = Param.undefined;
     public String format = Param.undefined;
     public String kind = Param.undefined;
