@@ -4,10 +4,13 @@ import gov.ca.water.wresl.domain.*;
 import gov.ca.water.wresl.errors.EvaluationErrorException;
 import gov.ca.water.wresl.errors.SyntaxErrorException;
 import gov.ca.water.wresl.grammar.wreslBaseVisitor;
+import gov.ca.water.wresl.grammar.wreslLexer;
 import gov.ca.water.wresl.grammar.wreslParser;
-import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.file.Path;
@@ -16,6 +19,7 @@ import java.util.*;
 import static gov.ca.water.wresl.parsing.Utilities.getWreslText;
 
 public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
+    private static final Logger log = LoggerFactory.getLogger(Antlr_To_WRIMS.class);
     // Main WRESL file, absolute folder that it resides, and list of WRESL files
     private final Path mainFilePath;
     private final Path absReferencePath;
@@ -343,7 +347,10 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         mds.tsList.add(name);
                         mds.tsMap.put(name, ts);
                     }
-                    case Goal goal -> {}
+                    case Goal goal -> {
+                        mds.gList.add(name);
+                        mds.gMap.put(name, goal);
+                    }
                     case Alias alias    -> {
                         mds.asList.add(name);
                         mds.asMap.put(name, alias);
@@ -393,7 +400,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         // Parse tree corresponding to the file
         WRESLFile thisFile = this.wreslFilesMap.get(includeFilePath);
         if (thisFile == null) {
-            int can =0;
+            return null;
         }
         ParseTree includeFileTree = thisFile.getParseTree();
 
@@ -710,14 +717,13 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     public VisitorResult visitGoal(wreslParser.GoalContext ctx) {
         Goal goal = new Goal();
 
+        // Visit goal body
+        VisitorResult result = visit(ctx.goalBody());
+        goal = (Goal) result.data();
+
         // Goal name
         String name = getWreslText(ctx.OBJECT_NAME());
         goal.name = name;
-
-        // Visit goal body
-        VisitorResult result = visit(ctx.goalBody());
-        WRESLComponent data = result.data();
-        goal = (Goal) data;
 
         // Source filename and line number
         goal.fromWresl = this.currentFile;
@@ -745,19 +751,19 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     public VisitorResult visitGoalViaCase(wreslParser.GoalViaCaseContext ctx) {
         Goal goal = new Goal();
 
-        // Make sure LHS expression of goal is defined and retrieve LHS expression
-        if (!getWreslText(ctx.SIDE()).equals("lhs")) {
-            String errorMessage = "Syntax error: LHS expression of goal must defined, instead of RHS expression!";
-            throw new SyntaxErrorException(this.currentFile, ctx.SIDE().getSymbol().getLine(), errorMessage);
-        }
-        String lhs = getWreslText(ctx.expression());
-
         // Loop through case statements
-        for (int i=0; i<ctx.caseStatement().size(); i++) {
-            VisitorResult result = visit(ctx.caseStatement(i));
+        for (int i=0; i<ctx.goalCaseStatement().size(); i++) {
+            VisitorResult result = visit(ctx.goalCaseStatement(i));
             WRESL_CaseData caseData = (WRESL_CaseData) result.data();
-        }
 
+            // Copy data from caseData into goal
+            goal.caseName.add(result.name());
+            goal.caseCondition.add(caseData.caseCondition);
+            goal.caseConditionParseTrees.add(caseData.caseConditionTree);
+            goal.caseExpression.addAll(caseData.caseExpressionList);
+            goal.dvarSlackSurplusList.add(caseData.SlackSurplusDvarList);
+            goal.dvarWeightMapList.add(caseData.SlackSurplusDvarWeightMap);
+        }
 
         return new VisitorResult(goal, null);
     }
@@ -766,9 +772,92 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     // goalViaPenalty
     public VisitorResult visitGoalViaPenalty(wreslParser.GoalViaPenaltyContext ctx) {
         Goal goal = new Goal();
+
+        
         return new VisitorResult(goal, null);
     }
 
+    @Override
+    // goalCaseStatement
+    public VisitorResult visitGoalCaseStatement(wreslParser.GoalCaseStatementContext ctx) {
+        List<String> caseExpressionList = new ArrayList<>();
+        List<ParseTree> caseExpressionTreeList = new ArrayList<>();
+        List<String> caseSlackSurplusDvarList = new ArrayList<>();
+        Map<String,String> caseSlackSurplusDvarWeightMap = new HashMap<>();
+
+        // Walk back up the parse tree and retrieve goal name and LHS expression
+        ParserRuleContext goalCtx = ctx.getParent().getParent().getParent();
+        wreslParser.GoalContext goal = (wreslParser.GoalContext) goalCtx;  // This is coded to fail if grammar is changed for GOAL statement so we can catch the issue quickly
+        String goalName = getWreslText(goal.OBJECT_NAME());
+        String lhsExpression = getWreslText(goal.goalBody().goalViaCase().expression());
+
+        // Retrieve case name
+        String caseName = getWreslText(ctx.goalCaseName());
+
+        // Case condition
+        String caseCondition;
+        ParseTree caseConditionTree;
+        if (ctx.goalCaseCondition() != null) {
+            caseCondition = getWreslText(ctx.goalCaseCondition().getChild(1));
+            caseConditionTree = ctx.goalCaseCondition().caseConditionExpression();
+        }
+        else {
+            caseCondition = Param.always;
+            caseConditionTree = null;
+        }
+
+        // Retrieve RHS expression
+        String rhsExpression = getWreslText(ctx.expression());
+
+        // Loop through penalty statements, compile constraint expressions and weights
+        int iCountSurplus = 0;
+        int iCountSlack = 0;
+        for (int i=0; i<ctx.penalty().size(); i++) {
+            wreslParser.PenaltyContext penalty = ctx.penalty(i);
+            String slackOrSurplusVar = null;
+            // Create a surplus or slack variable if a PENALTY is specified
+            if (penalty.penaltyValue().PENALTY() != null) {
+                // If LHS > RHS, create a surplus Dvar
+                if (penalty.GREATER_THAN() != null) {
+                    iCountSurplus = iCountSurplus + 1;
+                    slackOrSurplusVar = "surplus__" + goalName + "_" + iCountSurplus;
+                    // If LHS < RHS, create a slack Dvar
+                } else {
+                    iCountSlack = iCountSlack + 1;
+                    slackOrSurplusVar = "slack__" + goalName + "_" + iCountSlack;
+                }
+                caseSlackSurplusDvarList.add(slackOrSurplusVar);
+
+                // Process penalty
+                caseSlackSurplusDvarWeightMap.put(slackOrSurplusVar, "-(" + getWreslText(penalty.penaltyValue().expression()) + ")");
+
+                // Generate constraint expression as an equivalence, also replace RHS keyword with rhsExpression
+                String constraintExpression;
+                if (slackOrSurplusVar.contains("surplus")) {
+                    constraintExpression = lhsExpression + "-" + slackOrSurplusVar + "=" + rhsExpression;
+                } else {
+                    constraintExpression = lhsExpression + "+" + slackOrSurplusVar + "=" + rhsExpression;
+                }
+                caseExpressionList.add(constraintExpression);
+
+                // Generate parser tree from constraint expression
+                CharStream charStream = CharStreams.fromString(constraintExpression);
+                wreslLexer lexer = new wreslLexer(charStream);
+                CommonTokenStream tokenStream = new CommonTokenStream(lexer);
+                wreslParser parser = new wreslParser(tokenStream);
+                caseExpressionTreeList.add(parser.expression());
+            }
+        }
+
+        // Return case data
+        WRESL_CaseData caseData = new WRESL_CaseData(caseCondition,
+                                                     caseConditionTree,
+                                                     caseExpressionList,
+                                                     caseExpressionTreeList,
+                                                     caseSlackSurplusDvarList,
+                                                     caseSlackSurplusDvarWeightMap);
+        return new VisitorResult(caseData,caseName);
+    }
 
     // ------------------------------------------------------------
     // --- EXTERNAL
@@ -1028,84 +1117,83 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         ParseTree caseConditionTree;
         if (ctx.caseCondition() != null) {
             caseCondition = getWreslText(ctx.caseCondition().getChild(1));
-            caseConditionTree = ctx.caseCondition();
+            caseConditionTree = ctx.caseCondition().caseConditionExpression();
         }
         else {
             caseCondition = Param.always;
             caseConditionTree = null;
         }
 
-        // Case expression and, if exists, surplus/slack variables and weights
+        // Case expression and expression tree
         VisitorResult result = visit(ctx.caseBody());
-        WRESL_CaseData caseDataTemp = (WRESL_CaseData) result.data();
-        List<String> caseExpressionList = caseDataTemp.caseExpressionList;
-        List<String> caseSlackSurplusList= caseDataTemp.SlackSurplusList;
-        List<String> caseSlackSurplusWeightList = caseDataTemp.SlackSurplusWeightList;
-        List<ParseTree> caseExpressionTreeList = caseDataTemp.caseExpressionTreeList;
+        String caseExpression = visitorResultToString(result);
+        ParseTree caseExpressionTree = ctx.caseBody();
 
-        WRESL_CaseData caseData = new WRESL_CaseData(caseCondition, caseConditionTree, caseExpressionList, caseExpressionTreeList, caseSlackSurplusList, caseSlackSurplusWeightList);
-
+        // Return data
+        WRESL_CaseData caseData = new WRESL_CaseData(caseCondition,
+                                                     caseConditionTree,
+                                                     List.of(caseExpression),
+                                                     List.of(caseExpressionTree),
+                                 null,
+                            null);
         return new VisitorResult(caseData,caseName);
     }
 
     @Override
     // caseViaValue
     public VisitorResult visitCaseViaValue(wreslParser.CaseViaValueContext ctx) {
-        String caseExpression = getWreslText(ctx.expression());
-        WRESL_CaseData caseData = new WRESL_CaseData(null, null, List.of(caseExpression), List.of(ctx.expression()), null, null);
-        return new VisitorResult(caseData, null);
+        WRESL_String caseExpression = new WRESL_String(getWreslText(ctx.expression()));
+        return new VisitorResult(caseExpression, null);
     }
 
-    @Override
-    // caseViaGoal
-    public VisitorResult visitCaseViaGoal(wreslParser.CaseViaGoalContext ctx) {
-        List<String> caseExpressionList = new ArrayList<>();
-        List<String> caseSlackSurplusDvarList = new ArrayList<>();
-        List<String> caseSlackSurplusDvarWeightList = new ArrayList<>();
+//@Override
+//// caseViaGoal
+//public VisitorResult visitCaseViaGoal(wreslParser.CaseViaGoalContext ctx) {
+//    List<String> caseExpressionList = new ArrayList<>();
+//    List<String> caseSlackSurplusDvarList = new ArrayList<>();
+//    List<String> caseSlackSurplusDvarWeightList = new ArrayList<>();
 
-        // Make sure RHS expression for goal is defined and retrieve expression
-        if (!getWreslText(ctx.SIDE()).equals("rhs")) {
-            String errorMessage = "Syntax error: RHS expression for goal must be defined, instead of LHS expression!";
-            throw new SyntaxErrorException(this.currentFile,ctx.SIDE().getSymbol().getLine(),errorMessage);
-        }
-        String rhs = getWreslText(ctx.expression());
+//    // Make sure RHS expression for goal is defined and retrieve expression
+//    if (!getWreslText(ctx.SIDE()).equals("rhs")) {
+//        String errorMessage = "Syntax error: RHS expression for goal must be defined, instead of LHS expression!";
+//        throw new SyntaxErrorException(this.currentFile,ctx.SIDE().getSymbol().getLine(),errorMessage);
+//    }
+//    String rhs = getWreslText(ctx.expression());
 
-        // Loop through penalty statements, generate constraining expressions and slack/surplus dvars and their weights
-        for (wreslParser.PenaltyContext penalty : ctx.penalty()) {
-            // Make sure LHS and RHS keywords are defined on the proper side of the comparison operator
-            String errorMessage;
-            if (getWreslText(penalty.SIDE(0)).equals("rhs") || getWreslText(penalty.SIDE(1)).equals("lhs")) {
-                errorMessage = "LHS and RHS keywords in the PENALTY statement are reversed!";
-                throw new SyntaxErrorException(this.currentFile, penalty.SIDE(0).getSymbol().getLine(), errorMessage);
-            }
+//    // Loop through penalty statements, generate constraining expressions and slack/surplus dvars and their weights
+//    for (wreslParser.PenaltyContext penalty : ctx.penalty()) {
+//        // Make sure LHS and RHS keywords are defined on the proper side of the comparison operator
+//        String errorMessage;
+//        if (getWreslText(penalty.SIDE(0)).equals("rhs") || getWreslText(penalty.SIDE(1)).equals("lhs")) {
+//            errorMessage = "LHS and RHS keywords in the PENALTY statement are reversed!";
+//            throw new SyntaxErrorException(this.currentFile, penalty.SIDE(0).getSymbol().getLine(), errorMessage);
+//        }
 
-            // Replace RHS keyword with expression
-            String rhsPenalty = getWreslText(penalty.SIDE(1)).replace("rhs", rhs);
+//        // Replace RHS keyword with expression
+//        String rhsPenalty = getWreslText(penalty.SIDE(1)).replace("rhs", rhs);
 
-            // If LHS > RHS, create a surplus Dvar
-            if (!(penalty.GREATER_THAN() == null)) {
+//        // If LHS > RHS, create a surplus Dvar
+//        if (!(penalty.GREATER_THAN() == null)) {
 
-            }
-        }
+//        }
+//    }
 
-        WRESL_CaseData caseData = new WRESL_CaseData(null, null, caseExpressionList, null, caseSlackSurplusDvarList, caseSlackSurplusDvarWeightList);
-        return new VisitorResult(caseData, null);
-    }
+//    WRESL_CaseData caseData = new WRESL_CaseData(null, null, caseExpressionList, null, caseSlackSurplusDvarList, caseSlackSurplusDvarWeightList);
+//    return new VisitorResult(caseData, null);
+//}
 
     @Override
     // caseViaSelect
     public VisitorResult visitCaseViaSelect(wreslParser.CaseViaSelectContext ctx) {
-        String caseExpression = getWreslText(ctx.select());
-        WRESL_CaseData caseData = new WRESL_CaseData(null, null, List.of(caseExpression),  List.of(ctx.select()), null, null);
-        return new VisitorResult(caseData, null);
+        WRESL_String caseExpression = new WRESL_String(getWreslText(ctx.select()));
+        return new VisitorResult(caseExpression, null);
     }
 
     @Override
     // caseViaExpression
     public VisitorResult visitCaseViaExpression(wreslParser.CaseViaExpressionContext ctx) {
-        String caseExpression = getWreslText(ctx.expression());
-        WRESL_CaseData caseData = new WRESL_CaseData(null, null, List.of(caseExpression),  List.of(ctx.expression()), null, null);
-        return new VisitorResult(caseData, null);
+        WRESL_String caseExpression = new WRESL_String(getWreslText(ctx.expression()));
+        return new VisitorResult(caseExpression, null);
     }
 
 

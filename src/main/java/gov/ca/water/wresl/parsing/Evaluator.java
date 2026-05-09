@@ -564,11 +564,11 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     @Override
     // caseCondition
     public IntDouble visitCaseCondition(wreslParser.CaseConditionContext ctx) {
-        if (ctx.ALWAYS() != null) {
+        if (ctx.caseConditionExpression().ALWAYS() != null) {
             return new IntDouble(Logical.TRUE.value, true);
         }
         else {
-            return visit(ctx.expression());
+            return visit(ctx.caseConditionExpression().expression());
         }
     }
 

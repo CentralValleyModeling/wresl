@@ -71,13 +71,29 @@ modelReference: MODEL OBJECT_NAME ;
 // GOAL
 goal: GOAL scope? arraySizeDefinition? OBJECT_NAME OPEN_BRACE goalBody CLOSE_BRACE ;
 goalBody
-    : goalShortForm            
+    : goalViaCase                
     | goalViaPenalty           
-    | goalViaCase                
+    | goalShortForm            
     ;
 goalShortForm: expression opCompare expression ;
-goalViaPenalty: SIDE expression SIDE expression penalty* ;
-goalViaCase: SIDE expression caseStatement+ ;
+goalViaPenalty: side expression side expression penalty* ;
+goalViaCase: LHS expression goalCaseStatement+ ;
+
+side 
+    : LHS 
+    | RHS ;
+goalCaseStatement: CASE goalCaseName OPEN_BRACE goalCaseCondition? (RHS expression penalty*) CLOSE_BRACE ;
+goalCaseName
+    : OBJECT_NAME
+    | nonReservedKeywords
+    ;
+goalCaseCondition: CONDITION caseConditionExpression ;
+
+penalty: LHS (LESS_THAN | GREATER_THAN) RHS penaltyValue? ;
+penaltyValue
+    : CONSTRAIN
+    | (PENALTY expression)
+    ;
 
 
 // OBJECTIVE
@@ -180,19 +196,12 @@ caseName
     : OBJECT_NAME
     | nonReservedKeywords
     ;
-caseCondition: CONDITION (expression | ALWAYS) ;
+caseCondition: CONDITION caseConditionExpression ;
+caseConditionExpression: (expression | ALWAYS) ;
 caseBody
     : VALUE expression          #caseViaValue
-    | SIDE expression penalty*  #caseViaGoal
     | select                    #caseViaSelect
     | expression                #caseViaExpression
-    ;
-
-// PENALTY
-penalty: SIDE (LESS_THAN | GREATER_THAN) SIDE penaltyValue? ;
-penaltyValue
-    : CONSTRAIN
-    | (PENALTY expression)
     ;
 
 
@@ -407,7 +416,8 @@ NOT: '.not.';
 AND: '.and.';
 OR: '.or.';
 NOT_EQUAL: '.ne.';
-SIDE: 'lhs' | 'rhs' ;
+LHS: 'lhs' ;
+RHS: 'rhs' ;
 // Keywords - operators (math)
 PLUS: '+';
 MINUS: '-';
