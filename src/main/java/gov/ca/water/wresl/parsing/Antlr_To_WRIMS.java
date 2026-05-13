@@ -79,7 +79,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
             // EOF?
             if (child instanceof TerminalNode terminalNode) {
-                if (terminalNode.getSymbol().getType() == org.antlr.v4.runtime.Token.EOF) continue;
+                if (terminalNode.getSymbol().getType() == org.antlr.v4.runtime.Token.EOF) break;
             }
 
             // Visit child
@@ -109,8 +109,10 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         for (String thisModel: this.modelsWithinModelsMap.keySet()) {
             List<String> includedModelsList = this.modelsWithinModelsMap.get(thisModel);
             for (String includedModel: includedModelsList) {
-                if (!modelList.contains(includedModel)) {
-                    throw new EvaluationErrorException("Model " + includedModel + " referenced from model " + thisModel + " is not defined!");
+                if (!this.models.containsKey(includedModel)) {
+                    if (!this.groups.containsKey(includedModel)) {
+                        throw new EvaluationErrorException("Model/group " + includedModel + " referenced from model " + thisModel + " is not defined!");
+                    }
                 }
             }
         }
@@ -144,30 +146,30 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         // Array to store multiple return data
         List<VisitorResult> compiledData = new ArrayList<>();
 
-      // Loop through Include file children nodes
-      for (int i = 0; i <= ctx.getChildCount()-1; i++) {
-          ParseTree child = ctx.getChild(i);
+        // Loop through Include file children nodes
+        for (int i = 0; i <= ctx.getChildCount()-1; i++) {
+            ParseTree child = ctx.getChild(i);
 
-          // EOF?
-          if (child instanceof TerminalNode terminalNode) {
-              if (terminalNode.getSymbol().getType() == Token.EOF) continue;
-          }
+            // EOF?
+            if (child instanceof TerminalNode terminalNode) {
+                if (terminalNode.getSymbol().getType() == Token.EOF) continue;
+            }
 
-          // Visit child
-          VisitorResult result = visit(ctx.getChild(i));
-          if (result == null) continue;
+            // Visit child
+            VisitorResult result = visit(ctx.getChild(i));
+            if (result == null) continue;
 
-          // We got a single data
-          if (result.children().size() == 0) {
-              compiledData.add(result);
-          // We got multiple data
-          } else {
-              compiledData.addAll(result.children());
-          }
-      }
+            // We got a single data
+            if (result.children().size() == 0) {
+                compiledData.add(result);
+            // We got multiple data
+            } else {
+                compiledData.addAll(result.children());
+            }
+        }
 
-      // Return compiled data
-      return new VisitorResult(null, null, compiledData);
+        // Return compiled data
+        return new VisitorResult(null, null, compiledData);
     }
 
 
@@ -250,6 +252,9 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         ModelDataSet mds = new ModelDataSet();
         this.currentModelOrGroupName = getWreslText(ctx.OBJECT_NAME());
 
+        // On entry: store file referiing to Model context
+        String parentFile = this.currentFile;
+
         // Check that model is not defined more than once
         if (this.models.get(this.currentModelOrGroupName) != null) {
             throw new EvaluationErrorException(this.currentFile, ctx.OBJECT_NAME().getSymbol().getLine(), "Model " + this.currentModelOrGroupName + " is defined more than once!");
@@ -305,6 +310,9 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
         // Store the data for the model
         this.models.put(this.currentModelOrGroupName, mds);
+
+        // On exit: restore filename from which Model context was referred to
+        this.currentFile = parentFile;
 
         // Return null; we have already collected all the data into "models" field
         return null;
@@ -760,8 +768,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                 index = index + 1;
                 if (slackSurplusDvar.contains("surplus")) {
                     String tempDvar = slackSurplusDvar.substring(0,slackSurplusDvar.lastIndexOf("_")+1) + (i+1);
-                    String tempCaseExpression = caseData.caseExpressionList.get(index).replace(slackSurplusDvar,tempDvar);
-                    caseData.caseExpressionList.set(index, tempCaseExpression);
+                    String tempCaseExpression = caseData.caseExpressionList.get(0).replace(slackSurplusDvar,tempDvar);
+                    caseData.caseExpressionList.set(0, tempCaseExpression);
                     caseData.slackSurplusDvarList.set(index, tempDvar);
                     String weight = caseData.slackSurplusDvarWeightMap.get(slackSurplusDvar);
                     if (weight != null) {
@@ -771,8 +779,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                 }
                 if (slackSurplusDvar.contains("slack")) {
                     String tempDvar = slackSurplusDvar.substring(0,slackSurplusDvar.lastIndexOf("_")+1) + (i+1);
-                    String tempCaseExpression = caseData.caseExpressionList.get(index).replace(slackSurplusDvar,tempDvar);
-                    caseData.caseExpressionList.set(index, tempCaseExpression);
+                    String tempCaseExpression = caseData.caseExpressionList.get(0).replace(slackSurplusDvar,tempDvar);
+                    caseData.caseExpressionList.set(0, tempCaseExpression);
                     caseData.slackSurplusDvarList.set(index, tempDvar);
                     String weight = caseData.slackSurplusDvarWeightMap.get(slackSurplusDvar);
                     if (weight != null) {
@@ -1462,20 +1470,6 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                 dataList = result.children();
             }
             ifBlockContents.addAll(dataList);
-        //    switch (ctx.getChild(i)) {
-        //        case wreslParser.IncludeContext incCtx -> {
-        //            ifBlockContents.add(visit(incCtx));
-        //        }
-        //        case wreslParser.SvarContext svarCtx -> {
-        //            ifBlockContents.add(visit(svarCtx));
-        //        }
-        //        case wreslParser.DvarContext dvarCtx -> {
-        //            ifBlockContents.add(visit(dvarCtx));
-        //        }
-        //        default -> { // Do nothing
-        //        }
-        //    }
-
         }
 
         return new VisitorResult(null, null, ifBlockContents);
