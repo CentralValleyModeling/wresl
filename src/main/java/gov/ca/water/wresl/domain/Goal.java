@@ -12,8 +12,6 @@ public class Goal extends WRESLComponent implements Serializable {
 
     public List<Map<String,String>> dvarWeightMapList = new ArrayList<>();
     public List<List<String>> dvarSlackSurplusList = new ArrayList<>();
-    public List<String> dvarName = new ArrayList<>(); // from slack or surplus
-    public List<String> dvarWeight = new ArrayList<>(); // for the slack or surplus. Negative penalty leads to positive weight
     public List<String> caseCondition = new ArrayList<>();
     public List<ParseTree> caseConditionParseTrees = new ArrayList<>();
     public List<String> caseExpression = new ArrayList<>();

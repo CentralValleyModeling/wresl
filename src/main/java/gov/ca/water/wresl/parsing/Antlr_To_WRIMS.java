@@ -439,7 +439,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         String includedModel = getWreslText(ctx.groupReference().OBJECT_NAME());
 
         // Add included model to list of models referenced by a model
-        if (this.currentModelOrGroupName.contains(this.currentModelOrGroupName)) {
+        if (this.modelsWithinModelsMap.containsKey(this.currentModelOrGroupName)) {
             this.modelsWithinModelsMap.get(this.currentModelOrGroupName).add(includedModel);
         }
         else {
@@ -715,11 +715,9 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     @Override
     // Gateway to GOAL-related visitor methods
     public VisitorResult visitGoal(wreslParser.GoalContext ctx) {
-        Goal goal = new Goal();
-
         // Visit goal body
         VisitorResult result = visit(ctx.goalBody());
-        goal = (Goal) result.data();
+        Goal goal = (Goal) result.data();
 
         // Goal name
         String name = getWreslText(ctx.OBJECT_NAME());
@@ -756,13 +754,42 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             VisitorResult result = visit(ctx.goalCaseStatement(i));
             WRESL_CaseData caseData = (WRESL_CaseData) result.data();
 
+            // Update counters for surplus/slack variables
+            int index = -1;
+            for (String slackSurplusDvar : caseData.slackSurplusDvarList) {
+                index = index + 1;
+                if (slackSurplusDvar.contains("surplus")) {
+                    String tempDvar = slackSurplusDvar.substring(0,slackSurplusDvar.lastIndexOf("_")+1) + (i+1);
+                    String tempCaseExpression = caseData.caseExpressionList.get(index).replace(slackSurplusDvar,tempDvar);
+                    caseData.caseExpressionList.set(index, tempCaseExpression);
+                    caseData.slackSurplusDvarList.set(index, tempDvar);
+                    String weight = caseData.slackSurplusDvarWeightMap.get(slackSurplusDvar);
+                    if (weight != null) {
+                        caseData.slackSurplusDvarWeightMap.remove(slackSurplusDvar);
+                        caseData.slackSurplusDvarWeightMap.put(tempDvar, weight);
+                    }
+                }
+                if (slackSurplusDvar.contains("slack")) {
+                    String tempDvar = slackSurplusDvar.substring(0,slackSurplusDvar.lastIndexOf("_")+1) + (i+1);
+                    String tempCaseExpression = caseData.caseExpressionList.get(index).replace(slackSurplusDvar,tempDvar);
+                    caseData.caseExpressionList.set(index, tempCaseExpression);
+                    caseData.slackSurplusDvarList.set(index, tempDvar);
+                    String weight = caseData.slackSurplusDvarWeightMap.get(slackSurplusDvar);
+                    if (weight != null) {
+                        caseData.slackSurplusDvarWeightMap.remove(slackSurplusDvar);
+                        caseData.slackSurplusDvarWeightMap.put(tempDvar, weight);
+                    }
+                }
+            }
+
             // Copy data from caseData into goal
             goal.caseName.add(result.name());
             goal.caseCondition.add(caseData.caseCondition);
             goal.caseConditionParseTrees.add(caseData.caseConditionTree);
             goal.caseExpression.addAll(caseData.caseExpressionList);
-            goal.dvarSlackSurplusList.add(caseData.SlackSurplusDvarList);
-            goal.dvarWeightMapList.add(caseData.SlackSurplusDvarWeightMap);
+            goal.caseExpressionParseTrees.addAll(caseData.caseExpressionTreeList);
+            goal.dvarSlackSurplusList.add(caseData.slackSurplusDvarList);
+            goal.dvarWeightMapList.add(caseData.slackSurplusDvarWeightMap);
         }
 
         return new VisitorResult(goal, null);
@@ -773,7 +800,25 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     public VisitorResult visitGoalViaPenalty(wreslParser.GoalViaPenaltyContext ctx) {
         Goal goal = new Goal();
 
-        
+        // Penalty related data
+        if (ctx.goalPenalties() != null) {
+            VisitorResult result = visit(ctx.goalPenalties());
+            Goal goalTemp = (Goal) result.data();
+            goal = goalTemp;
+        } else {
+            // Retrieve LHS and RHS expressions
+            String lhsExpression = getWreslText(ctx.expression(0));
+            String rhsExpression = getWreslText(ctx.expression(1));
+            String caseExpression = lhsExpression + "=" + rhsExpression;
+            goal.caseExpression.add(caseExpression);
+            goal.caseExpressionParseTrees.add(getExpressionParseTree(caseExpression));
+        }
+
+        // Default case name and condition
+        goal.caseName.add(Param.defaultCaseName);
+        goal.caseCondition.add(Param.always);
+
+        // Return goal
         return new VisitorResult(goal, null);
     }
 
@@ -785,13 +830,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         List<String> caseSlackSurplusDvarList = new ArrayList<>();
         Map<String,String> caseSlackSurplusDvarWeightMap = new HashMap<>();
 
-        // Walk back up the parse tree and retrieve goal name and LHS expression
-        ParserRuleContext goalCtx = ctx.getParent().getParent().getParent();
-        wreslParser.GoalContext goal = (wreslParser.GoalContext) goalCtx;  // This is coded to fail if grammar is changed for GOAL statement so we can catch the issue quickly
-        String goalName = getWreslText(goal.OBJECT_NAME());
-        String lhsExpression = getWreslText(goal.goalBody().goalViaCase().expression());
-
-        // Retrieve case name
+         // Retrieve case name
         String caseName = getWreslText(ctx.goalCaseName());
 
         // Case condition
@@ -806,47 +845,23 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             caseConditionTree = null;
         }
 
-        // Retrieve RHS expression
-        String rhsExpression = getWreslText(ctx.expression());
-
-        // Loop through penalty statements, compile constraint expressions and weights
-        int iCountSurplus = 0;
-        int iCountSlack = 0;
-        for (int i=0; i<ctx.penalty().size(); i++) {
-            wreslParser.PenaltyContext penalty = ctx.penalty(i);
-            String slackOrSurplusVar = null;
-            // Create a surplus or slack variable if a PENALTY is specified
-            if (penalty.penaltyValue().PENALTY() != null) {
-                // If LHS > RHS, create a surplus Dvar
-                if (penalty.GREATER_THAN() != null) {
-                    iCountSurplus = iCountSurplus + 1;
-                    slackOrSurplusVar = "surplus__" + goalName + "_" + iCountSurplus;
-                    // If LHS < RHS, create a slack Dvar
-                } else {
-                    iCountSlack = iCountSlack + 1;
-                    slackOrSurplusVar = "slack__" + goalName + "_" + iCountSlack;
-                }
-                caseSlackSurplusDvarList.add(slackOrSurplusVar);
-
-                // Process penalty
-                caseSlackSurplusDvarWeightMap.put(slackOrSurplusVar, "-(" + getWreslText(penalty.penaltyValue().expression()) + ")");
-
-                // Generate constraint expression as an equivalence, also replace RHS keyword with rhsExpression
-                String constraintExpression;
-                if (slackOrSurplusVar.contains("surplus")) {
-                    constraintExpression = lhsExpression + "-" + slackOrSurplusVar + "=" + rhsExpression;
-                } else {
-                    constraintExpression = lhsExpression + "+" + slackOrSurplusVar + "=" + rhsExpression;
-                }
-                caseExpressionList.add(constraintExpression);
-
-                // Generate parser tree from constraint expression
-                CharStream charStream = CharStreams.fromString(constraintExpression);
-                wreslLexer lexer = new wreslLexer(charStream);
-                CommonTokenStream tokenStream = new CommonTokenStream(lexer);
-                wreslParser parser = new wreslParser(tokenStream);
-                caseExpressionTreeList.add(parser.expression());
-            }
+        // Retrieve penalty-related information (constraint expressions, new dvars and weights)
+        if (ctx.goalPenalties() != null) {
+            VisitorResult result = visit(ctx.goalPenalties());
+            Goal goalTemp = (Goal) result.data();
+            caseExpressionList.addAll(goalTemp.caseExpression);
+            caseExpressionTreeList.addAll(goalTemp.caseExpressionParseTrees);
+            caseSlackSurplusDvarList.addAll(goalTemp.dvarSlackSurplusList.get(0));
+            caseSlackSurplusDvarWeightMap.putAll(goalTemp.dvarWeightMapList.get(0));
+        } else {
+            // Walk back up the parse tree and retrieve goal name and LHS expression
+            ParserRuleContext goalCtx = ctx.getParent().getParent().getParent();
+            wreslParser.GoalContext goal = (wreslParser.GoalContext) goalCtx;  // This is coded to fail if grammar is changed for GOAL statement so we can catch the issue quickly
+            String lhsExpression = getWreslText(goal.goalBody().goalViaCase().expression());
+            String rhsExpression = getWreslText(ctx.expression());
+            String caseExpression = lhsExpression + "=" + rhsExpression;
+            caseExpressionList.add(caseExpression);
+            caseExpressionTreeList.add(getExpressionParseTree(caseExpression));
         }
 
         // Return case data
@@ -858,6 +873,207 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                                                      caseSlackSurplusDvarWeightMap);
         return new VisitorResult(caseData,caseName);
     }
+
+    @Override
+    // penalties
+    // Note: If surplus/slack variables are genereted, their count numbers
+    //       will need to be updated in the calling method since we can't
+    //       determine the count in this method
+    public VisitorResult visitGoalPenalties(wreslParser.GoalPenaltiesContext ctx) {
+        Goal goal = new Goal();
+        List<String> dvarSlackSurplusList = new ArrayList<>();
+        Map<String,String> dvarWeightMap = new HashMap<>();
+
+        // Flags describing which constrains are defined and how
+        boolean bGTExists = ctx.penaltyGT() != null;
+        boolean bGTPenaltyExists = false;
+        boolean bGTConstrainExists = false;
+        String penaltyGT = null;
+        Double numberPenaltyGT = -99.9;
+        if (bGTExists) {
+            if (ctx.penaltyGT().penaltyValue().PENALTY() != null) {
+                bGTPenaltyExists = true;
+                penaltyGT = getWreslText(ctx.penaltyGT().penaltyValue().expression());
+                try {
+                    numberPenaltyGT = Double.valueOf(penaltyGT);
+                } catch (NumberFormatException e) {
+                    // Do nothing
+                }
+            }
+            if (ctx.penaltyGT().penaltyValue().CONSTRAIN() != null) { bGTConstrainExists = true; }
+        }
+        boolean bLTExists = ctx.penaltyLT() != null;
+        boolean bLTPenaltyExists = false;
+        boolean bLTConstrainExists = false;
+        String penaltyLT = null;
+        Double numberPenaltyLT = -99.9;
+        if (bLTExists) {
+            if (ctx.penaltyLT().penaltyValue().PENALTY() != null) {
+                bLTPenaltyExists = true;
+                penaltyLT = getWreslText(ctx.penaltyLT().penaltyValue().expression());
+                try {
+                    numberPenaltyLT = Double.valueOf(penaltyLT);
+                } catch (NumberFormatException e) {
+                    // Do nothing
+                }
+            }
+            if (ctx.penaltyLT().penaltyValue().CONSTRAIN() != null) { bLTConstrainExists = true; }
+        }
+
+        // Retrieve RHS expression from parent context, and line number in WRESL file in case an error needs to be reported
+        // Also, goal name
+        int lineNumber;
+        String rhsExpression;
+        String lhsExpression;
+        String goalName;
+        ParserRuleContext parentCtx = ctx.getParent();
+        wreslParser.GoalContext goalTemp;
+        if (parentCtx instanceof wreslParser.GoalCaseStatementContext) {
+            wreslParser.GoalCaseStatementContext workCtx = (wreslParser.GoalCaseStatementContext) parentCtx;
+            rhsExpression = getWreslText(workCtx.expression());
+            goalTemp = (wreslParser.GoalContext) workCtx.getParent().getParent().getParent();
+            lhsExpression = getWreslText(goalTemp.goalBody().goalViaCase().expression());
+        } else {
+            wreslParser.GoalViaPenaltyContext workCtx = (wreslParser.GoalViaPenaltyContext) parentCtx;
+            rhsExpression = getWreslText(workCtx.expression(1));
+            goalTemp = (wreslParser.GoalContext) workCtx.getParent().getParent();
+            lhsExpression = getWreslText(goalTemp.goalBody().goalViaPenalty().expression(0));
+        }
+        lineNumber = goalTemp.OBJECT_NAME().getSymbol().getLine();
+        goalName = getWreslText(goalTemp.OBJECT_NAME());
+
+        // Process penalty statements based on individual statements provided
+        if (bGTExists) {
+            // "LHS > RHS" statement exists
+            if (bLTExists) {
+                // "LHS < RHS" statement also exist
+                if (bGTConstrainExists) {
+                    if (bLTConstrainExists) {
+                        // LHS > RHS CONSTRAIN
+                        // LHS < RHS CONSTRAIN
+                        goal.caseExpression.add(lhsExpression + "=" + rhsExpression);
+                    } else {
+                        if (numberPenaltyLT == 0.0) {
+                            // LHS > RHS CONSTRAIN
+                            // LHS < RHS PENALTY 0
+                            goal.caseExpression.add(lhsExpression + "<" + rhsExpression);
+                        } else {
+                            // LHS > RHS CONSTRAIN
+                            // LHS < RHS PENALTY (non-zero value)
+                            String slackDvar = "slack__" + goalName + "_1";
+                            String weight = "-(" + penaltyLT + ")";
+                            goal.caseExpression.add(lhsExpression + "+"+ slackDvar + "=" + rhsExpression);
+                            dvarSlackSurplusList.add(slackDvar);
+                            dvarWeightMap.put(slackDvar,weight);
+                        }
+                    }
+                } else {
+                    if (numberPenaltyGT == 0.0) {
+                        if (bLTConstrainExists) {
+                            // LHS > RHS PENALTY 0
+                            // LHS < RHS CONSTRAIN
+                            goal.caseExpression.add(lhsExpression + ">" + rhsExpression);
+                        } else {
+                            if (numberPenaltyLT == 0.0) {
+                                // LHS > RHS PENALTY 0
+                                // LHS < RHS PENALTY 0
+                                goal.caseExpression.add("1 > 0"); // Copied from WRIMS2
+                            } else {
+                                // LHS > RHS PENALTY 0
+                                // LHS < RHS PENALTY (non-zero value)
+                                String slackDvar = "slack__" + goalName + "_1";
+                                String weight = "-(" + penaltyLT + ")";
+                                goal.caseExpression.add(lhsExpression + "+" + slackDvar + ">" + rhsExpression);
+                                dvarSlackSurplusList.add(slackDvar);
+                                dvarWeightMap.put(slackDvar, weight);
+                            }
+                        }
+                    } else {
+                        if (bLTConstrainExists) {
+                            // LHS > RHS PENALTY (non-zero value)
+                            // LHS < RHS CONSTRAIN
+                            String surplusDvar = "surplus__" + goalName + "_1";
+                            String weight = "-(" + penaltyGT + ")";
+                            goal.caseExpression.add(lhsExpression + "-" + surplusDvar + "=" + rhsExpression);
+                            dvarSlackSurplusList.add(surplusDvar);
+                            dvarWeightMap.put(surplusDvar, weight);
+                        } else {
+                            if (numberPenaltyLT == 0.0) {
+                                // LHS > RHS PENALTY (non-zero value)
+                                // LHS < RHS PENALTY 0
+                                String surplusDvar = "surplus__" + goalName + "_1";
+                                String weight = "-(" + penaltyGT + ")";
+                                goal.caseExpression.add(lhsExpression + "-" + surplusDvar + "<" + rhsExpression);
+                                dvarSlackSurplusList.add(surplusDvar);
+                                dvarWeightMap.put(surplusDvar, weight);
+                            } else {
+                                // LHS > RHS PENALTY (non-zero value)
+                                // LHS < RHS PENALTY (non-zero value)
+                                String surplusDvar = "surplus__" + goalName + "_1";
+                                String surplusWeight = "-(" + penaltyGT + ")";
+                                String slackDvar = "slack__" + goalName + "_1";
+                                String slackWeight = "-(" + penaltyLT + ")";
+                                goal.caseExpression.add(lhsExpression + "-" + surplusDvar + "+" + slackDvar + "=" + rhsExpression);
+                                dvarSlackSurplusList.add(slackDvar);
+                                dvarSlackSurplusList.add(surplusDvar);
+                                dvarWeightMap.put(slackDvar, slackWeight);
+                                dvarWeightMap.put(surplusDvar, surplusWeight);
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Only "LHS > RHS" statement exists
+                if (bGTConstrainExists) {
+                    // LHS > RHS CONSTRAIN
+                    goal.caseExpression.add(lhsExpression + "=" + rhsExpression);
+                } else  {
+                    if (numberPenaltyGT == 0.0) {
+                        // LHS > RHS PENALTY 0.0
+                        goal.caseExpression.add(lhsExpression + ">" + rhsExpression);
+                    } else {
+                        // LHS > RHS PENALTY (non-zero value)
+                        String surplusDvar = "surplus__" + goalName + "_1";
+                        String weight = "-(" + penaltyGT + ")";
+                        goal.caseExpression.add(lhsExpression + "-"+ surplusDvar + "=" + rhsExpression);
+                        dvarSlackSurplusList.add(surplusDvar);
+                        dvarWeightMap.put(surplusDvar,weight);
+                    }
+                }
+            }
+        } else {
+            // Only "LHS < RHS" statement exists
+            if (bLTExists) {
+                if (bLTConstrainExists) {
+                    // LHS < RHS CONSTRAIN
+                    goal.caseExpression.add(lhsExpression + "=" + rhsExpression);
+                }
+                if (bLTPenaltyExists) {
+                    if (numberPenaltyLT == 0.0) {
+                        // LHS < RHS PENALTY 0.0
+                        goal.caseExpression.add(lhsExpression + "<" + rhsExpression);
+                    } else {
+                        // LHS < RHS PENALTY (non-zero value)
+                        String slackDvar = "slack__" + goalName + "_1";
+                        String weight = "-(" + penaltyLT + ")";
+                        goal.caseExpression.add(lhsExpression + "+"+ slackDvar + "=" + rhsExpression);
+                        dvarSlackSurplusList.add(slackDvar);
+                        dvarWeightMap.put(slackDvar,weight);
+                    }
+                }
+            }
+        }
+
+        // Generate parser tree for case expression
+        goal.caseExpressionParseTrees.add(getExpressionParseTree(goal.caseExpression.get(0)));
+
+        // Add slack/surplus data to goal
+        goal.dvarSlackSurplusList.add(dvarSlackSurplusList);
+        goal.dvarWeightMapList.add(dvarWeightMap);
+
+        return new VisitorResult(goal, null);
+    }
+
 
     // ------------------------------------------------------------
     // --- EXTERNAL
@@ -1302,4 +1518,13 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         return stringData;
     }
 
+
+    // Generate a Expression parse tree froma string
+    private wreslParser.ExpressionContext getExpressionParseTree(String expression) {
+        CharStream charStream = CharStreams.fromString(expression);
+        wreslLexer lexer = new wreslLexer(charStream);
+        CommonTokenStream tokenStream = new CommonTokenStream(lexer);
+        wreslParser parser = new wreslParser(tokenStream);
+        return parser.expression();
+    }
 }

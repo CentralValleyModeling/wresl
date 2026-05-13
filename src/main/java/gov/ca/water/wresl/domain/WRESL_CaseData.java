@@ -11,8 +11,8 @@ public class WRESL_CaseData extends WRESLComponent {
     public ParseTree caseConditionTree;
     public List<String> caseExpressionList;
     public List<ParseTree> caseExpressionTreeList;
-    public List<String> SlackSurplusDvarList;
-    public Map<String,String> SlackSurplusDvarWeightMap;
+    public List<String> slackSurplusDvarList;
+    public Map<String,String> slackSurplusDvarWeightMap;
 
     public WRESL_CaseData(String caseCondition,
                           ParseTree caseConditionTree,
@@ -24,7 +24,7 @@ public class WRESL_CaseData extends WRESLComponent {
         this.caseConditionTree = caseConditionTree;
         this.caseExpressionList = caseExpressionList;
         this.caseExpressionTreeList = caseExpressionTreeList;
-        this.SlackSurplusDvarList = caseSlackSurplusDvarList;
-        this.SlackSurplusDvarWeightMap = caseSlackSurplusDvarWeightMap;
+        this.slackSurplusDvarList = caseSlackSurplusDvarList;
+        this.slackSurplusDvarWeightMap = caseSlackSurplusDvarWeightMap;
     }
 }

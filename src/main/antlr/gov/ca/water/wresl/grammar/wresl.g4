@@ -75,21 +75,25 @@ goalBody
     | goalViaPenalty           
     | goalShortForm            
     ;
-goalShortForm: expression opCompare expression ;
-goalViaPenalty: side expression side expression penalty* ;
 goalViaCase: LHS expression goalCaseStatement+ ;
+goalViaPenalty: LHS expression RHS expression goalPenalties? ;
+goalShortForm: expression opCompare expression ;
 
-side 
-    : LHS 
-    | RHS ;
-goalCaseStatement: CASE goalCaseName OPEN_BRACE goalCaseCondition? (RHS expression penalty*) CLOSE_BRACE ;
+goalCaseStatement: CASE goalCaseName OPEN_BRACE goalCaseCondition? (RHS expression goalPenalties?) CLOSE_BRACE ;
 goalCaseName
     : OBJECT_NAME
     | nonReservedKeywords
     ;
 goalCaseCondition: CONDITION caseConditionExpression ;
 
-penalty: LHS (LESS_THAN | GREATER_THAN) RHS penaltyValue? ;
+goalPenalties
+    : penaltyGT penaltyLT
+    | penaltyLT penaltyGT
+    | penaltyGT
+    | penaltyLT
+    ;
+penaltyGT: LHS GREATER_THAN RHS penaltyValue ;
+penaltyLT: LHS LESS_THAN RHS penaltyValue ;
 penaltyValue
     : CONSTRAIN
     | (PENALTY expression)
@@ -228,9 +232,9 @@ columnName
 // Expressions
 // -----------------------------
 expression
-    : expression opCompare expression                                       #expressionComparison
-    | expression opMultiplicationDivision expression                        #expressionMultDiv
+    : expression opMultiplicationDivision expression                        #expressionMultDiv
     | expression opAdditionSubtraction expression                           #expressionAddSub
+    | expression opCompare expression                                       #expressionComparison
     | NOT expression                                                        #expressionNot
     | (PLUS | MINUS) expression                                             #expressionSigned // +1, or -1 without a left hand side
     | sumExpressionBody                                                     #expressionSum
