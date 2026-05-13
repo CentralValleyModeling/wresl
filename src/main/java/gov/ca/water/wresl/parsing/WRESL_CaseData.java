@@ -1,5 +1,6 @@
-package gov.ca.water.wresl.domain;
+package gov.ca.water.wresl.parsing;
 
+import gov.ca.water.wresl.domain.WRESLComponent;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.util.List;

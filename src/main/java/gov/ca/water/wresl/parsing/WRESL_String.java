@@ -1,4 +1,6 @@
-package gov.ca.water.wresl.domain;
+package gov.ca.water.wresl.parsing;
+
+import gov.ca.water.wresl.domain.WRESLComponent;
 
 public class WRESL_String extends WRESLComponent {
     private String text;
