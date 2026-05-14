@@ -4,7 +4,6 @@ import gov.ca.water.wresl.domain.*;
 import gov.ca.water.wresl.errors.EvaluationErrorException;
 import gov.ca.water.wresl.errors.SyntaxErrorException;
 import gov.ca.water.wresl.grammar.wreslBaseVisitor;
-import gov.ca.water.wresl.grammar.wreslLexer;
 import gov.ca.water.wresl.grammar.wreslParser;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -16,14 +15,14 @@ import java.io.*;
 import java.nio.file.Path;
 import java.util.*;
 
-import static gov.ca.water.wresl.parsing.Utilities.getWreslText;
+import static gov.ca.water.wresl.parsing.Utilities.*;
 
 public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     private static final Logger log = LoggerFactory.getLogger(Antlr_To_WRIMS.class);
     // Main WRESL file, absolute folder that it resides, and list of WRESL files
-    private final Path mainFilePath;
-    private final Path absReferencePath;
-    private final Map<Path, WRESLFile> wreslFilesMap;
+    private Path mainFilePath;
+    private Path absReferencePath;
+    private Map<Path, WRESLFile> wreslFilesMap;
 
     // Containers (data defined under INITIAL will be stored as "parameters" under sds
     private Map<Integer,Sequence> sequenceData;
@@ -50,6 +49,19 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         this.sds = new StudyDataSet();
 
         this.modelsWithinModelsMap = new HashMap<>();
+    }
+
+
+    // ------------------------------------------------------------
+    // --- CLEAR MEMORY FROM VARIABLES NO LONGER NEEDED
+    // ------------------------------------------------------------
+    private void clearMemory() {
+        this.sequenceData = null;
+        this.modelsAndGroups = null;
+        this.modelsWithinModelsMap = null;
+        this.includeFileList = null;
+        this.tempParameterMap = null;
+        this.wreslFilesMap = null;
     }
 
 
@@ -146,9 +158,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         // Check for duplicate weight tables within each model
 
 
-        // Clear data that is no longer needed
-        this.sequenceData = null;
-        this.modelsAndGroups = null;
+        // Clear scratch memory that is no longer needed
+        clearMemory();
 
         return new VisitorResult(this.sds,null);
     }
@@ -173,7 +184,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             if (result == null) continue;
 
             // We got a single data
-            if (result.children().size() == 0) {
+            if (result.children().isEmpty()) {
                 compiledData.add(result);
             // We got multiple data
             } else {
@@ -399,7 +410,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
         // Store the list of refrenced files from group
         mds.incFileList = this.includeFileList;
-        
+
         // Store the data for the model
         this.modelsAndGroups.put(this.currentModelOrGroupName, mds);
 
@@ -1523,31 +1534,4 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         return new VisitorResult(data, null);
     }
 
-
-    // ----------------------------
-    // --- HELPER METHODS
-    // ----------------------------
-
-    // Convert visitor result to string
-    private String visitorResultToString(VisitorResult result) {
-        String stringData;
-
-        if (result.data() instanceof WRESL_String data) {
-            stringData = data.getValue(); }
-        else {
-            stringData = null;
-        }
-
-        return stringData;
-    }
-
-
-    // Generate a Expression parse tree froma string
-    private wreslParser.ExpressionContext getExpressionParseTree(String expression) {
-        CharStream charStream = CharStreams.fromString(expression);
-        wreslLexer lexer = new wreslLexer(charStream);
-        CommonTokenStream tokenStream = new CommonTokenStream(lexer);
-        wreslParser parser = new wreslParser(tokenStream);
-        return parser.expression();
-    }
 }

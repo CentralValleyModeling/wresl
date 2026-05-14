@@ -30,8 +30,9 @@ public final class Utilities {
             entry("nov", 30),
             entry("dec", 31));
 
+
     // ------------------------------------------------------------
-    // --- METHODS TO RETRIEVE TEXT FROM AN ANTLR TREE AND ITS NODES
+    // --- METHODS TO RETRIEVE LOWERCASE TEXT FROM AN ANTLR TREE AND ITS NODES
     // ------------------------------------------------------------
 
     // Retrieve lowercase text from ParserRuleContext without stripping whitespaces
@@ -116,9 +117,11 @@ public final class Utilities {
 
 
     // ------------------------------------------------------------
-    // --- CREATE PARSE TREE FROM A GIVEN STRING AND WRESL GRAMMAR RULE
+    // --- MISC. UTILITIES
     // ------------------------------------------------------------
-    public static  ParseTree generateParseTree(String inString, String ruleName) {
+
+    // Create parse tree from a given string and WRESL grammar rule
+    public static ParseTree generateParseTree(String inString, String ruleName) {
         CodePointCharStream charStream = CharStreams.fromString(inString);
         wreslLexer lexer = new wreslLexer(charStream);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -135,5 +138,25 @@ public final class Utilities {
 
     }
 
+    // Convert visitor result to string
+    public static String visitorResultToString(VisitorResult result) {
+        String stringData;
 
+        if (result.data() instanceof WRESL_String data) {
+            stringData = data.getValue(); }
+        else {
+            stringData = null;
+        }
+
+        return stringData;
+    }
+
+    // Generate an Expression parse tree from a string
+    public static wreslParser.ExpressionContext getExpressionParseTree(String expression) {
+        CharStream charStream = CharStreams.fromString(expression);
+        wreslLexer lexer = new wreslLexer(charStream);
+        CommonTokenStream tokenStream = new CommonTokenStream(lexer);
+        wreslParser parser = new wreslParser(tokenStream);
+        return parser.expression();
+    }
 }
