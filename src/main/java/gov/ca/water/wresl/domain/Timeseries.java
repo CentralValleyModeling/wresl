@@ -10,8 +10,6 @@ public class Timeseries extends WRESLComponent implements Serializable {
     public String kind = Param.undefined;
     public String units = Param.undefined;
     public String convertToUnits = Param.undefined;
-    public String fromWresl = Param.undefined;
-    public int line = 1;
 
     private IntDouble data = null;
 

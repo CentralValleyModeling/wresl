@@ -27,8 +27,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
     // Containers (data defined under INITIAL will be stored as "parameters" under sds
     private Map<Integer,Sequence> sequenceData;
-    private Map<String, ModelDataSet> groups;  // Store GROUPs as ModelDataSet to be included in actual ModelDataSets
-    private Map<String, ModelDataSet> models;
+    private Map<String, ModelDataSet> modelsAndGroups;
     private StudyDataSet sds;
 
     // Scratch memory used for data that needs to be access by multiple methods
@@ -36,10 +35,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     private Map<String, ArrayList<String>> modelsWithinModelsMap; // List of models included in each model/group
     private String currentModelOrGroupName = "";                  // Name of model or group that is currently being parsed
     private LinkedHashMap<String, Svar> tempParameterMap;         // Temporary map of Svars defined in the INITIAL statement
-
-    // Static parameters needed in the class
-    private static final String f_InsertLHSHere = "insertLHS";
-
+    private List<String> includeFileList;                         // List of include files refernced by a model
 
     // ------------------------------------------------------------
     // --- CONSTRUCTOR
@@ -50,8 +46,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         this.wreslFilesMap = wreslFilesMap;
 
         this.sequenceData = new HashMap<>();
-        this.groups = new HashMap<>();
-        this.models = new HashMap<>();
+        this.modelsAndGroups = new HashMap<>();
         this.sds = new StudyDataSet();
 
         this.modelsWithinModelsMap = new HashMap<>();
@@ -87,35 +82,54 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             if (data == null) continue;
         }
 
-        // Process SEQUENCE data, compile ordered modelList in StudyDataSet
-        ArrayList<String> modelList = new ArrayList<>();
-        ArrayList<String> modelConditionList = new ArrayList<>();
-        ArrayList<String> modelTimeStepList = new ArrayList<>();
+        // Process SEQUENCE data, compile ordered modelList and related data in StudyDataSet
+        List<String> modelList = new ArrayList<>();
+        List<String> modelConditionList = new ArrayList<>();
+        List<ParseTree> modelConditionParseTreeList = new ArrayList<>();
+        List<String> modelTimeStepList = new ArrayList<>();
+        Map<String, ModelDataSet> modelDataSetMap = new HashMap<>();
         for (int i=0; i<this.sequenceData.size(); i++) {
             Sequence sq = this.sequenceData.get(i+1);
+            String modelName = sq.modelName;
             // Check that a model is not refernced in multiple SEQUENCEs
-            if (modelList.contains(sq.modelName)) {
-                throw new EvaluationErrorException("Each SEQUENCE must define a unique model. Model '" + sq.modelName + "' is used in multiple SEQUENCEs!");
+            if (modelList.contains(modelName)) {
+                throw new EvaluationErrorException("Each SEQUENCE must define a unique model. Model '" + modelName + "' is used in multiple SEQUENCEs!");
             }
-            modelList.add(sq.modelName);
+            modelList.add(modelName);
+            modelDataSetMap.put(modelName, this.modelsAndGroups.get(modelName));
             modelConditionList.add(sq.condition);
+            modelConditionParseTreeList.add(sq.conditionParseTree);
             modelTimeStepList.add(sq.timeStep);
         }
         this.sds.setModelList(modelList);
         this.sds.setModelConditionList(modelConditionList);
+        this.sds.setModelConditionParseTrees(modelConditionParseTreeList);
         this.sds.setModelTimeStepList(modelTimeStepList);
 
         // Check that models/groups included in other models/groups exist
+        //   If no issues, insert model/group data into referencing model
         for (String thisModel: this.modelsWithinModelsMap.keySet()) {
             List<String> includedModelsList = this.modelsWithinModelsMap.get(thisModel);
+            ModelDataSet mds = modelDataSetMap.get(thisModel);
             for (String includedModel: includedModelsList) {
-                if (!this.models.containsKey(includedModel)) {
-                    if (!this.groups.containsKey(includedModel)) {
-                        throw new EvaluationErrorException("Model/group " + includedModel + " referenced from model " + thisModel + " is not defined!");
-                    }
+                if (!this.modelsAndGroups.containsKey(includedModel)) {
+                    throw new EvaluationErrorException("Model/group " + includedModel + " referenced from model " + thisModel + " is not defined!");
                 }
+
+                // Insert model/group data into referencing model
+                ModelDataSet mdsIncluded = this.modelsAndGroups.get(includedModel);
+                mds.appendModelDataSet(mdsIncluded);
             }
         }
+        this.sds.setModelDataSetMap(modelDataSetMap);
+
+        // Compile input timeseries data map
+        Map<String, Timeseries> tsMap = new HashMap<>();
+        for (String modelName : this.sds.getModelList()) {
+            ModelDataSet mds = modelDataSetMap.get(modelName);
+            tsMap.putAll(mds.tsMap);
+        }
+        this.sds.setTimeseriesMap(tsMap);
 
         // Check for duplicate Dvars within each model
 
@@ -134,8 +148,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
         // Clear data that is no longer needed
         this.sequenceData = null;
-        this.groups = null;
-        this.models = null;
+        this.modelsAndGroups = null;
 
         return new VisitorResult(this.sds,null);
     }
@@ -232,11 +245,14 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
         // Condition, if exists
         if (sqBodyCtx.sequenceCondition() != null) {
-            sq.condition = getWreslText(sqBodyCtx.sequenceCondition().expression()).toLowerCase();
+             sq.condition = getWreslText(sqBodyCtx.sequenceCondition().expression());
+             sq.conditionParseTree = sqBodyCtx.sequenceCondition().expression();
         }
 
         // Timestep, if exists
-        if (sqBodyCtx.timestepSpecification() != null) {
+        if (sqBodyCtx.timestepSpecification() == null) {
+            sq.timeStep = wreslParser.VOCABULARY.getLiteralName(wreslParser.STEP_1MON);
+        } else {
             sq.timeStep = getWreslText(sqBodyCtx.timestepSpecification().getChild(1));
         }
 
@@ -255,8 +271,11 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         // On entry: store file referiing to Model context
         String parentFile = this.currentFile;
 
+        // Instantiate the list of include models
+        this.includeFileList = new ArrayList<>();
+
         // Check that model is not defined more than once
-        if (this.models.get(this.currentModelOrGroupName) != null) {
+        if (this.modelsAndGroups.get(this.currentModelOrGroupName) != null) {
             throw new EvaluationErrorException(this.currentFile, ctx.OBJECT_NAME().getSymbol().getLine(), "Model " + this.currentModelOrGroupName + " is defined more than once!");
         }
 
@@ -308,8 +327,11 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             }
         }
 
+        // Store list of include files refernced by the model
+        mds.incFileList = this.includeFileList;
+
         // Store the data for the model
-        this.models.put(this.currentModelOrGroupName, mds);
+        this.modelsAndGroups.put(this.currentModelOrGroupName, mds);
 
         // On exit: restore filename from which Model context was referred to
         this.currentFile = parentFile;
@@ -323,6 +345,9 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     public VisitorResult visitGroup(wreslParser.GroupContext ctx) throws EvaluationErrorException {
         ModelDataSet mds = new ModelDataSet();
         this.currentModelOrGroupName = getWreslText(ctx.OBJECT_NAME());
+
+        // Instantiate list of files refernced by group
+        this.includeFileList = new ArrayList<>();
 
         // Visit groupBody
         for (int i = 0; i <= ctx.groupBody().size()-1; i++) {
@@ -372,8 +397,11 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             }
         }
 
+        // Store the list of refrenced files from group
+        mds.incFileList = this.includeFileList;
+        
         // Store the data for the model
-        this.groups.put(this.currentModelOrGroupName, mds);
+        this.modelsAndGroups.put(this.currentModelOrGroupName, mds);
 
         // Return null; we have already collected all the data into "groups" field
         return null;
@@ -402,8 +430,9 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             // Anny errors would have been caught in the first pass
         }
 
-        // Set current file to include file to be used by its children
+        // Set current file to include file to be used by its children; also add it to the list of files refernced by a model
         this.currentFile = includeFilePath.toString().toLowerCase();
+        if (this.currentFile != null) { this.includeFileList.add(this.currentFile); }
 
         // Parse tree corresponding to the file
         WRESLFile thisFile = this.wreslFilesMap.get(includeFilePath);
