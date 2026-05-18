@@ -142,7 +142,7 @@ public final class Utilities {
     public static String visitorResultToString(VisitorResult result) {
         String stringData;
 
-        if (result.data() instanceof WRESL_String data) {
+        if (result.data().get(0) instanceof WRESL_String data) {
             stringData = data.getValue(); }
         else {
             stringData = null;

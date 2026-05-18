@@ -42,7 +42,7 @@ public class Study {
         // Parse WRESL input into WRIMS objects
         Antlr_To_WRIMS parse = new Antlr_To_WRIMS(this.mainFilePath, treesByFile);
         VisitorResult study = parse.visit(studyTree);
-        StudyDataSet sds = (StudyDataSet)study.data();
+        StudyDataSet sds = (StudyDataSet) study.data().get(0);
 
         // Report total compile time
         long end = System.currentTimeMillis();

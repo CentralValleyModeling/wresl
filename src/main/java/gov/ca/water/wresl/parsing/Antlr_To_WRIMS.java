@@ -161,14 +161,14 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         // Clear scratch memory that is no longer needed
         clearMemory();
 
-        return new VisitorResult(this.sds,null);
+        return new VisitorResult(this.sds);
     }
 
     @Override
     // ROOT VISITOR FOR INCLUDE FILES
     public VisitorResult visitIncludeStart(wreslParser.IncludeStartContext ctx) {
         // Array to store multiple return data
-        List<VisitorResult> compiledData = new ArrayList<>();
+        List<WRESLComponent> compiledData = new ArrayList<>();
 
         // Loop through Include file children nodes
         for (int i = 0; i <= ctx.getChildCount()-1; i++) {
@@ -182,18 +182,12 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             // Visit child
             VisitorResult result = visit(ctx.getChild(i));
             if (result == null) continue;
+            compiledData.addAll(result.data());
 
-            // We got a single data
-            if (result.children().isEmpty()) {
-                compiledData.add(result);
-            // We got multiple data
-            } else {
-                compiledData.addAll(result.children());
-            }
         }
 
         // Return compiled data
-        return new VisitorResult(null, null, compiledData);
+        return new VisitorResult(compiledData);
     }
 
 
@@ -214,19 +208,12 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             }
 
             VisitorResult result = visit(ctx.getChild(i));
-            WRESLComponent data = result.data();
-            String name = result.name();
 
             // WRESL component can only be an SVAR as dictated by the grammar
-            switch (data) {
-                case Svar svar -> {
-                    tempParameterList.add(name);
-                    this.tempParameterMap.put(name, svar);
-                }
-                default -> {
-                    // Do nothing since we are already skipping any non-Svar context
-                }
-            }
+            Svar svar = (Svar) result.data().get(0);
+            tempParameterList.add(svar.name);
+            this.tempParameterMap.put(svar.name, svar);
+
         }
 
         // Process parameters (Svars)
@@ -262,7 +249,9 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
         // Timestep, if exists
         if (sqBodyCtx.timestepSpecification() == null) {
-            sq.timeStep = wreslParser.VOCABULARY.getLiteralName(wreslParser.STEP_1MON);
+            // Default timestep = 1MON
+            String timeStep = wreslParser.VOCABULARY.getLiteralName(wreslParser.STEP_1MON);
+            sq.timeStep = timeStep.replace("'","").toLowerCase();
         } else {
             sq.timeStep = getWreslText(sqBodyCtx.timestepSpecification().getChild(1));
         }
@@ -292,29 +281,22 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
         // Visit modelBody
         for (int i = 0; i < ctx.modelBody().size(); i++) {
-            VisitorResult returnedData = visit(ctx.modelBody(i));
+            VisitorResult result = visit(ctx.modelBody(i));
 
             // Continue if returnedData is null, for instance, after evaluation of an IF statement
-            if (returnedData == null) { continue; }
+            if (result == null) { continue; }
 
             // Copy returned data into ModelDataSet
-            List<VisitorResult> dataList;
-            if (returnedData.children().size() == 0) {
-                dataList = List.of(returnedData);
-            } else {
-                dataList = returnedData.children();
-            }
-            for (int j = 0; j <= dataList.size() - 1; j++) {
-                WRESLComponent data = dataList.get(j).data();
+            for (int j = 0; j <= result.data().size() - 1; j++) {
+                WRESLComponent data = result.data().get(j);
                 if (data == null) continue;
-                String name = dataList.get(j).name();
+                String name = data.name;
                 switch (data) {
                     case Svar svar -> {
                         mds.svList.add(name);
                         mds.svMap.put(name, svar);
                     }
                     case Dvar dvar -> {
-                        name = dvar.name;
                         if (name.contains("surplus") || name.contains("slack")) {
                             mds.dvSlackSurplusList.add(name);
                             mds.dvSlackSurplusMap.put(name, dvar);
@@ -324,7 +306,6 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         }
                     }
                     case WeightElement weight -> {
-                        name = weight.name;
                         if (name.contains("surplus") || name.contains("slack")) {
                             mds.wtSlackSurplusList.add(name);
                             mds.wtSlackSurplusMap.put(name, weight);
@@ -387,23 +368,16 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             if (result == null) { continue; }
 
             // Copy returned data into ModelDataSet
-            List<VisitorResult> dataList;
-            if (result.children().size() == 0) {
-                dataList = List.of(result); }
-            else {
-                dataList = result.children();
-            }
-            for (int j=0; j<=dataList.size()-1; j++) {
-                WRESLComponent data = dataList.get(j).data();
+            for (int j=0; j<=result.data().size()-1; j++) {
+                WRESLComponent data = result.data().get(j);
                 if (data == null) continue;
-                String name = dataList.get(j).name();
+                String name = data.name;
                 switch (data) {
                     case Svar svar -> {
                         mds.svList.add(name);
                         mds.svMap.put(name,svar);
                     }
                     case Dvar dvar -> {
-                        name = dvar.name;
                         if (name.contains("surplus") || name.contains("slack")) {
                             mds.dvSlackSurplusList.add(name);
                             mds.dvSlackSurplusMap.put(name, dvar);
@@ -413,7 +387,6 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         }
                     }
                     case WeightElement weight -> {
-                        name = weight.name;
                         if (name.contains("surplus") || name.contains("slack")) {
                             mds.wtSlackSurplusList.add(name);
                             mds.wtSlackSurplusMap.put(name, weight);
@@ -548,7 +521,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
         // Collect data from svarBody; this will visit all possible Svar definitions
         VisitorResult result = visit(ctx.svarBody());
-        if (result.data() instanceof Svar tempSvar) {
+        if (result.data().get(0) instanceof Svar tempSvar) {
             svar = tempSvar;
         }
 
@@ -565,7 +538,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         }
 
         // Return data
-        return new VisitorResult(svar, svar.name);
+        return new VisitorResult(svar);
     }
 
     @Override
@@ -576,8 +549,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         // Loop over case statements and case information
         for (int i=0; i<=ctx.getChildCount()-1; i++) {
             VisitorResult result = visit(ctx.getChild(i));
-            WRESL_CaseData caseData = (WRESL_CaseData)result.data();
-            svar.addCaseData(result.name().toLowerCase(),
+            WRESL_CaseData caseData = (WRESL_CaseData)result.data().get(0);
+            svar.addCaseData(caseData.name.toLowerCase(),
                              caseData.caseCondition,
                              caseData.caseExpressionList.get(0),
                              caseData.caseConditionTree,
@@ -585,7 +558,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         }
 
         // Return data
-        return new VisitorResult(svar, null);
+        return new VisitorResult(svar);
 
     }
 
@@ -598,7 +571,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         svar.addCaseData(Param.defaultCaseName, Param.always, getWreslText(ctx.select()).toLowerCase(),null,ctx.select());
 
         // Return data
-        return new VisitorResult(svar, null);
+        return new VisitorResult(svar);
     }
 
     @Override
@@ -610,7 +583,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         svar.addCaseData(Param.defaultCaseName, Param.always, getWreslText(ctx.sumExpressionBody()), null,ctx.sumExpressionBody());
 
         // Return data
-        return new VisitorResult(svar, null);
+        return new VisitorResult(svar);
     }
 
     @Override
@@ -622,7 +595,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         svar.addCaseData(Param.defaultCaseName, Param.always, getWreslText(ctx.expression()), null, ctx.expression());
 
         // Return data
-        return new VisitorResult(svar, null);
+        return new VisitorResult(svar);
     }
 
 
@@ -635,12 +608,12 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         Dvar dvar = new Dvar();
         String errorMessage;
 
-        // Dvar name
-        String name = getWreslText(ctx.OBJECT_NAME());
-
         // Integer dvar, and bounds
-        WRESLComponent data = visit(ctx.defineBoundLimits()).data();
+        WRESLComponent data = visit(ctx.defineBoundLimits()).data().get(0);
         dvar = (Dvar)data;
+
+        // Dvar name
+        dvar.name = getWreslText(ctx.OBJECT_NAME());
 
         // Is this a future array?
         if (ctx.arraySizeDefinition() != null) {
@@ -676,7 +649,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         }
 
         // Return data
-        return new VisitorResult(dvar, name);
+        return new VisitorResult(dvar);
     }
 
     @Override
@@ -706,7 +679,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             }
 
             // That's it! Return the value
-            return new VisitorResult(dvar, null);
+            return new VisitorResult(dvar);
         }
 
         // Initially assume standard bounds
@@ -791,7 +764,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         }
 
         // Return a dvar object only for the upper and lower bounds and if it is an integer or not
-        return new VisitorResult(dvar, null);
+        return new VisitorResult(dvar);
     }
 
 
@@ -803,14 +776,13 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     //   Returns a list of VisitorResult types that include a goal, slack/surplus dvars and
     //   associated weights.
     public VisitorResult visitGoal(wreslParser.GoalContext ctx) {
-        String debug = getWreslText(ctx.OBJECT_NAME());
-
-        // Visit goal body; expects a list of VisitorResult types that include a goal,
+        // Visit goal body; expects a list of WRESLComponent types that include a goal,
         //    list of dvars (slack and surplus variables) and corresponding weight
         //    elements. First entry is the goal, then dvar and corresponding weight,
         //    repeating as many dvars as available
         VisitorResult result = visit(ctx.goalBody());
-        Goal goal = (Goal) result.children().get(0).data();
+        List<WRESLComponent> resultList = new ArrayList<>(result.data());
+        Goal goal = (Goal) resultList.get(0);
 
         // Goal name
         goal.name = getWreslText(ctx.OBJECT_NAME());
@@ -820,10 +792,10 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         goal.line = ctx.OBJECT_NAME().getSymbol().getLine();
 
         // Update goal in the result
-        result.children().set(0, new VisitorResult(goal, null));
+        resultList.set(0, goal);
 
         // Return updated result
-        return result;
+        return new VisitorResult(resultList);
     }
 
     @Override
@@ -837,8 +809,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         goal.caseExpression.add(getWreslText(ctx));
         goal.caseExpressionParseTrees.add(generateParseTree(goal.caseExpression.get(0), "expression"));
 
-        List<VisitorResult> returnData = new ArrayList<>(List.of(new VisitorResult(goal, null)));
-        return new VisitorResult(null, null, returnData);
+        return new VisitorResult(goal);
     }
 
     @Override
@@ -848,18 +819,17 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         List<Dvar> dvarSlackSurplusListForGoal = new ArrayList<>();
         List<WeightElement> weightSlackSurplusListForGoal = new ArrayList<>();
 
-
         // Loop through case statements
         for (int i=0; i<ctx.goalCaseStatement().size(); i++) {
             VisitorResult result = visit(ctx.goalCaseStatement(i)); // Returns a list of VisitosResults with caseData as first entry and surplus/slack dvars and associated weights
-            WRESL_CaseData caseData = (WRESL_CaseData) result.children().get(0).data();
+            WRESL_CaseData caseData = (WRESL_CaseData) result.data().get(0);
 
             // Copy dvars and weights from result of visiting case statement
             List<Dvar> dvarSlackSurplusListForCase = new ArrayList<>();
             List<WeightElement> weightSlackSurplusListForCase = new ArrayList<>();
-            for (int j=1; j<result.children().size(); j+= 2) {
-                dvarSlackSurplusListForCase.add((Dvar) result.children().get(j).data());
-                weightSlackSurplusListForCase.add((WeightElement) result.children().get(j+1).data());
+            for (int j=1; j<result.data().size(); j+= 2) {
+                dvarSlackSurplusListForCase.add((Dvar) result.data().get(j));
+                weightSlackSurplusListForCase.add((WeightElement) result.data().get(j+1));
             }
 
             // Update counters for surplus/slack variables
@@ -886,12 +856,12 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         }
 
         // Copile goal, slack/surplus dvars and weights into a list and return
-        List<VisitorResult> returnData = new ArrayList<>(List.of(new VisitorResult(goal, null)));
+        List<WRESLComponent> returnData = new ArrayList<>(List.of(goal));
         for (int i=0; i<dvarSlackSurplusListForGoal.size(); i++) {
-            returnData.add(new VisitorResult(dvarSlackSurplusListForGoal.get(i), null));
-            returnData.add(new VisitorResult(weightSlackSurplusListForGoal.get(i), null));
+            returnData.add(dvarSlackSurplusListForGoal.get(i));
+            returnData.add(weightSlackSurplusListForGoal.get(i));
         }
-        return new VisitorResult(null, null, returnData);
+        return new VisitorResult(returnData);
     }
 
     @Override
@@ -903,7 +873,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         VisitorResult result = null;
         if (ctx.goalPenalties() != null) {
             result = visit(ctx.goalPenalties());
-            WRESL_CaseData caseData = (WRESL_CaseData) result.children().get(0).data();
+            WRESL_CaseData caseData = (WRESL_CaseData) result.data().get(0);
             goal.caseExpression.addAll(caseData.caseExpressionList);
             goal.caseExpressionParseTrees.addAll(caseData.caseExpressionTreeList);
         } else {
@@ -920,15 +890,15 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         goal.caseCondition.add(Param.always);
 
         // Combine goal with slack surplus davr and associated weights from visiting the penalties
-        List<VisitorResult> returnData = new ArrayList<>(List.of(new VisitorResult(goal, null)));
+        List<WRESLComponent> returnData = new ArrayList<>(List.of(goal));
         if (result != null) {
-            List<VisitorResult> slackSurplusDvarWeightList = result.children();
+            List<WRESLComponent> slackSurplusDvarWeightList = result.data();
             slackSurplusDvarWeightList.remove(0);
             returnData.addAll(slackSurplusDvarWeightList);
         }
 
         // Return data
-        return new VisitorResult(null, null, returnData);
+        return new VisitorResult(returnData);
     }
 
     @Override
@@ -950,13 +920,13 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         }
 
         // Retrieve penalty-related information (constraint expressions, new dvars and weights)
-        List<VisitorResult> slackSurplusDvarWeights = null;
+        List<WRESLComponent> slackSurplusDvarWeights = null;
         if (ctx.goalPenalties() != null) {
             VisitorResult result = visit(ctx.goalPenalties());
-            WRESL_CaseData caseData = (WRESL_CaseData) result.children().get(0).data();
+            WRESL_CaseData caseData = (WRESL_CaseData) result.data().get(0);
             caseExpressionList.addAll(caseData.caseExpressionList);
             caseExpressionTreeList.addAll(caseData.caseExpressionTreeList);
-            slackSurplusDvarWeights = result.children();
+            slackSurplusDvarWeights = result.data();
             slackSurplusDvarWeights.remove(0);
         } else {
             // Walk back up the parse tree and retrieve goal name and LHS expression
@@ -977,11 +947,11 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         caseData.name = getWreslText(ctx.goalCaseName());
 
         // Combine case data with slack/surplus dvars and associated weights that were returned from visiting the penalties
-        List<VisitorResult> returnData = new ArrayList<>(List.of(new VisitorResult(caseData, null)));
+        List<WRESLComponent> returnData = new ArrayList<>(List.of(caseData));
         if (slackSurplusDvarWeights != null) { returnData.addAll(slackSurplusDvarWeights); }
 
         // Return list of data
-        return new VisitorResult(null, null, returnData);
+        return new VisitorResult(returnData);
     }
 
     @Override
@@ -1074,6 +1044,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                             Dvar dvar = new Dvar();
                             dvar.name = slackDvar;
                             dvar.kind = "slack";
+                            dvar.lowerBound = Param.zero;
+                            dvar.upperBound = Param.upper_unbounded;
                             dvar.condition = "conditional";
                             dvar.fromWresl = this.currentFile;
                             dvar.line = ctx.penaltyLT().penaltyValue().PENALTY().getSymbol().getLine();
@@ -1110,6 +1082,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                                 Dvar dvar = new Dvar();
                                 dvar.name = slackDvar;
                                 dvar.kind = "slack";
+                                dvar.lowerBound = Param.zero;
+                                dvar.upperBound = Param.upper_unbounded;
                                 dvar.condition = "conditional";
                                 dvar.fromWresl = this.currentFile;
                                 dvar.line = ctx.penaltyLT().penaltyValue().PENALTY().getSymbol().getLine();
@@ -1136,6 +1110,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                             Dvar dvar = new Dvar();
                             dvar.name = surplusDvar;
                             dvar.kind = "surplus";
+                            dvar.lowerBound = Param.zero;
+                            dvar.upperBound = Param.upper_unbounded;
                             dvar.condition = "conditional";
                             dvar.fromWresl = this.currentFile;
                             dvar.line = ctx.penaltyGT().penaltyValue().PENALTY().getSymbol().getLine();
@@ -1160,6 +1136,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                                 Dvar dvar = new Dvar();
                                 dvar.name = surplusDvar;
                                 dvar.kind = "surplus";
+                                dvar.lowerBound = Param.zero;
+                                dvar.upperBound = Param.upper_unbounded;
                                 dvar.condition = "conditional";
                                 dvar.fromWresl = this.currentFile;
                                 dvar.line = ctx.penaltyGT().penaltyValue().PENALTY().getSymbol().getLine();
@@ -1186,6 +1164,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                                 Dvar dvar = new Dvar();
                                 dvar.name = surplusDvar;
                                 dvar.kind = "surplus";
+                                dvar.lowerBound = Param.zero;
+                                dvar.upperBound = Param.upper_unbounded;
                                 dvar.condition = "conditional";
                                 dvar.fromWresl = this.currentFile;
                                 dvar.line = ctx.penaltyGT().penaltyValue().PENALTY().getSymbol().getLine();
@@ -1204,6 +1184,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                                 dvar = new Dvar();
                                 dvar.name = slackDvar;
                                 dvar.kind = "slack";
+                                dvar.lowerBound = Param.zero;
+                                dvar.upperBound = Param.upper_unbounded;
                                 dvar.condition = "conditional";
                                 dvar.fromWresl = this.currentFile;
                                 dvar.line = ctx.penaltyLT().penaltyValue().PENALTY().getSymbol().getLine();
@@ -1239,6 +1221,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         Dvar dvar = new Dvar();
                         dvar.name = surplusDvar;
                         dvar.kind = "surplus";
+                        dvar.lowerBound = Param.zero;
+                        dvar.upperBound = Param.upper_unbounded;
                         dvar.condition = "conditional";
                         dvar.fromWresl = this.currentFile;
                         dvar.line = ctx.penaltyGT().penaltyValue().PENALTY().getSymbol().getLine();
@@ -1275,6 +1259,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         Dvar dvar = new Dvar();
                         dvar.name = slackDvar;
                         dvar.kind = "slack";
+                        dvar.lowerBound = Param.zero;
+                        dvar.upperBound = Param.upper_unbounded;
                         dvar.condition = "conditional";
                         dvar.fromWresl = this.currentFile;
                         dvar.line = ctx.penaltyLT().penaltyValue().PENALTY().getSymbol().getLine();
@@ -1298,12 +1284,12 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         caseData.caseExpressionTreeList.add(getExpressionParseTree(caseData.caseExpressionList.get(0)));
 
         // Create a list of VisitorResults to return
-        List<VisitorResult> returnData = new ArrayList<>(List.of(new VisitorResult(caseData, null)));
+        List<WRESLComponent> returnData = new ArrayList<>(List.of(caseData));
         for (int i=0; i<dvarSlackSurplusList.size(); i++) {
-            returnData.add(new VisitorResult(dvarSlackSurplusList.get(i), null));
-            returnData.add(new VisitorResult(weightSlackSurplusList.get(i), null));
+            returnData.add(dvarSlackSurplusList.get(i));
+            returnData.add(weightSlackSurplusList.get(i));
         }
-        return new VisitorResult(null, null, returnData);
+        return new VisitorResult(returnData);
     }
 
 
@@ -1330,10 +1316,10 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         ex.line = ctx.OBJECT_NAME().getSymbol().getLine();
 
         // External name
-        String name = getWreslText(ctx.OBJECT_NAME());
+        ex.name = getWreslText(ctx.OBJECT_NAME());
 
         // Return data
-        return new VisitorResult(ex, name);
+        return new VisitorResult(ex);
     }
 
 
@@ -1347,7 +1333,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         int count;
 
         // Alias name
-        String name = getWreslText(ctx.OBJECT_NAME());
+        as.name = getWreslText(ctx.OBJECT_NAME());
 
         // Source file and line number
         as.fromWresl = this.currentFile;
@@ -1384,7 +1370,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         as.expression = getWreslText(ctx.expression());
 
         // Return data
-        return new VisitorResult(as, name);
+        return new VisitorResult(as);
     }
 
 
@@ -1399,8 +1385,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         List<String> errorMessages = new ArrayList<>();
 
         // Retrieve ts name
-        String name = getWreslText(ctx.OBJECT_NAME());
-        ts.dssBPart = name;
+        ts.name = getWreslText(ctx.OBJECT_NAME());
+        ts.dssBPart = ts.name;
 
         // Source file and line number
         ts.fromWresl = this.currentFile;
@@ -1435,7 +1421,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             }
         }
 
-        return new VisitorResult(ts, name);
+        return new VisitorResult(ts);
     }
 
     @Override
@@ -1445,7 +1431,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         List<String> errorMessages = new ArrayList<>();
 
         // Retrieve ts name
-        String name = getWreslText(ctx.OBJECT_NAME());
+        ts.name = getWreslText(ctx.OBJECT_NAME());
 
         // Source file and line number
         ts.fromWresl = this.currentFile;
@@ -1461,7 +1447,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             }
         }
         else {
-            ts.dssBPart = name;
+            ts.dssBPart = ts.name;
         }
 
         // Process KIND; check that only one exists
@@ -1493,7 +1479,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             }
         }
 
-        return new VisitorResult(ts, name);
+        return new VisitorResult(ts);
     }
 
 
@@ -1504,7 +1490,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     // expressionComparison
     public VisitorResult visitExpressionComparison(wreslParser.ExpressionComparisonContext ctx) {
         WRESL_String expression = new WRESL_String(getWreslText(ctx));
-        return new VisitorResult(expression, null);
+        return new VisitorResult(expression);
     }
 
     @Override
@@ -1512,7 +1498,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     public VisitorResult visitExpressionMultDiv(wreslParser.ExpressionMultDivContext ctx) {
         // Store expression to be computed later during run
         WRESL_String expression = new WRESL_String(getWreslText(ctx));
-        return new VisitorResult(expression,null);
+        return new VisitorResult(expression);
      }
 
     @Override
@@ -1520,7 +1506,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     public VisitorResult visitExpressionAddSub(wreslParser.ExpressionAddSubContext ctx) {
         // Store expression to be computed later during run
         WRESL_String expression = new WRESL_String(getWreslText(ctx));
-        return new VisitorResult(expression,null);
+        return new VisitorResult(expression);
     }
 
     @Override
@@ -1542,11 +1528,11 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                     if (nArguments < 2) { throw new SyntaxErrorException(this.currentFile,ctx.OPEN_PAREN().getSymbol().getLine(), List.of(function.toUpperCase() + " requires at least 2 arguments!")); }
                 }
             }
-            return new VisitorResult(null, null);
+            return null;
         }
         else {
             WRESL_String functionName = new WRESL_String(getWreslText(ctx.OBJECT_NAME()));
-            return new VisitorResult(functionName, null);
+            return new VisitorResult(functionName);
         }
     }
 
@@ -1582,64 +1568,29 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                                                      caseConditionTree,
                                                      List.of(caseExpression),
                                                      List.of(caseExpressionTree));
-        return new VisitorResult(caseData,caseName);
+        caseData.name = caseName;
+        return new VisitorResult(caseData);
     }
 
     @Override
     // caseViaValue
     public VisitorResult visitCaseViaValue(wreslParser.CaseViaValueContext ctx) {
         WRESL_String caseExpression = new WRESL_String(getWreslText(ctx.expression()));
-        return new VisitorResult(caseExpression, null);
+        return new VisitorResult(caseExpression);
     }
-
-//@Override
-//// caseViaGoal
-//public VisitorResult visitCaseViaGoal(wreslParser.CaseViaGoalContext ctx) {
-//    List<String> caseExpressionList = new ArrayList<>();
-//    List<String> caseSlackSurplusDvarList = new ArrayList<>();
-//    List<String> caseSlackSurplusDvarWeightList = new ArrayList<>();
-
-//    // Make sure RHS expression for goal is defined and retrieve expression
-//    if (!getWreslText(ctx.SIDE()).equals("rhs")) {
-//        String errorMessage = "Syntax error: RHS expression for goal must be defined, instead of LHS expression!";
-//        throw new SyntaxErrorException(this.currentFile,ctx.SIDE().getSymbol().getLine(),errorMessage);
-//    }
-//    String rhs = getWreslText(ctx.expression());
-
-//    // Loop through penalty statements, generate constraining expressions and slack/surplus dvars and their weights
-//    for (wreslParser.PenaltyContext penalty : ctx.penalty()) {
-//        // Make sure LHS and RHS keywords are defined on the proper side of the comparison operator
-//        String errorMessage;
-//        if (getWreslText(penalty.SIDE(0)).equals("rhs") || getWreslText(penalty.SIDE(1)).equals("lhs")) {
-//            errorMessage = "LHS and RHS keywords in the PENALTY statement are reversed!";
-//            throw new SyntaxErrorException(this.currentFile, penalty.SIDE(0).getSymbol().getLine(), errorMessage);
-//        }
-
-//        // Replace RHS keyword with expression
-//        String rhsPenalty = getWreslText(penalty.SIDE(1)).replace("rhs", rhs);
-
-//        // If LHS > RHS, create a surplus Dvar
-//        if (!(penalty.GREATER_THAN() == null)) {
-
-//        }
-//    }
-
-//    WRESL_CaseData caseData = new WRESL_CaseData(null, null, caseExpressionList, null, caseSlackSurplusDvarList, caseSlackSurplusDvarWeightList);
-//    return new VisitorResult(caseData, null);
-//}
 
     @Override
     // caseViaSelect
     public VisitorResult visitCaseViaSelect(wreslParser.CaseViaSelectContext ctx) {
         WRESL_String caseExpression = new WRESL_String(getWreslText(ctx.select()));
-        return new VisitorResult(caseExpression, null);
+        return new VisitorResult(caseExpression);
     }
 
     @Override
     // caseViaExpression
     public VisitorResult visitCaseViaExpression(wreslParser.CaseViaExpressionContext ctx) {
         WRESL_String caseExpression = new WRESL_String(getWreslText(ctx.expression()));
-        return new VisitorResult(caseExpression, null);
+        return new VisitorResult(caseExpression);
     }
 
 
@@ -1676,25 +1627,17 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     @Override
     // ifBlock
     public VisitorResult visitIfBlock(wreslParser.IfBlockContext ctx) {
-        List<VisitorResult> ifBlockContents = new ArrayList<>();
-        List<VisitorResult> dataList;
+        List<WRESLComponent> ifBlockContents = new ArrayList<>();
+        List<WRESLComponent> dataList;
         for (int i=1; i<ctx.getChildCount()-1; i++) {
             // Visit child
             VisitorResult result = visit(ctx.getChild(i));
 
             // Accumulate returned data into return variable
-            // ... when only one data is returned
-            if (result.children().size() == 0) {
-                dataList = List.of(result);
-            }
-            // ... when multiple data are returned
-            else {
-                dataList = result.children();
-            }
-            ifBlockContents.addAll(dataList);
+            ifBlockContents.addAll(result.data());
         }
 
-        return new VisitorResult(null, null, ifBlockContents);
+        return new VisitorResult(ifBlockContents);
     }
 
     // ------------------------------------------------------------
@@ -1704,7 +1647,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     // arraySizeDefinition
     public VisitorResult visitArraySizeDefinition(wreslParser.ArraySizeDefinitionContext ctx) {
         WRESL_String expr = new WRESL_String(getWreslText(ctx.expression()));
-        return new VisitorResult(expr,null);
+        return new VisitorResult(expr);
     }
 
     @Override
@@ -1713,7 +1656,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         String tempString = getWreslText(ctx);
 //        WRIMS_String data = new WRIMS_String(ctx.getText().substring(0, ctx.getText().length() - 1).substring(1).toLowerCase());   // Remove first and last character;
         WRESL_String data = new WRESL_String(tempString.substring(0, tempString.length() - 1).substring(1));   // Remove first and last character;
-        return new VisitorResult(data, null);
+        return new VisitorResult(data);
     }
 
 }

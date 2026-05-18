@@ -14,6 +14,8 @@ public class Param {
     public static final String dv_std_integer_upperBound= "1";
     public static final String dv_lower_unbounded= "-1e38";
     public static final String dv_upper_unbounded= "1e38";
+    public static final String lower_unbounded = "lower_unbounded";
+    public static final String upper_unbounded = "upper_unbounded";
 
 
 }
