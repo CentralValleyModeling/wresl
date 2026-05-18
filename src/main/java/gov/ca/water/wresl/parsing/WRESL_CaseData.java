@@ -3,6 +3,7 @@ package gov.ca.water.wresl.parsing;
 import gov.ca.water.wresl.domain.WRESLComponent;
 import org.antlr.v4.runtime.tree.ParseTree;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -12,20 +13,24 @@ public class WRESL_CaseData extends WRESLComponent {
     public ParseTree caseConditionTree;
     public List<String> caseExpressionList;
     public List<ParseTree> caseExpressionTreeList;
-    public List<String> slackSurplusDvarList;
-    public Map<String,String> slackSurplusDvarWeightMap;
+
+
+
+    public WRESL_CaseData() {
+        this.caseCondition = null;
+        this.caseConditionTree = null;
+        this.caseExpressionList = new ArrayList<>();
+        this.caseExpressionTreeList = new ArrayList<>();
+    }
+
 
     public WRESL_CaseData(String caseCondition,
                           ParseTree caseConditionTree,
                           List<String> caseExpressionList,
-                          List<ParseTree> caseExpressionTreeList,
-                          List<String> caseSlackSurplusDvarList,
-                          Map<String,String> caseSlackSurplusDvarWeightMap) {
+                          List<ParseTree> caseExpressionTreeList) {
         this.caseCondition = caseCondition;
         this.caseConditionTree = caseConditionTree;
         this.caseExpressionList = caseExpressionList;
         this.caseExpressionTreeList = caseExpressionTreeList;
-        this.slackSurplusDvarList = caseSlackSurplusDvarList;
-        this.slackSurplusDvarWeightMap = caseSlackSurplusDvarWeightMap;
     }
 }

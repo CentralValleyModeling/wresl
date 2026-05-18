@@ -44,12 +44,6 @@ public class Study {
         VisitorResult study = parse.visit(studyTree);
         StudyDataSet sds = (StudyDataSet)study.data();
 
-        // next, find the sequences, models, groups, and initial constructs
-        //Containers containers = compileTreesToContainers(treesByFile);
-        // next combine the trees, organized by each sequence
-        // TODO
-        // next, compile each sequence into package objects
-        // TODO
         // Report total compile time
         long end = System.currentTimeMillis();
         float durationTotal= (float) (end - start) / 1_000L;
