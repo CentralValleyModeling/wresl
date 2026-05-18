@@ -718,7 +718,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                 else {
                     dvar.lowerBound = defBound.defineLowerBound().boundType().expression().getText();
                 }
-                dvar.lowerBoundExpressionParseTree = Utilities.generateParseTree(dvar.lowerBound, "expression");
+                dvar.lowerBoundExpressionParseTree = generateExpressionParseTree(dvar.lowerBound);
 
                 // Check that integer Dvar has proper lower bound
                 if (ctx.INTEGER() != null) {
@@ -747,7 +747,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                 else {
                     dvar.upperBound = defBound.defineUpperBound().boundType().expression().getText();
                 }
-                dvar.upperBoundExpressionParseTree = Utilities.generateParseTree(dvar.upperBound, "expression");
+                dvar.upperBoundExpressionParseTree = generateExpressionParseTree(dvar.upperBound);
 
                 // Check that integer Dvar has proper lower bound
                 if (ctx.INTEGER() != null) {
@@ -807,7 +807,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         goal.caseName.add(Param.defaultCaseName);
         goal.caseCondition.add(Param.always);
         goal.caseExpression.add(getWreslText(ctx));
-        goal.caseExpressionParseTrees.add(generateParseTree(goal.caseExpression.get(0), "expression"));
+        goal.caseExpressionParseTrees.add(generateExpressionParseTree(goal.caseExpression.get(0)));
 
         return new VisitorResult(goal);
     }
@@ -840,7 +840,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                 String dvarName = slackSurplusDvarName.substring(0,slackSurplusDvarName.lastIndexOf("_")+1) + (i+1);
                 String tempCaseExpression = caseData.caseExpressionList.get(0).replace(slackSurplusDvarName,dvarName);
                 caseData.caseExpressionList.set(0, tempCaseExpression);
-                caseData.caseExpressionTreeList.set(0, generateParseTree(tempCaseExpression, "expression"));
+                caseData.caseExpressionTreeList.set(0, generateExpressionParseTree(tempCaseExpression));
                 dvarUpdate.name = dvarName;
                 dvarSlackSurplusListForGoal.add(dvarUpdate);
                 weightUpdate.name = dvarName;
@@ -882,7 +882,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             String rhsExpression = getWreslText(ctx.expression(1));
             String caseExpression = lhsExpression + "=" + rhsExpression;
             goal.caseExpression.add(caseExpression);
-            goal.caseExpressionParseTrees.add(getExpressionParseTree(caseExpression));
+            goal.caseExpressionParseTrees.add(generateExpressionParseTree(caseExpression));
         }
 
         // Default case name and condition
@@ -936,7 +936,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             String rhsExpression = getWreslText(ctx.expression());
             String caseExpression = lhsExpression + "=" + rhsExpression;
             caseExpressionList.add(caseExpression);
-            caseExpressionTreeList.add(getExpressionParseTree(caseExpression));
+            caseExpressionTreeList.add(generateExpressionParseTree(caseExpression));
         }
 
         // Assemble case data
@@ -1053,10 +1053,10 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                             WeightElement weightElem = new WeightElement();
                             weightElem.name = dvar.name;
                             weightElem.weight = weight;
-                            weightElem.weightParseTree = generateParseTree(weight, "expression");
+                            weightElem.weightParseTree = generateExpressionParseTree(weight);
                             weightElem.condition = "conditional";
                             weightElem.timeArraySize = Param.zero;
-                            weightElem.timeArraySizeParseTree = generateParseTree(Param.zero, "expression");
+                            weightElem.timeArraySizeParseTree = generateExpressionParseTree(Param.zero);
                             weightElem.fromWresl = this.currentFile;
                             weightElem.line = dvar.line;
                             weightSlackSurplusList.add(weightElem);
@@ -1091,10 +1091,10 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                                 WeightElement weightElem = new WeightElement();
                                 weightElem.name = dvar.name;
                                 weightElem.weight = weight;
-                                weightElem.weightParseTree = generateParseTree(weight, "expression");
+                                weightElem.weightParseTree = generateExpressionParseTree(weight);
                                 weightElem.condition = "conditional";
                                 weightElem.timeArraySize = Param.zero;
-                                weightElem.timeArraySizeParseTree = generateParseTree(Param.zero, "expression");
+                                weightElem.timeArraySizeParseTree = generateExpressionParseTree(Param.zero);
                                 weightElem.fromWresl = this.currentFile;
                                 weightElem.line = dvar.line;
                                 weightSlackSurplusList.add(weightElem);
@@ -1119,10 +1119,10 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                             WeightElement weightElem = new WeightElement();
                             weightElem.name = dvar.name;
                             weightElem.weight = weight;
-                            weightElem.weightParseTree = generateParseTree(weight, "expression");
+                            weightElem.weightParseTree = generateExpressionParseTree(weight);
                             weightElem.condition = "conditional";
                             weightElem.timeArraySize = Param.zero;
-                            weightElem.timeArraySizeParseTree = generateParseTree(Param.zero, "expression");
+                            weightElem.timeArraySizeParseTree = generateExpressionParseTree(Param.zero);
                             weightElem.fromWresl = this.currentFile;
                             weightElem.line = dvar.line;
                             weightSlackSurplusList.add(weightElem);
@@ -1145,10 +1145,10 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                                 WeightElement weightElem = new WeightElement();
                                 weightElem.name = dvar.name;
                                 weightElem.weight = weight;
-                                weightElem.weightParseTree = generateParseTree(weight, "expression");
+                                weightElem.weightParseTree = generateExpressionParseTree(weight);
                                 weightElem.condition = "conditional";
                                 weightElem.timeArraySize = Param.zero;
-                                weightElem.timeArraySizeParseTree = generateParseTree(Param.zero, "expression");
+                                weightElem.timeArraySizeParseTree = generateExpressionParseTree(Param.zero);
                                 weightElem.fromWresl = this.currentFile;
                                 weightElem.line = dvar.line;
                                 weightSlackSurplusList.add(weightElem);
@@ -1173,10 +1173,10 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                                 WeightElement weightElem = new WeightElement();
                                 weightElem.name = dvar.name;
                                 weightElem.weight = surplusWeight;
-                                weightElem.weightParseTree = generateParseTree(surplusWeight, "expression");
+                                weightElem.weightParseTree = generateExpressionParseTree(surplusWeight);
                                 weightElem.condition = "conditional";
                                 weightElem.timeArraySize = Param.zero;
-                                weightElem.timeArraySizeParseTree = generateParseTree(Param.zero, "expression");
+                                weightElem.timeArraySizeParseTree = generateExpressionParseTree(Param.zero);
                                 weightElem.fromWresl = this.currentFile;
                                 weightElem.line = dvar.line;
                                 weightSlackSurplusList.add(weightElem);
@@ -1193,10 +1193,10 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                                 weightElem = new WeightElement();
                                 weightElem.name = dvar.name;
                                 weightElem.weight = slackWeight;
-                                weightElem.weightParseTree = generateParseTree(slackWeight, "expression");
+                                weightElem.weightParseTree = generateExpressionParseTree(slackWeight);
                                 weightElem.condition = "conditional";
                                 weightElem.timeArraySize = Param.zero;
-                                weightElem.timeArraySizeParseTree = generateParseTree(Param.zero, "expression");
+                                weightElem.timeArraySizeParseTree = generateExpressionParseTree(Param.zero);
                                 weightElem.fromWresl = this.currentFile;
                                 weightElem.line = dvar.line;
                                 weightSlackSurplusList.add(weightElem);
@@ -1230,10 +1230,10 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         WeightElement weightElem = new WeightElement();
                         weightElem.name = dvar.name;
                         weightElem.weight = weight;
-                        weightElem.weightParseTree = generateParseTree(weight, "expression");
+                        weightElem.weightParseTree = generateExpressionParseTree(weight);
                         weightElem.condition = "conditional";
                         weightElem.timeArraySize = Param.zero;
-                        weightElem.timeArraySizeParseTree = generateParseTree(Param.zero, "expression");
+                        weightElem.timeArraySizeParseTree = generateExpressionParseTree(Param.zero);
                         weightElem.fromWresl = this.currentFile;
                         weightElem.line = dvar.line;
                         weightSlackSurplusList.add(weightElem);
@@ -1268,10 +1268,10 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         WeightElement weightElem = new WeightElement();
                         weightElem.name = dvar.name;
                         weightElem.weight = weight;
-                        weightElem.weightParseTree = generateParseTree(weight, "expression");
+                        weightElem.weightParseTree = generateExpressionParseTree(weight);
                         weightElem.condition = "conditional";
                         weightElem.timeArraySize = Param.zero;
-                        weightElem.timeArraySizeParseTree = generateParseTree(Param.zero, "expression");
+                        weightElem.timeArraySizeParseTree = generateExpressionParseTree(Param.zero);
                         weightElem.fromWresl = this.currentFile;
                         weightElem.line = dvar.line;
                         weightSlackSurplusList.add(weightElem);
@@ -1281,7 +1281,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         }
 
         // Generate parser tree for case expression
-        caseData.caseExpressionTreeList.add(getExpressionParseTree(caseData.caseExpressionList.get(0)));
+        caseData.caseExpressionTreeList.add(generateExpressionParseTree(caseData.caseExpressionList.get(0)));
 
         // Create a list of VisitorResults to return
         List<WRESLComponent> returnData = new ArrayList<>(List.of(caseData));
@@ -1364,10 +1364,12 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             as.needVarFromEarlierCycle = true;
             VisitorResult result = visit(ctx.arraySizeDefinition());
             as.timeArraySize = visitorResultToString(result);
+            as.timeArraySizeParseTree = generateExpressionParseTree(as.timeArraySize);
         }
 
         // Retrieve expression
         as.expression = getWreslText(ctx.expression());
+        as.expressionParseTree = generateExpressionParseTree(as.expression);
 
         // Return data
         return new VisitorResult(as);

@@ -7,7 +7,6 @@ import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
@@ -120,24 +119,6 @@ public final class Utilities {
     // --- MISC. UTILITIES
     // ------------------------------------------------------------
 
-    // Create parse tree from a given string and WRESL grammar rule
-    public static ParseTree generateParseTree(String inString, String ruleName) {
-        CodePointCharStream charStream = CharStreams.fromString(inString);
-        wreslLexer lexer = new wreslLexer(charStream);
-        CommonTokenStream tokens = new CommonTokenStream(lexer);
-        wreslParser parser = new wreslParser(tokens);
-
-        try {
-            Method ruleMethod = wreslParser.class.getMethod(ruleName);
-            return (ParseTree) ruleMethod.invoke(parser);
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException("Rule " + ruleName + " in WRESL grammar is not defined!");
-        } catch (Exception e) {
-            throw new RuntimeException(" Error parsing string with rule " + ruleName);
-        }
-
-    }
-
     // Convert visitor result to string
     public static String visitorResultToString(VisitorResult result) {
         String stringData;
@@ -152,11 +133,12 @@ public final class Utilities {
     }
 
     // Generate an Expression parse tree from a string
-    public static wreslParser.ExpressionContext getExpressionParseTree(String expression) {
+    public static wreslParser.ExpressionContext generateExpressionParseTree(String expression) {
         CharStream charStream = CharStreams.fromString(expression);
         wreslLexer lexer = new wreslLexer(charStream);
         CommonTokenStream tokenStream = new CommonTokenStream(lexer);
         wreslParser parser = new wreslParser(tokenStream);
         return parser.expression();
     }
+
 }
