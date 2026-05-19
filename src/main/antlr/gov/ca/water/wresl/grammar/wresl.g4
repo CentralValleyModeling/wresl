@@ -102,10 +102,13 @@ penaltyValue
 
 // OBJECTIVE
 objective: OBJECTIVE OBJECT_NAME EQUALS_SIGN OPEN_BRACE objectiveBody CLOSE_BRACE ;
-objectiveBody: weightsByPair | commonWeights ;
+objectiveBody
+    : weightsByPair 
+    | weightsCommon 
+    ;
 weightsByPair: varWeightPair (COMMA? varWeightPair)* COMMA? ;
-varWeightPair: OPEN_BRACKET expression COMMA expression CLOSE_BRACKET ;
-commonWeights: weight variables ;
+varWeightPair: OPEN_BRACKET OBJECT_NAME arraySizeDefinition? COMMA expression CLOSE_BRACKET ;
+weightsCommon: weight variables ;
 weight: WEIGHT expression ;
 variables: VARIABLE expression+ ;
 

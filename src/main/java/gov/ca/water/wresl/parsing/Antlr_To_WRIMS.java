@@ -135,13 +135,28 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         }
         this.sds.setModelDataSetMap(modelDataSetMap);
 
-        // Compile input timeseries data map
+        // Loop through models and process data
         Map<String, Timeseries> tsMap = new HashMap<>();
         for (String modelName : this.sds.getModelList()) {
             ModelDataSet mds = modelDataSetMap.get(modelName);
+
+            // Compile input timeseries data map
             tsMap.putAll(mds.tsMap);
+
+            // Evaluate weights when possible (i.e. when they don't depend on some dynamic value such a taf-cfs)
+            for (String weightName : mds.wtList) {
+                WeightElement weight = mds.wtMap.get(weightName);
+                try {
+                    // Evaluate weight value and set parse tree to null to indicate this value is already evaluated
+                    weight.value = Evaluator.evaluateExpression(weight.weightParseTree).getValue().doubleValue();
+                    weight.weightParseTree = null;
+                } catch (EvaluationErrorException | NullPointerException e) {
+                    // Do nothing at this point since this error is likely due to a dynamic variable within the expression
+                }
+            }
         }
         this.sds.setTimeseriesMap(tsMap);
+
 
         // Check for duplicate Dvars within each model
 
@@ -289,7 +304,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             // Copy returned data into ModelDataSet
             for (int j = 0; j <= result.data().size() - 1; j++) {
                 WRESLComponent data = result.data().get(j);
-                if (data == null) continue;
+            //    if (data == null) continue;
                 String name = data.name;
                 switch (data) {
                     case Svar svar -> {
@@ -297,29 +312,18 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         mds.svMap.put(name, svar);
                     }
                     case Dvar dvar -> {
-                        if (name.contains("surplus") || name.contains("slack")) {
-                            mds.dvSlackSurplusList.add(name);
-                            mds.dvSlackSurplusMap.put(name, dvar);
-                        } else {
-                            mds.dvList.add(name);
-                            mds.dvMap.put(name, dvar);
-                        }
+                        mds.dvList.add(name);
+                        mds.dvMap.put(name, dvar);
                     }
                     case WeightElement weight -> {
-                        if (name.contains("surplus") || name.contains("slack")) {
-                            mds.wtSlackSurplusList.add(name);
-                            mds.wtSlackSurplusMap.put(name, weight);
-                        } else {
-                            mds.wtList.add(name);
-                            mds.wtMap.put(name, weight);
-                        }
+                        mds.wtList.add(name);
+                        mds.wtMap.put(name, weight);
                     }
                     case Timeseries ts -> {
                         mds.tsList.add(name);
                         mds.tsMap.put(name, ts);
                     }
                     case Goal goal -> {
-                        name = goal.name;
                         mds.gList.add(name);
                         mds.gMap.put(name, goal);
                     }
@@ -370,7 +374,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             // Copy returned data into ModelDataSet
             for (int j=0; j<=result.data().size()-1; j++) {
                 WRESLComponent data = result.data().get(j);
-                if (data == null) continue;
+       //         if (data == null) continue;
                 String name = data.name;
                 switch (data) {
                     case Svar svar -> {
@@ -378,29 +382,18 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         mds.svMap.put(name,svar);
                     }
                     case Dvar dvar -> {
-                        if (name.contains("surplus") || name.contains("slack")) {
-                            mds.dvSlackSurplusList.add(name);
-                            mds.dvSlackSurplusMap.put(name, dvar);
-                        } else {
-                            mds.dvList.add(name);
-                            mds.dvMap.put(name, dvar);
-                        }
+                        mds.dvList.add(name);
+                        mds.dvMap.put(name, dvar);
                     }
                     case WeightElement weight -> {
-                        if (name.contains("surplus") || name.contains("slack")) {
-                            mds.wtSlackSurplusList.add(name);
-                            mds.wtSlackSurplusMap.put(name, weight);
-                        } else {
-                            mds.wtList.add(name);
-                            mds.wtMap.put(name, weight);
-                        }
+                        mds.wtList.add(name);
+                        mds.wtMap.put(name, weight);
                     }
                     case Timeseries ts -> {
                         mds.tsList.add(name);
                         mds.tsMap.put(name, ts);
                     }
                     case Goal goal -> {
-                        name = goal.name;
                         mds.gList.add(name);
                         mds.gMap.put(name, goal);
                     }
@@ -1482,6 +1475,57 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         }
 
         return new VisitorResult(ts);
+    }
+
+
+    // ------------------------------------------------------------
+    // --- OBJECTIVE
+    // ------------------------------------------------------------
+    @Override
+    // Gateway to OBJECTIVE keyword visitors; returns a list of weights
+    public VisitorResult visitObjective(wreslParser.ObjectiveContext ctx) {
+        VisitorResult result = visit(ctx.objectiveBody());
+        return result;
+    }
+
+    @Override
+    // weightsByPair
+    public VisitorResult visitWeightsByPair(wreslParser.WeightsByPairContext ctx) {
+        List<WRESLComponent> returnData = new ArrayList<>();
+
+        for (wreslParser.VarWeightPairContext varWeightPairCtx : ctx.varWeightPair()) {
+            WeightElement weight = new WeightElement();
+            weight.name = getWreslText(varWeightPairCtx.OBJECT_NAME());
+            weight.weight = getWreslText(varWeightPairCtx.expression());
+            weight.weightParseTree = generateExpressionParseTree(weight.weight);
+            if (varWeightPairCtx.arraySizeDefinition() != null) {
+                weight.timeArraySize = varWeightPairCtx.arraySizeDefinition().getText();
+                weight.timeArraySizeParseTree = generateExpressionParseTree(weight.timeArraySize);
+            }
+            weight.fromWresl = this.currentFile;
+            weight.line = varWeightPairCtx.OPEN_BRACKET().getSymbol().getLine();
+            returnData.add(weight);
+        }
+        return new VisitorResult(returnData);
+    }
+
+    @Override
+    // weightsCommon
+    public VisitorResult visitWeightsCommon(wreslParser.WeightsCommonContext ctx) {
+        List<WRESLComponent> returnData = new ArrayList<>();
+
+        String weightValue = getWreslText(ctx.weight().expression());
+        wreslParser.ExpressionContext weightParseTree = generateExpressionParseTree(weightValue);
+        for (wreslParser.ExpressionContext variableCtx : ctx.variables().expression()) {
+            WeightElement weight = new WeightElement();
+            weight.name = getWreslText(variableCtx);
+            weight.weight = weightValue;
+            weight.weightParseTree = weightParseTree;
+            weight.fromWresl = this.currentFile;
+            weight.line = ctx.variables().VARIABLE().getSymbol().getLine();
+            returnData.add(weight);
+        }
+        return new VisitorResult(returnData);
     }
 
 
