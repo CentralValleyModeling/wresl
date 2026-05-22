@@ -10,7 +10,7 @@ public class WeightElement extends WRESLComponent implements Serializable  {
 
     public String weight = Param.zero;
     public String condition = Param.always;
-    public wreslParser.ExpressionContext weightParseTree = null;
+    public ParseTree weightParseTree = null;
     public ParseTree conditionParseTree = null;
     public double value = 0.0;
 

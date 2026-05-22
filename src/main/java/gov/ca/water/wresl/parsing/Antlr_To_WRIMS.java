@@ -137,6 +137,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
         // Loop through models and process data
         Map<String, Timeseries> tsMap = new HashMap<>();
+        Expression_To_Vars varFinder = new Expression_To_Vars();
         for (String modelName : this.sds.getModelList()) {
             ModelDataSet mds = modelDataSetMap.get(modelName);
 
@@ -153,6 +154,40 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                 } catch (EvaluationErrorException | NullPointerException e) {
                     // Do nothing at this point since this error is likely due to a dynamic variable within the expression
                 }
+            }
+
+            // Convert ALIASes referenced in GOALs to DVARs
+            for (Goal goal : mds.gMap.values()) {
+                for (ParseTree expression : goal.caseExpressionParseTrees) {
+                    // Retrieve variables
+                    List<String> varList = varFinder.visit(expression);
+
+                    // Find aliases and convert them to dvars
+                    for (String var : varList) {
+                        if (mds.asList.contains(var)) {
+                            Alias as = mds.asMap.get(var);
+                            Dvar dvar = new Dvar();
+                            dvar.name = as.name;
+                            dvar.fromWresl = as.fromWresl;
+                            dvar.line = as.line;
+                            dvar.condition = as.condition;
+                            dvar.kind = as.kind;
+                            dvar.units = as.units;
+                            dvar.lowerBound = Param.lower_unbounded;
+                            dvar.upperBound = Param.upper_unbounded;
+                            dvar.timeArraySize = as.timeArraySize;
+                            dvar.timeArraySizeExpressionParseTree = as.timeArraySizeParseTree;
+
+                            mds.dvList.add(var);
+                            mds.dvMap.put(var, dvar);
+
+                            mds.asMap.remove(var);
+                            mds.asList.remove(var);
+
+                        }
+                    }
+                }
+
             }
         }
         this.sds.setTimeseriesMap(tsMap);

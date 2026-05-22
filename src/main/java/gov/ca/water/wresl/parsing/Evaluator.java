@@ -77,15 +77,15 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // ------------------------------------------------------------
     // --- EVALUATE AN EXPRESSION PROVIDED AS A PARSE TREE
     // ------------------------------------------------------------
-    public static IntDouble evaluateExpression(wreslParser.ExpressionContext expressionCtx) {
-        return INSTANCE.visit(expressionCtx);
+    public static IntDouble evaluateExpression(ParseTree expression) {
+        return INSTANCE.visit(expression);
     }
 
 
     // ------------------------------------------------------------
     // --- EVALUATE A CONDITION
     // ------------------------------------------------------------
-    public static boolean evaluateCondition(wreslParser.ExpressionContext expCompareParseTree, Map<String, Svar> parameterMap) {
+    public static boolean evaluateCondition(ParseTree expCompareParseTree, Map<String, Svar> parameterMap) {
         // Store parameter map in common memory
         INSTANCE.commonSvarsMap = parameterMap;
 
