@@ -339,7 +339,6 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             // Copy returned data into ModelDataSet
             for (int j = 0; j <= result.data().size() - 1; j++) {
                 WRESLComponent data = result.data().get(j);
-            //    if (data == null) continue;
                 String name = data.name;
                 switch (data) {
                     case Svar svar -> {
