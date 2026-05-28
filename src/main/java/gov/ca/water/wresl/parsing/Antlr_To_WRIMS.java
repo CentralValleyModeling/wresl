@@ -91,7 +91,6 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
             // Visit child
             VisitorResult data = visit(child);
-            if (data == null) continue;
         }
 
         // Process SEQUENCE data, compile ordered modelList and related data in StudyDataSet
