@@ -66,6 +66,95 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
 
     // ------------------------------------------------------------
+    // --- HELPER METHODS
+    // ------------------------------------------------------------
+
+    // Convert ALIASes referenced from GOALs to DVARs and GOALs
+    ModelDataSet convertAliasToGoal(ModelDataSet mdsIn) {
+        ModelDataSet mdsOut = mdsIn;
+
+        // Create goal list and map for the new goals
+        List<String> newGoalList = new ArrayList<>();
+        Map<String, Goal> newGoalMap = new HashMap<>();
+
+        // Loop over the goals of the model
+        for (Goal goal : mdsIn.gMap.values()) {
+            for (ParseTree expressionTree : goal.caseExpressionParseTrees) {
+                // Retrieve ALIASes
+                Set<String> aliasList = aliasListForGoals(expressionTree, mdsIn.asMap);
+
+                // Find aliases and convert them to dvars
+                for (String asName : aliasList) {
+                    Alias as = mdsIn.asMap.get(asName);
+                    Dvar dvar = new Dvar();
+                    dvar.name = as.name;
+                    dvar.fromWresl = as.fromWresl;
+                    dvar.line = as.line;
+                    dvar.condition = as.condition;
+                    dvar.kind = as.kind;
+                    dvar.units = as.units;
+                    dvar.lowerBound = Param.lower_unbounded;
+                    dvar.upperBound = Param.upper_unbounded;
+                    dvar.timeArraySize = as.timeArraySize;
+                    dvar.timeArraySizeExpressionParseTree = as.timeArraySizeParseTree;
+
+                    Goal goalForAlias = new Goal();
+                    goalForAlias.name = as.name + "__alias";
+                    goalForAlias.caseName.add(Param.defaultCaseName);
+                    goalForAlias.caseCondition.add(Param.always);
+                    goalForAlias.caseConditionParseTrees.add(null);
+                    String caseExpression = as.name + "=" + as.expression;
+                    goalForAlias.caseExpression.add(caseExpression);
+                    goalForAlias.caseExpressionParseTrees.add(generateExpressionParseTree(caseExpression));
+                    goalForAlias.fromWresl = as.fromWresl;
+                    goalForAlias.line = as.line;
+
+                    mdsOut.dvList.add(asName);
+                    mdsOut.dvMap.put(asName, dvar);
+
+                    newGoalList.add(goalForAlias.name);
+                    newGoalMap.put(goalForAlias.name, goalForAlias);
+
+                    mdsOut.asMap.remove(asName);
+                    mdsOut.asList.remove(asName);
+                }
+            }
+        }
+
+        mdsOut.gList.addAll(newGoalList);
+        mdsOut.gMap.putAll(newGoalMap);
+        return mdsOut;
+    }
+
+    // Find ALIASes referenced from a GOAL to be converted into DVARs
+    Set<String> aliasListForGoals(ParseTree expressionTree, Map<String,Alias> asMap) {
+        Set<String> asListToConvert = new HashSet<>();
+
+        // Get the list of aliases
+        Set<String> asList = asMap.keySet();
+
+        // Retrieve variables
+        Expression_To_Vars varFinder = new Expression_To_Vars();
+        List<String> varList = varFinder.visit(expressionTree);
+
+        // Find aliases
+        if (varList != null) {
+            for (String var : varList) {
+                if (asList.contains(var)) {
+                    asListToConvert.add(var);
+                    // Check the variables referenced by the alias itself also
+                    Alias as = asMap.get(var);
+                    Set<String> asListToConvert1 = aliasListForGoals(as.expressionParseTree, asMap);
+                    asListToConvert.addAll(asListToConvert1);
+                }
+            }
+        }
+
+        return asListToConvert;
+    }
+
+
+    // ------------------------------------------------------------
     // --- WRESL FILE PARSING ENTRY METHODS
     // ------------------------------------------------------------
     @Override
@@ -155,39 +244,8 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                 }
             }
 
-            // Convert ALIASes referenced in GOALs to DVARs
-            for (Goal goal : mds.gMap.values()) {
-                for (ParseTree expression : goal.caseExpressionParseTrees) {
-                    // Retrieve variables
-                    List<String> varList = varFinder.visit(expression);
-
-                    // Find aliases and convert them to dvars
-                    for (String var : varList) {
-                        if (mds.asList.contains(var)) {
-                            Alias as = mds.asMap.get(var);
-                            Dvar dvar = new Dvar();
-                            dvar.name = as.name;
-                            dvar.fromWresl = as.fromWresl;
-                            dvar.line = as.line;
-                            dvar.condition = as.condition;
-                            dvar.kind = as.kind;
-                            dvar.units = as.units;
-                            dvar.lowerBound = Param.lower_unbounded;
-                            dvar.upperBound = Param.upper_unbounded;
-                            dvar.timeArraySize = as.timeArraySize;
-                            dvar.timeArraySizeExpressionParseTree = as.timeArraySizeParseTree;
-
-                            mds.dvList.add(var);
-                            mds.dvMap.put(var, dvar);
-
-                            mds.asMap.remove(var);
-                            mds.asList.remove(var);
-
-                        }
-                    }
-                }
-
-            }
+            // Convert ALIASes referenced in GOALs, and other ALIASes referenced from these ALIASes, to DVARs and GOALs
+            mds = convertAliasToGoal(mds);
         }
         this.sds.setTimeseriesMap(tsMap);
 

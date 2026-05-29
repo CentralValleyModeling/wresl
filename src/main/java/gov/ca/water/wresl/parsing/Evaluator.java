@@ -231,24 +231,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                     return new IntDouble(Integer.valueOf(Logical.FALSE.value),true);
                 }
             }
-            // AND
-            case ".and." -> {
-                if (doubleLeft==(double)Logical.TRUE.value && doubleRight==(double)Logical.TRUE.value) {
-                    return new IntDouble(Integer.valueOf(Logical.TRUE.value),true);
-                }
-                else {
-                    return new IntDouble(Integer.valueOf(Logical.FALSE.value),true);
-                }
-            }
-            // OR
-            case ".or." -> {
-                if (doubleLeft==(double)Logical.TRUE.value || doubleRight==(double)Logical.TRUE.value) {
-                    return new IntDouble(Integer.valueOf(Logical.TRUE.value),true);
-                }
-                else {
-                    return new IntDouble(Integer.valueOf(Logical.FALSE.value),true);
-                }
-            }
             // NOT_EQUAL
             case ".ne." -> {
                 if (doubleLeft != doubleRight) {
@@ -365,6 +347,40 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         }
         else {
             return new IntDouble(Logical.TRUE.value, true);
+        }
+    }
+
+    @Override
+    // expressionLogical
+    public IntDouble visitExpressionLogical(wreslParser.ExpressionLogicalContext ctx) {
+        // Process left and right logical operations
+        IntDouble valueLeft = visit(ctx.expression(0));
+        IntDouble valueRight = visit(ctx.expression(1));
+        int intLeft = valueLeft.getValue().intValue();
+        int intRight = valueRight.getValue().intValue();
+
+        // Process logical operation
+        switch (ctx.opLogical().getText()) {
+            // AND
+            case ".and." -> {
+                if (intLeft==Logical.TRUE.value && intRight==Logical.TRUE.value) {
+                    return new IntDouble(Integer.valueOf(Logical.TRUE.value),true);
+                }
+                else {
+                    return new IntDouble(Integer.valueOf(Logical.FALSE.value),true);
+                }
+            }
+            // OR
+            case ".or." -> {
+                if (intLeft==Logical.TRUE.value || intRight==Logical.TRUE.value) {
+                    return new IntDouble(Integer.valueOf(Logical.TRUE.value),true);
+                }
+                else {
+                    return new IntDouble(Integer.valueOf(Logical.FALSE.value),true);
+                }
+            }
+            // default; should not need this
+            default -> {return null;}
         }
     }
 

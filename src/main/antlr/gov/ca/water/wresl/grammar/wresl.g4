@@ -239,6 +239,7 @@ expression
     | expression opAdditionSubtraction expression                           #expressionAddSub
     | expression opCompare expression                                       #expressionComparison
     | NOT expression                                                        #expressionNot
+    | expression opLogical expression                                       #expressionLogical
     | (PLUS | MINUS) expression                                             #expressionSigned // +1, or -1 without a left hand side
     | sumExpressionBody                                                     #expressionSum
     | (preDefinedFunction | OBJECT_NAME) OPEN_PAREN arguments? CLOSE_PAREN  #expressionCall
@@ -304,9 +305,11 @@ opCompare
     | LESS_THAN
     | LESS_THAN_OR_EQUAL
     | DOUBLE_EQUAL
-    | AND
-    | OR
     | NOT_EQUAL
+    ;
+opLogical
+    : AND
+    | OR
     ;
 opMultiplicationDivision
     : MULT
