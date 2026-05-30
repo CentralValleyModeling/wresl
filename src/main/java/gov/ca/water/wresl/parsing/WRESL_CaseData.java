@@ -5,7 +5,6 @@ import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 // Handles both regular CASE expressions and those appearing in conditional GOAL statements
 public class WRESL_CaseData extends WRESLComponent {

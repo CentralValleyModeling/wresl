@@ -1,7 +1,6 @@
 package gov.ca.water.wresl.parsing;
 
 import gov.ca.water.wresl.domain.IntDouble;
-import gov.ca.water.wresl.domain.StudyDataSet;
 import gov.ca.water.wresl.domain.Svar;
 import gov.ca.water.wresl.domain.WRESLComponent;
 import gov.ca.water.wresl.errors.EvaluationErrorException;
