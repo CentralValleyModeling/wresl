@@ -7,7 +7,7 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
 
-public class WRESLFile extends WRESLComponent {
+public class WRESLFile  {
     private ParseTree parseTree;
     private Set<Path> parentFiles;
     private Set<Path> childFiles;

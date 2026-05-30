@@ -375,6 +375,11 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         ModelDataSet mds = new ModelDataSet();
         this.currentModelOrGroupName = getWreslText(ctx.OBJECT_NAME());
 
+        // Name, WRESL file and line
+        mds.name = this.currentModelOrGroupName;
+        mds.fromWresl = this.currentFile;
+        mds.line = ctx.OBJECT_NAME().getSymbol().getLine();
+
         // On entry: store file referiing to Model context
         String parentFile = this.currentFile;
 
