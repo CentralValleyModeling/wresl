@@ -97,48 +97,4 @@ public final class Utilities {
         }
     }
 
-
-    // ------------------------------------------------------------
-    // --- COUNT NUMBER OF OCCURANCES OF A SUB-RULE IN A PARENT RULE
-    // ------------------------------------------------------------
-    public static <W extends ParserRuleContext, T extends ParserRuleContext> int countRuleOccurence(Class<T> findRule, List<W> ruleList) {
-
-        if (ruleList == null) return 0;
-
-        int count = 0;
-        for (W rule : ruleList) {
-            if (!rule.getRuleContexts(findRule).isEmpty()) {
-                count++;
-            }
-        }
-        return count;
-    }
-
-
-    // ------------------------------------------------------------
-    // --- MISC. UTILITIES
-    // ------------------------------------------------------------
-
-    // Convert visitor result to string
-    public static String visitorResultToString(VisitorResult result) {
-        String stringData;
-
-        if (result.data().get(0) instanceof WRESL_String data) {
-            stringData = data.getValue(); }
-        else {
-            stringData = null;
-        }
-
-        return stringData;
-    }
-
-    // Generate an Expression parse tree from a string
-    public static wreslParser.ExpressionContext generateExpressionParseTree(String expression) {
-        CharStream charStream = CharStreams.fromString(expression);
-        wreslLexer lexer = new wreslLexer(charStream);
-        CommonTokenStream tokenStream = new CommonTokenStream(lexer);
-        wreslParser parser = new wreslParser(tokenStream);
-        return parser.expression();
-    }
-
 }

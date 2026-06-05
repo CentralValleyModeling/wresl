@@ -16,7 +16,7 @@ public class WeightElement extends WRESLComponent implements Serializable  {
 
     // default is zero
     public String timeArraySize = Param.zero;
-    public wreslParser.ExpressionContext timeArraySizeParseTree = null;
+    public ParseTree timeArraySizeParseTree = null;
 
     public double min = -1;
     public double max = -1;

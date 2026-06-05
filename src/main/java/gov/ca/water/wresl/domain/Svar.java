@@ -21,7 +21,7 @@ public class Svar extends WRESLComponent implements Serializable {
     private IntDouble data = null;
 
     // default is zero
-    public String timeArraySize = "0";
+    public String timeArraySize = Param.zero;
     public ParseTree timeArraySizeParseTree = null;
 
     // These are for:

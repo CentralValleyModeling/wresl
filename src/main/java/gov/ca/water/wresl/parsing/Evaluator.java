@@ -651,11 +651,18 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
 
     // ------------------------------------------------------------
-    // --- HELPER METHODS FOR LOOKUP TABLE PROCESSING
+    // --- HELPER CLASS AND METHODS FOR LOOKUP TABLE PROCESSING
     // ------------------------------------------------------------
 
+    // Class describing a lookup table
+    private class LookUpTable {
+        private String name = null;
+        private Map<String, Integer> field = new HashMap<>();
+        private List<Number[]> data = new ArrayList<>();
+    }
+
     // Given conditions, find/calculate a value based on data in a lokkup table
-    private static IntDouble findDataInLookupTable(String tableName, String select, HashMap<String, Number> where, HashMap<String, Number> given, String use) throws EvaluationErrorException {
+    private IntDouble findDataInLookupTable(String tableName, String select, Map<String, Number> where, Map<String, Number> given, String use) throws EvaluationErrorException {
 
         // If table hasn't been copied into memory yet, do so
         if (INSTANCE.tableSeries.get(tableName) == null) {
@@ -664,8 +671,8 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
         // Retrieve table data
         LookUpTable lookupTable = INSTANCE.tableSeries.get(tableName);
-        ArrayList<Number[]> data = lookupTable.getData();
-        HashMap<String, Integer> field = lookupTable.getField();
+        List<Number[]> data = lookupTable.data;
+        Map<String, Integer> field = lookupTable.field;
         int fieldSize = field.size();
 
         // Index of SELECT field
@@ -782,17 +789,17 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             givenError = givenError + "(" + key + ": " + given.get(key) + ")";
         }
 
-        return calculateValue(givenValue, gVList, gVMap, use, tableName, givenError);
+        return calculateLookUpTableValue(givenValue, gVList, gVMap, use, tableName, givenError);
     }
 
     // Store lookup data in memory
-    private static void cacheLookUpData(String tableName) throws EvaluationErrorException {
+    private void cacheLookUpData(String tableName) throws EvaluationErrorException {
         // Lookup table filename and data
         String absoluteTableFileName = INSTANCE.absReferencePath + File.separator + "lookup" + File.separator + tableName + ".table";
         LookUpTable lookupTable = new LookUpTable();
 
         // Set table name
-        lookupTable.setName(tableName);
+        lookupTable.name = tableName;
 
         // Open and process file
         try {
@@ -824,7 +831,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                     fieldSize = fieldNames.length;
                     for (int i=0; i<fieldSize; i++) {
                         if (!isFieldNameRight(fieldNames[i])) { throw new EvaluationErrorException("Number " + (i+1) + " field name in table " + tableName + ".table, line " + line + " has a wrong format!"); }
-                        lookupTable.getField().put(fieldNames[i], i);
+                        lookupTable.field.put(fieldNames[i], i);
                     }
 
                     // No more first (and second) line of entry
@@ -845,7 +852,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                         throw new EvaluationErrorException("Number " + (i+1) + " data in table " +tableName + ".table, line " + line + " is not numeric!");
                     }
                 }
-                lookupTable.getData().add(fieldValues);
+                lookupTable.data.add(fieldValues);
             }
 
             // If no data was found in the table, generate error
@@ -873,7 +880,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     }
 
     // Calculate value from lookup table based on the GIVEN statement
-    private static IntDouble calculateValue(Number given, ArrayList<Number> gVList, Map<Number, Number> gVMap, String use, String tableName, String givenError) throws EvaluationErrorException{
+    private static IntDouble calculateLookUpTableValue(Number given, List<Number> gVList, Map<Number, Number> gVMap, String use, String tableName, String givenError) throws EvaluationErrorException{
         double givenValue = given.doubleValue();
         if (gVList.size() == 0) {
             throw new EvaluationErrorException("Under the GIVEN condition of " + givenError + ", data not found in Table " + tableName + "!");
@@ -961,7 +968,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     }
 
     // Sort a Number array to be processed for a lookup table
-    public static ArrayList<Number> sortNumberArray(ArrayList<Number> al, String givenError, String tableName) throws EvaluationErrorException {
+    private static List<Number> sortNumberArray(List<Number> al, String givenError, String tableName) throws EvaluationErrorException {
         for (int i=0; i<al.size(); i++) {
             for (int j=i+1; j<al.size(); j++) {
                 Number first = al.get(i);

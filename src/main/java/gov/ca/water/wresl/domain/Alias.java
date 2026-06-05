@@ -22,7 +22,7 @@ public class Alias extends WRESLComponent implements Serializable {
     public boolean noSolver = false;
 
     // default is zero
-    public String timeArraySize = "0";
+    public String timeArraySize = Param.zero;
     public ParseTree timeArraySizeParseTree = null;
 
 }

@@ -88,7 +88,7 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         this.modelList = modelList;
     }
 
-    public ArrayList<String> getModelConditionList() {
+    public List<String> getModelConditionList() {
         return new ArrayList<String>(modelConditionList);
     }
 

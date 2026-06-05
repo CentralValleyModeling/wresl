@@ -4,6 +4,7 @@ import gov.ca.water.wresl.domain.*;
 import gov.ca.water.wresl.errors.EvaluationErrorException;
 import gov.ca.water.wresl.errors.SyntaxErrorException;
 import gov.ca.water.wresl.grammar.wreslBaseVisitor;
+import gov.ca.water.wresl.grammar.wreslLexer;
 import gov.ca.water.wresl.grammar.wreslParser;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -52,107 +53,13 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     }
 
 
-    // ------------------------------------------------------------
-    // --- CLEAR MEMORY FROM VARIABLES NO LONGER NEEDED
-    // ------------------------------------------------------------
-    private void clearMemory() {
-        this.sequenceData = null;
-        this.modelsAndGroups = null;
-        this.modelsWithinModelsMap = null;
-        this.includeFileList = null;
-        this.tempParameterMap = null;
-        this.wreslFilesMap = null;
-    }
 
 
     // ------------------------------------------------------------
-    // --- HELPER METHODS
     // ------------------------------------------------------------
-
-    // Convert ALIASes referenced from GOALs to DVARs and GOALs
-    ModelDataSet convertAliasToGoal(ModelDataSet mdsIn) {
-        ModelDataSet mdsOut = mdsIn;
-
-        // Create goal list and map for the new goals
-        List<String> newGoalList = new ArrayList<>();
-        Map<String, Goal> newGoalMap = new HashMap<>();
-
-        // Loop over the goals of the model
-        for (Goal goal : mdsIn.gMap.values()) {
-            for (ParseTree expressionTree : goal.caseExpressionParseTrees) {
-                // Retrieve ALIASes
-                Set<String> aliasList = aliasListForGoals(expressionTree, mdsIn.asMap);
-
-                // Find aliases and convert them to dvars
-                for (String asName : aliasList) {
-                    Alias as = mdsIn.asMap.get(asName);
-                    Dvar dvar = new Dvar();
-                    dvar.name = as.name;
-                    dvar.fromWresl = as.fromWresl;
-                    dvar.line = as.line;
-                    dvar.condition = as.condition;
-                    dvar.kind = as.kind;
-                    dvar.units = as.units;
-                    dvar.lowerBound = Param.lower_unbounded;
-                    dvar.upperBound = Param.upper_unbounded;
-                    dvar.timeArraySize = as.timeArraySize;
-                    dvar.timeArraySizeExpressionParseTree = as.timeArraySizeParseTree;
-
-                    Goal goalForAlias = new Goal();
-                    goalForAlias.name = as.name + "__alias";
-                    goalForAlias.caseName.add(Param.defaultCaseName);
-                    goalForAlias.caseCondition.add(Param.always);
-                    goalForAlias.caseConditionParseTrees.add(null);
-                    String caseExpression = as.name + "=" + as.expression;
-                    goalForAlias.caseExpression.add(caseExpression);
-                    goalForAlias.caseExpressionParseTrees.add(generateExpressionParseTree(caseExpression));
-                    goalForAlias.fromWresl = as.fromWresl;
-                    goalForAlias.line = as.line;
-
-                    mdsOut.dvList.add(asName);
-                    mdsOut.dvMap.put(asName, dvar);
-
-                    newGoalList.add(goalForAlias.name);
-                    newGoalMap.put(goalForAlias.name, goalForAlias);
-
-                    mdsOut.asMap.remove(asName);
-                    mdsOut.asList.remove(asName);
-                }
-            }
-        }
-
-        mdsOut.gList.addAll(newGoalList);
-        mdsOut.gMap.putAll(newGoalMap);
-        return mdsOut;
-    }
-
-    // Find ALIASes referenced from a GOAL to be converted into DVARs
-    Set<String> aliasListForGoals(ParseTree expressionTree, Map<String,Alias> asMap) {
-        Set<String> asListToConvert = new HashSet<>();
-
-        // Get the list of aliases
-        Set<String> asList = asMap.keySet();
-
-        // Retrieve variables
-        Expression_To_Vars varFinder = new Expression_To_Vars();
-        List<String> varList = varFinder.visit(expressionTree);
-
-        // Find aliases
-        if (varList != null) {
-            for (String var : varList) {
-                if (asList.contains(var)) {
-                    asListToConvert.add(var);
-                    // Check the variables referenced by the alias itself also
-                    Alias as = asMap.get(var);
-                    Set<String> asListToConvert1 = aliasListForGoals(as.expressionParseTree, asMap);
-                    asListToConvert.addAll(asListToConvert1);
-                }
-            }
-        }
-
-        return asListToConvert;
-    }
-
+    // --- VISITOR METHODS
+    // ------------------------------------------------------------
+    // ------------------------------------------------------------
 
     // ------------------------------------------------------------
     // --- WRESL FILE PARSING ENTRY METHODS
@@ -1782,6 +1689,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         return new VisitorResult(ifBlockContents);
     }
 
+
     // ------------------------------------------------------------
     // --- MISCELLANEOUS VISIT METHODS
     // ------------------------------------------------------------
@@ -1796,9 +1704,193 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     // specificationString
     public VisitorResult visitSpecificationString(wreslParser.SpecificationStringContext ctx) {
         String tempString = getWreslText(ctx);
-//        WRIMS_String data = new WRIMS_String(ctx.getText().substring(0, ctx.getText().length() - 1).substring(1).toLowerCase());   // Remove first and last character;
         WRESL_String data = new WRESL_String(tempString.substring(0, tempString.length() - 1).substring(1));   // Remove first and last character;
         return new VisitorResult(data);
     }
 
+
+
+
+    // ------------------------------------------------------------
+    // ------------------------------------------------------------
+    // --- HELPER METHODS
+    // ------------------------------------------------------------
+    // ------------------------------------------------------------
+
+    // Generate an Expression parse tree from a string
+    private static wreslParser.ExpressionContext generateExpressionParseTree(String expression) {
+        CharStream charStream = CharStreams.fromString(expression);
+        wreslLexer lexer = new wreslLexer(charStream);
+        CommonTokenStream tokenStream = new CommonTokenStream(lexer);
+        wreslParser parser = new wreslParser(tokenStream);
+        return parser.expression();
+    }
+
+    // Convert visitor result to string
+    private static String visitorResultToString(VisitorResult result) {
+        String stringData;
+
+        if (result.data().get(0) instanceof WRESL_String data) {
+            stringData = data.text; }
+        else {
+            stringData = null;
+        }
+
+        return stringData;
+    }
+
+    // Clear memory from variables that are no longer needed
+    private void clearMemory() {
+        this.sequenceData = null;
+        this.modelsAndGroups = null;
+        this.modelsWithinModelsMap = null;
+        this.includeFileList = null;
+        this.tempParameterMap = null;
+        this.wreslFilesMap = null;
+    }
+
+    // Convert ALIASes referenced from GOALs to DVARs and GOALs
+    private ModelDataSet convertAliasToGoal(ModelDataSet mdsIn) {
+        ModelDataSet mdsOut = mdsIn;
+
+        // Create goal list and map for the new goals
+        List<String> newGoalList = new ArrayList<>();
+        Map<String, Goal> newGoalMap = new HashMap<>();
+
+        // Loop over the goals of the model
+        for (Goal goal : mdsIn.gMap.values()) {
+            for (ParseTree expressionTree : goal.caseExpressionParseTrees) {
+                // Retrieve ALIASes
+                Set<String> aliasList = aliasListForGoals(expressionTree, mdsIn.asMap);
+
+                // Find aliases and convert them to dvars
+                for (String asName : aliasList) {
+                    Alias as = mdsIn.asMap.get(asName);
+                    Dvar dvar = new Dvar();
+                    dvar.name = as.name;
+                    dvar.fromWresl = as.fromWresl;
+                    dvar.line = as.line;
+                    dvar.condition = as.condition;
+                    dvar.kind = as.kind;
+                    dvar.units = as.units;
+                    dvar.lowerBound = Param.lower_unbounded;
+                    dvar.upperBound = Param.upper_unbounded;
+                    dvar.timeArraySize = as.timeArraySize;
+                    dvar.timeArraySizeExpressionParseTree = as.timeArraySizeParseTree;
+
+                    Goal goalForAlias = new Goal();
+                    goalForAlias.name = as.name + "__alias";
+                    goalForAlias.caseName.add(Param.defaultCaseName);
+                    goalForAlias.caseCondition.add(Param.always);
+                    goalForAlias.caseConditionParseTrees.add(null);
+                    String caseExpression = as.name + "=" + as.expression;
+                    goalForAlias.caseExpression.add(caseExpression);
+                    goalForAlias.caseExpressionParseTrees.add(generateExpressionParseTree(caseExpression));
+                    goalForAlias.fromWresl = as.fromWresl;
+                    goalForAlias.line = as.line;
+
+                    mdsOut.dvList.add(asName);
+                    mdsOut.dvMap.put(asName, dvar);
+
+                    newGoalList.add(goalForAlias.name);
+                    newGoalMap.put(goalForAlias.name, goalForAlias);
+
+                    mdsOut.asMap.remove(asName);
+                    mdsOut.asList.remove(asName);
+                }
+            }
+        }
+
+        mdsOut.gList.addAll(newGoalList);
+        mdsOut.gMap.putAll(newGoalMap);
+        return mdsOut;
+    }
+
+    // Find ALIASes referenced from a GOAL to be converted into DVARs
+    private Set<String> aliasListForGoals(ParseTree expressionTree, Map<String,Alias> asMap) {
+        Set<String> asListToConvert = new HashSet<>();
+
+        // Get the list of aliases
+        Set<String> asList = asMap.keySet();
+
+        // Retrieve variables
+        Expression_To_Vars varFinder = new Expression_To_Vars();
+        List<String> varList = varFinder.visit(expressionTree);
+
+        // Find aliases
+        if (varList != null) {
+            for (String var : varList) {
+                if (asList.contains(var)) {
+                    asListToConvert.add(var);
+                    // Check the variables referenced by the alias itself also
+                    Alias as = asMap.get(var);
+                    Set<String> asListToConvert1 = aliasListForGoals(as.expressionParseTree, asMap);
+                    asListToConvert.addAll(asListToConvert1);
+                }
+            }
+        }
+
+        return asListToConvert;
+    }
+
+
+
+    // ------------------------------------------------------------
+    // ------------------------------------------------------------
+    // --- INNER CLASSES
+    // ------------------------------------------------------------
+    // ------------------------------------------------------------
+
+    // ------------------------------------------------------------
+    // --- SEQUENCE CLASS TO HELP ORDER MODELS
+    // ------------------------------------------------------------
+    private class Sequence {
+        private String sequenceName = Param.undefined;
+        private String modelName = Param.undefined;
+        private int order = 0;
+        private String condition = Param.always;
+        private ParseTree conditionParseTree = null;
+        private String timeStep = Param.undefined;
+    }
+
+
+    // ------------------------------------------------------------
+    // --- WRESL_Case CLASS TO PROCESS CASE KEYWORD
+    // ------------------------------------------------------------
+    private class WRESL_CaseData extends WRESLComponent {
+        private String caseCondition;
+        private ParseTree caseConditionTree;
+        private List<String> caseExpressionList;
+        private List<ParseTree> caseExpressionTreeList;
+
+        private WRESL_CaseData() {
+            this.caseCondition = null;
+            this.caseConditionTree = null;
+            this.caseExpressionList = new ArrayList<>();
+            this.caseExpressionTreeList = new ArrayList<>();
+        }
+
+        private WRESL_CaseData(String caseCondition,
+                               ParseTree caseConditionTree,
+                               List<String> caseExpressionList,
+                               List<ParseTree> caseExpressionTreeList) {
+            this.caseCondition = caseCondition;
+            this.caseConditionTree = caseConditionTree;
+            this.caseExpressionList = caseExpressionList;
+            this.caseExpressionTreeList = caseExpressionTreeList;
+        }
+    }
+
+
+    // ------------------------------------------------------------
+    // --- CLASS TO REPRESENT STRINGS AS A WRESLComponent
+    // ------------------------------------------------------------
+    private class WRESL_String extends WRESLComponent {
+        private String text;
+
+        private WRESL_String(String text) {
+            this.text = text;
+        }
+
+    }
 }

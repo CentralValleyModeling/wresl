@@ -42,7 +42,7 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
 
     // Alias data structure
     public Set<String> asSet_unknown = new HashSet<>();
-    public ArrayList<String> asList = new ArrayList<>();
+    public List<String> asList = new ArrayList<>();
     public Map<String, Alias> asMap = new HashMap<>();
     public Map<String, Alias> asFutMap = new HashMap<>();
 
