@@ -42,7 +42,7 @@ def get_bounds(v: pulp.LpVariable):
 
 
 def make_key(ax: Axes):
-    solution = Line2D([0], [0], color="g", marker="o")
+    solution = Line2D([0], [0], color="g", marker="o", linestyle="")
     var_limit = Line2D([0], [0], color="r")
     equality_limit = Line2D([0], [0], color="xkcd:cyan", linestyle=":")
     bound_limit = Line2D([0], [0], color="xkcd:blue")
