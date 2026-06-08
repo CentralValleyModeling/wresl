@@ -1,18 +1,13 @@
 import matplotlib.pyplot as plt
-import logging
-
 import pulp
 from optiplot import plot_problem
+from optiplot.logs import get_logger
 
-LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.INFO)
-logging.basicConfig(
-    format="%(asctime)s %(levelname)5s - %(message)s",
-)
+LOGGER = get_logger(__name__)
 
 
 def tutorials_index_01():
-    problem: pulp.LpProblem = pulp.LpProblem("Mass Balance Example", pulp.LpMaximize)
+    problem: pulp.LpProblem = pulp.LpProblem("Mass-Balance-Example", pulp.LpMaximize)
     # Constraints
     OUTFLOW = problem.add_variable("OUTFLOW", 0, None)
     DELIVERY = problem.add_variable("DELIVERY", 0, 50)
