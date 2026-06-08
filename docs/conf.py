@@ -18,6 +18,10 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
     "myst_parser",
+    # extensions for plotting and math
+    "matplotlib.sphinxext.plot_directive",
+    "sphinx.ext.mathjax",
+
 ]
 
 intersphinx_mapping = {
@@ -45,3 +49,7 @@ html_theme = "sphinx_rtd_theme"
 
 # -- Options for EPUB output
 epub_show_urls = "footnote"
+
+# -- Options for matplotlib.sphinxext.plot_directive
+plot_html_show_formats = False
+plot_html_show_source_link = False

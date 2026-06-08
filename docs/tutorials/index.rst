@@ -6,12 +6,19 @@
 Tutorials
 =========
 
-*Learning-oriented: step-by-step lessons for beginners.*
+.. toctree::
+   :maxdepth: 1
+   :glob:
+
+   **
 
 WRESL+ source code helps the modeler do two important things:
 
 1. Define the execution structure of your study.
 2. Define the network, constraints, and goals for your study.
+
+Model Execution Structure
+-------------------------
 
 To define the execution structure of your study we mostly use 
 ``sequence``, ``model``, ``group``, and ``include``. These objects and 
@@ -47,6 +54,9 @@ simple stream network problem, and then solves a more complex problem.
         order 2  // the more complex model goes second
     }
 
+Model Variables, Constraints, and Objective
+-------------------------------------------
+
 To define the network, constraints, and goals of the study, we mostly 
 use `define`, and `goal` objects. These objects create variables, and 
 add constraints to the study. 
@@ -63,20 +73,42 @@ Below is an example that enforces a very simple mass balance equation.
     }
 
     define OUTFLOW {
-        lower 0
-        upper 100
+        std
         units 'CFS'
         kind 'FLOW'
     }
 
-    goal MASS_BALANCE {
-        INFLOW - OUTFLOW = 0
+    define DELIVERY {
+        lower 0
+        upper 50
+        units 'CFS'
+        kind 'FLOW'
     }
 
-The tutorials listed below go into a little more detail:
+    define BASE_FLOW {
+        value 25
+    }
 
-.. toctree::
-   :maxdepth: 1
-   :glob:
+    goal MASS_BALANCE {
+        INFLOW - OUTFLOW - DELIVERY = 0
+    }
 
-   **
+    goal MINIMUM_FLOW_REQUIREMENT {
+        OUTFLOW > (0.25 * DELIVERY) + BASE_FLOW
+    }
+
+    objective objAll = {
+        [DELIVERY, 10],
+        [OUTFLOW, 1]
+    }
+
+If the ``INFLOW`` term is equal to 60, then the problem above can be visualized as the plot below:
+
+.. plot:: plots.py tutorials_index_01
+
+Some things to note about this problem:
+
+1. The variable bounds limit all solutions to the area not shaded red.
+2. The mass balance constraint limits all solutions to the area above the blue region.
+3. Since ``MASS_BALANCE`` uses an equality constraint, the solution must lie exactly on the cyan line.
+4. Since ``DELIVERY`` has a larger weight (``10``) than ``OUTFLOW`` (``1``), the optimal value is at ``(28, 32)``. If the weight priority had been switched, the optimal value would be at ``(0, 60)``.
