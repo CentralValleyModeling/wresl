@@ -17,7 +17,17 @@ def add_optimal_marker(
         "marking the solved optimal value: "
         + f"{x.name}={x.value()}, {y.name}={y.value()}"
     )
-    (point,) = ax.plot(x.value() or 0, y.value() or 0, "go")
+    px = x.value() or 0
+    py = y.value() or 0
+    (point,) = ax.plot(px, py, "go")
+    ax.annotate(
+        f"({round(px)}, {round(py)})",
+        (px, py),
+        (0, 1),
+        ha="center",
+        textcoords="offset fontsize",
+        color="green",
+    )
     return point
 
 
