@@ -91,7 +91,7 @@ def add_constraint_at_x(
 def add_constraint_at_y(
     ax: Axes,
     y: float,
-    kind: str = ">=",
+    kind: str,
     **kwargs,
 ):
     LOGGER.debug(f"plotting: y {kind} {y}")

@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 import pulp
-import logging
 
 from .sense import SENSE_MAP
 from .solution import add_optimal_marker
@@ -38,9 +37,9 @@ def plot_problem(*variable_names, problem: pulp.LpProblem) -> tuple[Figure, Axes
 
     if len(variables) == 2:
         fig, ax = plot_problem_2d(
-            *variables,
+            variables[0],
+            variables[1],
             problem.objective,
-            problem.sense,
             *constraints,
         )
     else:
@@ -51,8 +50,7 @@ def plot_problem(*variable_names, problem: pulp.LpProblem) -> tuple[Figure, Axes
 def plot_problem_2d(
     x: pulp.LpVariable,
     y: pulp.LpVariable,
-    objective: pulp.LpAffineExpression,
-    kind_magic_num: int,
+    objective: pulp.LpAffineExpression | None,
     *constraints: pulp.LpConstraint,
 ) -> tuple[Figure, Axes]:
     LOGGER.debug("plotting 2D slice of a problem")
