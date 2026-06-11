@@ -1,5 +1,6 @@
 package gov.ca.water.wresl.domain;
 
+import gov.ca.water.utilities.Param;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.io.Serializable;

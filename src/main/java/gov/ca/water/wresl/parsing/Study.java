@@ -11,7 +11,6 @@ import java.util.Map;
 public class Study {
     private static final Logger logger = LoggerFactory.getLogger(Study.class);
     private String name;
-    private Path mainFileFolder;
     private Path mainFilePath;
 
     // ------------------------------------------------------------
@@ -20,14 +19,13 @@ public class Study {
     public Study(String name, Path mainFilePath) {
         this.name = name;
         this.mainFilePath = Path.of(mainFilePath.toString().toLowerCase());
-        this.mainFileFolder = this.mainFilePath.getParent();
     }
 
 
     // ------------------------------------------------------------
     // --- COMPILE WRIMS DATA FROM WRESL FILES
     // ------------------------------------------------------------
-    public void compile() {
+    public StudyDataSet compile() {
         // Track time
         long start = System.currentTimeMillis();
 
@@ -44,6 +42,11 @@ public class Study {
         VisitorResult study = parse.visit(studyTree);
         StudyDataSet sds = (StudyDataSet) study.data().get(0);
 
+        // Store study name and WRESl file details
+        sds.name = this.name;
+        sds.fromWresl = this.mainFilePath.toString();
+        sds.line = 1;
+
         // Report total compile time
         long end = System.currentTimeMillis();
         float durationTotal= (float) (end - start) / 1_000L;
@@ -52,6 +55,8 @@ public class Study {
                 .addArgument(durationTotal)
                 .log();
         //    logger.atInfo().setMessage("{}").addArgument(containers.sequences.get("CYCLE01")).log();
+
+        return sds;
     }
 
 

@@ -1,3 +1,4 @@
+import gov.ca.water.wresl.domain.StudyDataSet;
 import gov.ca.water.wresl.parsing.*;
 import gov.ca.water.wresl.errors.EvaluationErrorException;
 import gov.ca.water.wresl.errors.SyntaxErrorException;
@@ -15,8 +16,9 @@ public class testParser {
         Path mainWRESL = Path.of(args[0]).normalize();
         logger.atInfo().setMessage("mainWresl={}").addArgument(mainWRESL).log();
         Study study = new Study("TEST", mainWRESL);
+        StudyDataSet sds = new StudyDataSet();
         try {
-            study.compile();
+            sds = study.compile();
         }
         catch (SyntaxErrorException e) {
             System.err.println("WRESL+ syntax error(s) encountered in file "+e.getSourceFile());
@@ -29,5 +31,7 @@ public class testParser {
             System.err.println("Evaluation error: " + e.getErrorMessage());
             System.err.println("                  " +"File " + e.getSourceFile() + ", line " + e.getLine());
         }
+
+        System.out.println("I am here");
     }
 }

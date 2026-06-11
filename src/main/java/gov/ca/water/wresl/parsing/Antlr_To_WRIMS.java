@@ -1,5 +1,6 @@
 package gov.ca.water.wresl.parsing;
 
+import gov.ca.water.utilities.Param;
 import gov.ca.water.wresl.domain.*;
 import gov.ca.water.wresl.errors.EvaluationErrorException;
 import gov.ca.water.wresl.errors.SyntaxErrorException;
@@ -16,7 +17,7 @@ import java.io.*;
 import java.nio.file.Path;
 import java.util.*;
 
-import static gov.ca.water.wresl.parsing.Utilities.*;
+import static gov.ca.water.utilities.Utilities.getWreslText;
 
 public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     private static final Logger log = LoggerFactory.getLogger(Antlr_To_WRIMS.class);

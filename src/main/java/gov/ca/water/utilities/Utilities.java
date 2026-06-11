@@ -1,34 +1,12 @@
-package gov.ca.water.wresl.parsing;
+package gov.ca.water.utilities;
 
-import gov.ca.water.wresl.grammar.wreslLexer;
-import gov.ca.water.wresl.grammar.wreslParser;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
-import java.util.List;
-import java.util.Map;
-
-import static java.util.Map.entry;
 
 public final class Utilities {
-
-    // Time related data
-    private static final Map<String, Integer> daysInMonthMap = Map.ofEntries(
-            entry("jan", 31),
-            entry("feb", -1),  // Need to decide based on year
-            entry("mar", 31),
-            entry("apr", 30),
-            entry("may", 31),
-            entry("jun", 30),
-            entry("jul", 31),
-            entry("aug", 31),
-            entry("sep", 30),
-            entry("oct", 31),
-            entry("nov", 30),
-            entry("dec", 31));
-
 
     // ------------------------------------------------------------
     // --- METHODS TO RETRIEVE LOWERCASE TEXT FROM AN ANTLR TREE AND ITS NODES
@@ -63,38 +41,44 @@ public final class Utilities {
 
 
     // ------------------------------------------------------------
-    // --- TIME RELATED UTILITIES
+    // --- UNIT CONVERSIONS
     // ------------------------------------------------------------
-    // Number of days in a given month
-    public static int numberOfDays(String month, int year) {
-        int days;
-        if (month.equals("feb")) {
-            if (isLeapYear(year)) {
-                days = 29;
+
+     // Convert TAF to CFS, CFS to TAF, AF to CFS or CFS to AF
+    public static double tafcfs(String ident, String timeStep, ParallelVars prvs){
+        int days = TimeOperations.numberOfDays(prvs.dataMonth, prvs.dataYear);
+
+        if (ident.equals("taf_cfs")) {
+            if (TimeOperations.isMonthlyInterval(timeStep)) {
+                return 504.1666667 / Double.valueOf(days);
             }
             else {
-                days = 28;
+                return 504.1666667;
+            }
+        }
+        else if (ident.equals("cfs_taf")) {
+            if (TimeOperations.isMonthlyInterval(timeStep)) {
+                return days / 504.1666667;
+            }
+            else {
+                return 1.0 / 504.1666667;
+            }
+        }
+        else if (ident.equals("af_cfs")) {
+            if (TimeOperations.isMonthlyInterval(timeStep)) {
+                return 504.1666667 / Double.valueOf(days) / 1000.0;
+            }
+            else {
+                return 504.1666667 / 1000.0;
             }
         }
         else {
-            days = Utilities.daysInMonthMap.get(month);
-        }
-        return days;
-    }
-
-    private static boolean isLeapYear(int year) {
-        if (year % 4 == 0) {
-            if (year % 100 != 0) {
-                return true;
-            }else if (year % 400 == 0) {
-                return true;
-            }else {
-                return false;
+            if (TimeOperations.isMonthlyInterval(timeStep)){
+                return Double.valueOf(days) / 504.1666667 * 1000.0;
+            }
+            else {
+                return 1.0 / 504.1666667 * 1000.0;
             }
         }
-        else {
-            return false;
-        }
     }
-
 }

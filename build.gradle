@@ -7,12 +7,27 @@ plugins {
 
 repositories {
     mavenCentral()
+    flatDir {
+        dirs 'libs'
+    }    
 }
 
 dependencies {
     // ANTLR
     antlr 'org.antlr:antlr4:4.13.1'
     implementation 'org.antlr:antlr4-runtime:4.13.1'
+    
+    // --- main deps ---
+    implementation 'commons-io:commons-io:2.22.0'
+    implementation 'com.google.guava:guava:33.6.0-jre'
+    implementation 'com.gurobi:gurobi:11.0.3'
+    implementation name: 'lpsolve55j', version: '2009.08.23'
+    implementation name: 'xaoptimizer', version: '2016.11.04'
+    implementation name: 'hec-monolith', version: '6.0.0'
+    implementation name: 'hec-nucleus-metadata', version: '4.9.0'
+    implementation name: 'linearsolver', version: '2013-01-10'
+    implementation name: 'jcbc', version: '2021-12-27'
+
 
     // LOGGING
     implementation 'org.slf4j:slf4j-api:2.0.12'

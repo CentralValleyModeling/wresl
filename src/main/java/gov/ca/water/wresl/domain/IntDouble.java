@@ -35,6 +35,17 @@ public class IntDouble {
     }
 
 
+    public IntDouble copyOf(){
+        IntDouble newIntDouble;
+        if (isInteger){
+            newIntDouble = new IntDouble(data.intValue(), isInteger);
+        }else{
+            newIntDouble = new IntDouble(data.doubleValue(), isInteger);
+        }
+        return newIntDouble;
+    }
+
+
     // ------------------------------------------------------------
     // --- PREDICATES
     // ------------------------------------------------------------

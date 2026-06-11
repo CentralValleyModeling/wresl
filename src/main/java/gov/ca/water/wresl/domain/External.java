@@ -1,5 +1,7 @@
 package gov.ca.water.wresl.domain;
 
+import gov.ca.water.utilities.Param;
+
 import java.io.Serializable;
 
 public class External extends WRESLComponent implements Serializable {
