@@ -107,8 +107,7 @@ public class LpSolveWriter {
 
 				for (String var : sortedTerm) {
 
-					Number coef = constraintMap.get(constraintName).getEvalExpression().getMultiplier().get(var)
-							.getData();
+					Number coef = constraintMap.get(constraintName).getEvalExpression().getMultiplier().get(var).getValue();
 					double coefDouble = coef.doubleValue();
 					String coefStr = coef.toString();
 					String term;
@@ -135,7 +134,7 @@ public class LpSolveWriter {
 			}
 
 			String sign = constraintMap.get(constraintName).getSign();
-			double val = constraintMap.get(constraintName).getEvalExpression().getValue().getData().doubleValue();
+			double val = constraintMap.get(constraintName).getEvalExpression().getValue().getValue().doubleValue();
 
 			if (val == 0) {
 				lhs = constraintName + ": " + lhs + " " + sign + " " + "0";

@@ -6,7 +6,7 @@ import gov.ca.water.wresl.grammar.wreslParser;
 import java.util.ArrayList;
 import java.util.List;
 
-import static gov.ca.water.utilities.Utilities.getWreslText;
+import static gov.ca.water.utilities.MiscUtilities.getWreslText;
 
 public class Expression_To_Vars extends wreslBaseVisitor<List<String>> {
 

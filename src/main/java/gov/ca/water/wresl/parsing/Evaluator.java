@@ -13,7 +13,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static gov.ca.water.utilities.Utilities.getWreslText;
+import static gov.ca.water.utilities.MiscUtilities.getWreslText;
 
 public class Evaluator extends wreslBaseVisitor<IntDouble> {
 

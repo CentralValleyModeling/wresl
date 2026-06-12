@@ -1,10 +1,6 @@
 package gov.ca.water.wrims.engine.core.solver;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
 
 import gov.ca.water.wrims.engine.core.commondata.solverdata.SolverData;
 import gov.ca.water.wresl.domain.Dvar;
@@ -175,12 +171,12 @@ public class LPSolveSolver {
 		Map<String, Map<String, IntDouble>> varTimeArrayCycleValueMap=ControlData.currStudyDataSet.getVarTimeArrayCycleValueMap();
 		Set<String> dvarUsedByLaterCycle = ControlData.currModelDataSet.dvarUsedByLaterCycle;
 		Set<String> dvarTimeArrayUsedByLaterCycle = ControlData.currModelDataSet.dvarTimeArrayUsedByLaterCycle;
-		ArrayList<String> timeArrayDvList = ControlData.currModelDataSet.timeArrayDvList;
+		List<String> timeArrayDvList = ControlData.currModelDataSet.timeArrayDvList;
 		String model=ControlData.currCycleName;
 		
 		StudyDataSet sds = ControlData.currStudyDataSet;
-		ArrayList<String> varCycleIndexList = sds.getVarCycleIndexList();
-		ArrayList<String> dvarTimeArrayCycleIndexList = sds.getDvarTimeArrayCycleIndexList();
+		List<String> varCycleIndexList = sds.getVarCycleIndexList();
+		List<String> dvarTimeArrayCycleIndexList = sds.getDvarTimeArrayCycleIndexList();
 		Map<String, Map<String, IntDouble>> varCycleIndexValueMap = sds.getVarCycleIndexValueMap();
 		
 		Map<String, Dvar> dvarMap = SolverData.getDvarMap();
@@ -200,7 +196,7 @@ public class LPSolveSolver {
 				//System.out.println(" This dvName not found: "+ dvName);
 				//continue;
 				try {
-					value = (Double) dvar.getData().getData(); // use whatever is in the container.
+					value = (Double) dvar.getData().getValue(); // use whatever is in the container.
 				} catch (Exception e2) {
 					value=-77777777; // TODO: if this value is used, then this is probably an error in the wresl code. need to give warning.
 				}

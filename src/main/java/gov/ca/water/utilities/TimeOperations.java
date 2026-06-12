@@ -186,7 +186,7 @@ public final class TimeOperations {
                 .anyMatch(Interval::isMonthly);
     }
 
-    public static boolean range(int dataMonth, String m1, String m2){
+    public static boolean range(int dataMonth, String m1, String m2) {
         int mon1 = monthNameNumberMap.get(m1);
         int mon2 = monthNameNumberMap.get(m2);
 
@@ -240,4 +240,7 @@ public final class TimeOperations {
         return prvs;
     }
 
+    public static int monthValue(String month) {
+        return monthNameNumberMap.get(month);
+    }
 }

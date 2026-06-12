@@ -17,7 +17,7 @@ import java.io.*;
 import java.nio.file.Path;
 import java.util.*;
 
-import static gov.ca.water.utilities.Utilities.getWreslText;
+import static gov.ca.water.utilities.MiscUtilities.getWreslText;
 
 public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     private static final Logger log = LoggerFactory.getLogger(Antlr_To_WRIMS.class);

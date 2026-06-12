@@ -13,6 +13,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import gov.ca.water.utilities.TimeOperations;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -386,10 +387,10 @@ public class LaunchConfiguration {
 		ControlData.timeStep = getStringAttribute(ATTR_WPP_TIMESTEP, (String)null);
 					
 		ControlData.startYear = Integer.parseInt(getStringAttribute(ATTR_WPP_STARTYEAR, (String)null));
-		ControlData.startMonth = TimeOperation.monthValue(getStringAttribute(ATTR_WPP_STARTMONTH, (String)null));
+		ControlData.startMonth = TimeOperations.monthValue(getStringAttribute(ATTR_WPP_STARTMONTH, (String)null));
 	
 		ControlData.endYear = Integer.parseInt(getStringAttribute(ATTR_WPP_ENDYEAR, (String)null));
-		ControlData.endMonth = TimeOperation.monthValue(getStringAttribute(ATTR_WPP_ENDMONTH, (String)null));
+		ControlData.endMonth = TimeOperations.monthValue(getStringAttribute(ATTR_WPP_ENDMONTH, (String)null));
 	
 		ControlData.startDay= Integer.parseInt(getStringAttribute(ATTR_WPP_STARTDAY, (String)null));
 		ControlData.endDay=Integer.parseInt(getStringAttribute(ATTR_WPP_ENDDAY, (String)null));

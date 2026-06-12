@@ -1,20 +1,14 @@
 package gov.ca.water.wrims.engine.core.solver;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
 
+import gov.ca.water.utilities.Param;
 import gov.ca.water.wresl.domain.Dvar;
+import gov.ca.water.wresl.domain.IntDouble;
 import gov.ca.water.wresl.domain.StudyDataSet;
 import gov.ca.water.wresl.domain.WeightElement;
+import gov.ca.water.wrims.engine.core.tools.InfeasibilityAnalysis;
 import org.coinor.cbc.SWIGTYPE_p_std__string;
 import org.coinor.cbc.SWIGTYPE_p_CbcModel;
 import org.coinor.cbc.SWIGTYPE_p_CoinModel;
@@ -943,10 +937,10 @@ public class CbcSolver {
                     EvalConstraint ec=constraintMap.get(constraintName);
                     logger.atTrace().setMessage("Processing constraint: name={}, sign={}, RHS={}").addArgument(constraintName).addArgument(ec.getSign())
                         .addArgument(ec.getEvalExpression().getValue()
-                        .getData().doubleValue()).log();
+                        .getValue().doubleValue()).log();
 
                     if (ec.getSign().equals("=")) {
-                        GT = -ec.getEvalExpression().getValue().getData().doubleValue();
+                        GT = -ec.getEvalExpression().getValue().getValue().doubleValue();
                         if(Math.abs(GT)<ControlData.zeroTolerance) {
                             GT=0;
                         } else if (Math.abs(GT)>maxValue) {
@@ -956,7 +950,7 @@ public class CbcSolver {
                         equalityCount++;
                      } else if (ec.getSign().equals("<") || ec.getSign().equals("<=")){
                         GT = -maxValue;
-                        LT = -ec.getEvalExpression().getValue().getData().doubleValue();
+                        LT = -ec.getEvalExpression().getValue().getValue().doubleValue();
                         if(Math.abs(LT)<ControlData.zeroTolerance) {
                             LT=0;
                         } else if (Math.abs(LT)>maxValue) {
@@ -964,7 +958,7 @@ public class CbcSolver {
                         }
                         inequalityCount++;
                     } else if (ec.getSign().equals(">")){
-                        GT = -ec.getEvalExpression().getValue().getData().doubleValue();
+                        GT = -ec.getEvalExpression().getValue().getValue().doubleValue();
                         if(Math.abs(GT)<ControlData.zeroTolerance) {
                             GT=0;
                         } else if (Math.abs(GT)>maxValue) {
@@ -999,7 +993,7 @@ public class CbcSolver {
                         }
 
                         index[j]=dvBiMapInverse.get(multName);
-                        double temp = multMap.get(multName).getData().doubleValue();
+                        double temp = multMap.get(multName).getValue().doubleValue();
                         if(Math.abs(temp)<ControlData.zeroTolerance) {temp=0;
                         }
                         elements[j]=temp;
@@ -1067,19 +1061,19 @@ public class CbcSolver {
 				EvalConstraint ec = constraintMap.get(constraintName);
 
 				if (ec.getSign().equals("=")) {
-					GT = -ec.getEvalExpression().getValue().getData().doubleValue();
+					GT = -ec.getEvalExpression().getValue().getValue().doubleValue();
 					if(Math.abs(GT)<ControlData.zeroTolerance) {
                         GT=0;
                     }
 					LT = GT;
 				} else if (ec.getSign().equals("<") || ec.getSign().equals("<=")){
 					GT = -maxValue;
-					LT = -ec.getEvalExpression().getValue().getData().doubleValue();
+					LT = -ec.getEvalExpression().getValue().getValue().doubleValue();
 					if(Math.abs(LT)<ControlData.zeroTolerance) {
                         LT=0;
                     }
 				} else if (ec.getSign().equals(">")){
-					GT = -ec.getEvalExpression().getValue().getData().doubleValue();
+					GT = -ec.getEvalExpression().getValue().getValue().doubleValue();
 					if(Math.abs(GT)<ControlData.zeroTolerance) {
                         GT=0;
                     }
@@ -1110,7 +1104,7 @@ public class CbcSolver {
 					}
 
 					index[j]=dvBiMapInverse.get(multName);
-					double temp = multMap.get(multName).getData().doubleValue();
+					double temp = multMap.get(multName).getValue().doubleValue();
 					if(Math.abs(temp)<ControlData.zeroTolerance) {
                         temp=0;
                     }
@@ -1155,19 +1149,19 @@ public class CbcSolver {
 				EvalConstraint ec=constraintMap.get(constraintName);
 
                 if (ec.getSign().equals("=")) {
-                    GT = -ec.getEvalExpression().getValue().getData().doubleValue();
+                    GT = -ec.getEvalExpression().getValue().getValue().doubleValue();
                     if (Math.abs(GT) < gov.ca.water.wrims.engine.core.components.ControlData.zeroTolerance) {
                         GT = 0;
                     }
                     LT = GT;
                 } else if (ec.getSign().equals("<") || ec.getSign().equals("<=")) {
                     GT = -maxValue;
-                    LT = -ec.getEvalExpression().getValue().getData().doubleValue();
+                    LT = -ec.getEvalExpression().getValue().getValue().doubleValue();
                     if (Math.abs(LT) < gov.ca.water.wrims.engine.core.components.ControlData.zeroTolerance) {
                         LT = 0;
                     }
                 } else if (ec.getSign().equals(">")) {
-                    GT = -ec.getEvalExpression().getValue().getData().doubleValue();
+                    GT = -ec.getEvalExpression().getValue().getValue().doubleValue();
                     if (Math.abs(GT) < gov.ca.water.wrims.engine.core.components.ControlData.zeroTolerance) {
                         GT = 0;
                     }
@@ -1196,7 +1190,7 @@ public class CbcSolver {
 					}
 
 					index[j]=dvBiMapInverse.get(multName);
-					double temp = multMap.get(multName).getData().doubleValue();
+					double temp = multMap.get(multName).getValue().doubleValue();
 					if(Math.abs(temp)<ControlData.zeroTolerance) {
                         temp=0;
                     }
@@ -1210,7 +1204,7 @@ public class CbcSolver {
 					iisConstraintIndexMap.put(constraintName, newIndex);
 					iisConstraintElementMap.put(constraintName, newElements);
 					iisConstraintSignMap.put(constraintName, ec.getSign());
-					iisConstraintRHSMap.put(constraintName, -ec.getEvalExpression().getValue().getData().doubleValue());
+					iisConstraintRHSMap.put(constraintName, -ec.getEvalExpression().getValue().getValue().doubleValue());
 				}
 				// TODO: add index and elements here for IIS
 				String iisNameP = constraintName + "_p";
@@ -1777,7 +1771,7 @@ public class CbcSolver {
 		iisConfirmConstraint = new LinkedHashSet<String>();
 
 //		InfeasibilityAnalysis.procIfsFile();
-		prioritizeSearchTheseConstraints=InfeasibilityAnalysis.constraintSet;
+		prioritizeSearchTheseConstraints= InfeasibilityAnalysis.constraintSet;
 		if (prioritizeSearchTheseConstraints!=null && prioritizeSearchTheseConstraints.size()>0) {
 			hasPriorityConstraints = true;
 			_pstc = new LinkedHashSet<String>(prioritizeSearchTheseConstraints);
@@ -2044,12 +2038,12 @@ logger.atTrace().setMessage("Integer variable (2021): name={}, value={} (rounded
 		Map<String, Map<String, IntDouble>> varTimeArrayCycleValueMap=ControlData.currStudyDataSet.getVarTimeArrayCycleValueMap();
 		Set<String> dvarUsedByLaterCycle = ControlData.currModelDataSet.dvarUsedByLaterCycle;
 		Set<String> dvarTimeArrayUsedByLaterCycle = ControlData.currModelDataSet.dvarTimeArrayUsedByLaterCycle;
-		ArrayList<String> timeArrayDvList = ControlData.currModelDataSet.timeArrayDvList;
+		List<String> timeArrayDvList = ControlData.currModelDataSet.timeArrayDvList;
 		String modelName=ControlData.currCycleName;
 
 		StudyDataSet sds = ControlData.currStudyDataSet;
-		ArrayList<String> varCycleIndexList = sds.getVarCycleIndexList();
-		ArrayList<String> dvarTimeArrayCycleIndexList = sds.getDvarTimeArrayCycleIndexList();
+		List<String> varCycleIndexList = sds.getVarCycleIndexList();
+		List<String> dvarTimeArrayCycleIndexList = sds.getDvarTimeArrayCycleIndexList();
 		Map<String, Map<String, IntDouble>> varCycleIndexValueMap = sds.getVarCycleIndexValueMap();
 
 		Map<String, Dvar> dvarMap = SolverData.getDvarMap();

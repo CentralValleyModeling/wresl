@@ -4,7 +4,7 @@ import gov.ca.water.wresl.domain.Alias;
 import gov.ca.water.wresl.domain.Dvar;
 import gov.ca.water.wresl.domain.Timeseries;
 import gov.ca.water.utilities.TimeOperations;
-import gov.ca.water.utilities.Utilities;
+import gov.ca.water.utilities.MiscUtilities;
 import gov.ca.water.wrims.engine.core.components.ControlData;
 import gov.ca.water.wrims.engine.core.components.FilePaths;
 import gov.ca.water.utilities.ParallelVars;
@@ -80,7 +80,7 @@ public class DssOperation {
 					dataArray.add(-902.0);
 				}else{
 					ParallelVars prvs = TimeOperations.findTime(ControlData.timeStep, i, year, month, day);
-					double dataEntryValue=dataEntry * Utilities.tafcfs( "taf_cfs", ControlData.timeStep, prvs);
+					double dataEntryValue=dataEntry * MiscUtilities.tafcfs( "taf_cfs", ControlData.timeStep, prvs);
 					dataArray.add(dataEntryValue);
 				}
 				i=i+1;
@@ -94,7 +94,7 @@ public class DssOperation {
 					dataArray.add(-902.0);
 				}else{
 					ParallelVars prvs = TimeOperations.findTime(ControlData.timeStep, i, year, month, day);
-					double dataEntryValue=dataEntry*Utilities.tafcfs("cfs_taf", ControlData.timeStep, prvs);
+					double dataEntryValue=dataEntry* MiscUtilities.tafcfs("cfs_taf", ControlData.timeStep, prvs);
 					dataArray.add(dataEntryValue);
 				}
 				i=i+1;
@@ -166,7 +166,7 @@ public class DssOperation {
 					dataArray.add(-902.0);
 				}else{
 					TimeOperations.findTime(ControlData.timeStep, i, year, month, day);
-					dataArray.add(dataEntry*Utilities.tafcfs("taf_cfs", ControlData.timeStep, prvs));
+					dataArray.add(dataEntry* MiscUtilities.tafcfs("taf_cfs", ControlData.timeStep, prvs));
 				}
 				i=i+1;
 			}
@@ -183,7 +183,7 @@ public class DssOperation {
 					dataArray.add(-902.0);
 				}else{
 					TimeOperations.findTime(ControlData.timeStep, i, year, month, day);
-					dataArray.add(dataEntry*Utilities.tafcfs("cfs_taf", ControlData.timeStep, prvs));
+					dataArray.add(dataEntry* MiscUtilities.tafcfs("cfs_taf", ControlData.timeStep, prvs));
 				}
 				i=i+1;
 			}
@@ -623,7 +623,7 @@ public class DssOperation {
 							dc.values[i]=value;
 						}else{
 							ParallelVars prvs=TimeOperations.findTime(ControlData.timeStep, i, year, month, day);
-							dc.values[i]=value/Utilities.tafcfs("taf_cfs", ControlData.timeStep, prvs);
+							dc.values[i]=value/ MiscUtilities.tafcfs("taf_cfs", ControlData.timeStep, prvs);
 						}
 					}
 				}
@@ -637,7 +637,7 @@ public class DssOperation {
 							dc.values[i]=value;
 						}else{
 							ParallelVars prvs=TimeOperations.findTime(ControlData.timeStep, i, year, month, day);
-							dc.values[i]=value/Utilities.tafcfs("cfs_taf", ControlData.timeStep, prvs);
+							dc.values[i]=value/ MiscUtilities.tafcfs("cfs_taf", ControlData.timeStep, prvs);
 						}
 					}
 				}
@@ -840,7 +840,7 @@ public class DssOperation {
 							dc.values[i]=value;
 						}else{
 							ParallelVars prvs=TimeOperations.findTime(ControlData.timeStep, i, year, month, day);
-							dc.values[i]=value/Utilities.tafcfs("taf_cfs", ControlData.timeStep, prvs);
+							dc.values[i]=value/ MiscUtilities.tafcfs("taf_cfs", ControlData.timeStep, prvs);
 						}
 					}
 				}
@@ -854,7 +854,7 @@ public class DssOperation {
 							dc.values[i]=value;
 						}else{
 							ParallelVars prvs=TimeOperations.findTime(ControlData.timeStep, i, year, month, day);
-							dc.values[i]=value/Utilities.tafcfs("cfs_taf", ControlData.timeStep, prvs);
+							dc.values[i]=value/ MiscUtilities.tafcfs("cfs_taf", ControlData.timeStep, prvs);
 						}
 					}
 				}

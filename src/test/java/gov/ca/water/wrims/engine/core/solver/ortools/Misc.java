@@ -1,11 +1,6 @@
 package gov.ca.water.wrims.engine.core.solver.ortools;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import gov.ca.water.wresl.domain.Dvar;
@@ -48,15 +43,15 @@ public class Misc {
 				
 				if (ec.getSign().equals("=")) {
 					//ControlData.xasolver.setRowFix(constraintName, -ec.getEvalExpression().getValue().getData().doubleValue()); 
-					lb = -ec.getEvalExpression().getValue().getData().doubleValue();
-					ub = -ec.getEvalExpression().getValue().getData().doubleValue();
+					lb = -ec.getEvalExpression().getValue().getValue().doubleValue();
+					ub = -ec.getEvalExpression().getValue().getValue().doubleValue();
 				}
 				else if (ec.getSign().equals("<") || ec.getSign().equals("<=")){
 					//ControlData.xasolver.setRowMax(constraintName, -ec.getEvalExpression().getValue().getData().doubleValue()); 
-					ub = -ec.getEvalExpression().getValue().getData().doubleValue();
+					ub = -ec.getEvalExpression().getValue().getValue().doubleValue();
 				}
 				else if (ec.getSign().equals(">")){
-					lb = -ec.getEvalExpression().getValue().getData().doubleValue();
+					lb = -ec.getEvalExpression().getValue().getValue().doubleValue();
 				}
 			
 				HashMap<String, IntDouble> multMap = ec.getEvalExpression().getMultiplier();
@@ -83,7 +78,7 @@ public class Misc {
 					String multName=(String)multIterator.next();
 					if (!dvarMap.containsKey(multName)) addConditionalSlackSurplusToDvarMap(dvarMap, multName);
 					
-					varCoefMap.put(multName, multMap.get(multName).getData().doubleValue());
+					varCoefMap.put(multName, multMap.get(multName).getValue().doubleValue());
 					//ControlData.xasolver.loadToCurrentRow(multName, multMap.get(multName).getData().doubleValue());
 				}
 				m.createConstraint(constraintName, varCoefMap, lb, ub);
@@ -103,12 +98,12 @@ public class Misc {
 		Map<String, Map<String, IntDouble>> varTimeArrayCycleValueMap=ControlData.currStudyDataSet.getVarTimeArrayCycleValueMap();
 		Set<String> dvarUsedByLaterCycle = ControlData.currModelDataSet.dvarUsedByLaterCycle;
 		Set<String> dvarTimeArrayUsedByLaterCycle = ControlData.currModelDataSet.dvarTimeArrayUsedByLaterCycle;
-		ArrayList<String> timeArrayDvList = ControlData.currModelDataSet.timeArrayDvList;
+		List<String> timeArrayDvList = ControlData.currModelDataSet.timeArrayDvList;
 		String model=ControlData.currCycleName;
 		
 		StudyDataSet sds = ControlData.currStudyDataSet;
-		ArrayList<String> varCycleIndexList = sds.getVarCycleIndexList();
-		ArrayList<String> dvarTimeArrayCycleIndexList = sds.getDvarTimeArrayCycleIndexList();
+		List<String> varCycleIndexList = sds.getVarCycleIndexList();
+		List<String> dvarTimeArrayCycleIndexList = sds.getDvarTimeArrayCycleIndexList();
 		Map<String, Map<String, IntDouble>> varCycleIndexValueMap = sds.getVarCycleIndexValueMap();
 				
 		Map<String, Dvar> dvarMap = SolverData.getDvarMap();
@@ -159,7 +154,7 @@ public class Misc {
 	protected static void setDVars(MPModel m){
 		Map<String, Dvar> dvarMap = SolverData.getDvarMap();
 		for (int i=0; i<=1; i++){
-			ArrayList<String> dvarCollection;
+			List<String> dvarCollection;
 			if (i==0){
 				dvarCollection = ControlData.currModelDataSet.dvList;
 			}else{
@@ -186,7 +181,7 @@ public class Misc {
 		Map<String, WeightElement> weightMap = SolverData.getWeightMap();
 		LinkedHashMap<String, Double> objFunction = new LinkedHashMap<String, Double>();
 		for (int i=0; i<=1; i++){
-			ArrayList<String> weightCollection;
+			List<String> weightCollection;
 			if (i==0){
 				weightCollection = ControlData.currModelDataSet.wtList;
 			}else{

@@ -6,8 +6,14 @@ import gov.ca.water.wresl.errors.SyntaxErrorException;
 import gov.ca.water.wresl.parsing.Study;
 import gov.ca.water.wrims.engine.core.components.ControlData;
 import gov.ca.water.wrims.engine.core.config.ConfigUtils;
+import gov.ca.water.wrims.engine.core.fromWrims2.StudyUtils;
+import gov.ca.water.wrims.engine.core.ilp.ILP;
 import gov.ca.water.wrims.engine.core.launch.LaunchConfiguration;
 import gov.ca.water.wrims.engine.core.sql.DataBaseProfile;
+import gov.ca.water.wrims.engine.core.sql.MySQLCWriter;
+import gov.ca.water.wrims.engine.core.sql.MySQLRWriter;
+import gov.ca.water.wrims.engine.core.sql.SQLServerRWriter;
+import gov.ca.water.wrims.engine.core.tools.General;
 import org.antlr.runtime.RecognitionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,10 +24,7 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.file.Path;
 import java.util.Calendar;
 import java.util.List;
@@ -29,12 +32,28 @@ import java.util.List;
 public class ControllerBatch {
     public boolean enableProgressLog = false;
     public boolean enableConfigProgress = false;
+    private MySQLCWriter mySQLCWriter;
+    private MySQLRWriter mySQLRWriter;
+    private SQLServerRWriter sqlServerRWriter;
 
     public ControllerBatch(String[] args) {
         long startTimeInMillis = Calendar.getInstance().getTimeInMillis();
         try {
             new DataBaseProfile(args);
             processArgs(args);
+            if (ILP.loggingUsageMemeory) General.getPID();
+            connectToDataBase();
+            if (enableConfigProgress) {
+                try {
+                    FileWriter progressFile= new FileWriter(StudyUtils.configFilePath+".prgss");
+                    PrintWriter pw = new PrintWriter(progressFile);
+                    pw.println("Parsing and preprocessing the model ...");
+                    pw.close();
+                    progressFile.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
         catch (SyntaxErrorException e) {
             System.err.println("WRESL+ syntax error(s) encountered in file "+e.getSourceFile());
@@ -100,6 +119,15 @@ public class ControllerBatch {
         ControlData.currDay=ControlData.startDay;
     }
 
+    public void connectToDataBase(){
+        if (ControlData.outputType==2){
+            mySQLCWriter=new MySQLCWriter();
+        }else if (ControlData.outputType==3){
+            mySQLRWriter=new MySQLRWriter();
+        }else if (ControlData.outputType==4){
+            sqlServerRWriter=new SQLServerRWriter();
+        }
+    }
 
 
 }
