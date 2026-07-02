@@ -8,7 +8,8 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-public class WRESLFileFinder extends wreslBaseVisitor<String> {
+// Package-private class
+class WRESLFileFinder extends wreslBaseVisitor<String> {
     private static final Logger logger = LoggerFactory.getLogger(WRESLFileFinder.class);
     private List<String> listFoundFiles;
 

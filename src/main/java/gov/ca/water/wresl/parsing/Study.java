@@ -10,41 +10,33 @@ import java.util.Map;
 
 public class Study {
     private static final Logger logger = LoggerFactory.getLogger(Study.class);
-    private String name;
-    private Path mainFilePath;
-
-    // ------------------------------------------------------------
-    // --- CONSTRUCTOR
-    // ------------------------------------------------------------
-    public Study(String name, Path mainFilePath) {
-        this.name = name;
-        this.mainFilePath = Path.of(mainFilePath.toString().toLowerCase());
-    }
 
 
     // ------------------------------------------------------------
     // --- COMPILE WRIMS DATA FROM WRESL FILES
     // ------------------------------------------------------------
-    public StudyDataSet compile() {
+    public StudyDataSet compile(String mainFile) {
         // Track time
         long start = System.currentTimeMillis();
 
+        // Path for main WRESL file
+        Path mainFilePath = Path.of(mainFile).normalize();
+
         // PASS 1
         // Collect all the trees that are included
-        Map<Path, WRESLFile> treesByFile = collectTrees(this.mainFilePath);
+        Map<Path, WRESLFile> treesByFile = collectTrees(mainFilePath);
 
         // PASS 2
         // Retrieve parse tree for the main file as the starting tree
-        ParseTree studyTree = treesByFile.get(this.mainFilePath).getParseTree();
+        ParseTree studyTree = treesByFile.get(mainFilePath).getParseTree();
 
         // Parse WRESL input into WRIMS objects
-        Antlr_To_WRIMS parse = new Antlr_To_WRIMS(this.mainFilePath, treesByFile);
+        Antlr_To_WRIMS parse = new Antlr_To_WRIMS(mainFilePath, treesByFile);
         VisitorResult study = parse.visit(studyTree);
         StudyDataSet sds = (StudyDataSet) study.data().get(0);
 
         // Store study name and WRESl file details
-        sds.name = this.name;
-        sds.fromWresl = this.mainFilePath.toString();
+        sds.fromWresl = mainFilePath.toString();
         sds.line = 1;
 
         // Report total compile time

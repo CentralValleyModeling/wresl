@@ -1,5 +1,6 @@
 package gov.ca.water.wrims.engine.core.components;
 
+import gov.ca.water.utilities.TimeOperations;
 import gov.ca.water.wresl.domain.*;
 import gov.ca.water.wrims.engine.core.evaluator.CondensedReferenceCacheAndRead.CondensedReferenceCache;
 import gov.ca.water.wrims.engine.core.external.ExternalFunction;
@@ -16,6 +17,8 @@ import java.util.Locale;
 import java.util.Map;
 
 import com.sunsetsoft.xa.Optimizer;
+
+import static gov.ca.water.utilities.TimeOperations.*;
 
 public class ControlData {
 	public static ArrayList<Integer> currTimeStep;
@@ -209,5 +212,51 @@ public class ControlData {
 	
 	public static String getPartE(){
 		return timeStep;
+	}
+
+	public static void initOutputDate() {
+		outputYear = startYear + yearOutputSection;
+		outputMonth = startMonth - 1;
+		if (outputMonth == 0) {
+			outputYear = outputYear - 1;
+			outputMonth = 12;
+		}
+		outputDay= TimeOperations.numberOfDays(outputMonth, outputYear);
+		if (TimeOperations.isMonthlyInterval(timeStep)) {
+			prevOutputYear = startYear;
+			prevOutputMonth = startMonth - 1;
+			if (prevOutputMonth == 0) {
+				prevOutputYear = prevOutputYear - 1;
+				prevOutputMonth = 12;
+			}
+			prevOutputDay = TimeOperations.numberOfDays(prevOutputMonth, prevOutputYear);
+		}
+		else {
+			prevOutputYear = startYear;
+			prevOutputMonth = startMonth;
+			prevOutputDay = startDay - 1;
+			if (prevOutputDay == 0) {
+				prevOutputMonth = prevOutputMonth - 1;
+				if (prevOutputMonth == 0) {
+					prevOutputMonth = 12;
+					prevOutputYear = prevOutputYear - 1;
+				}
+				prevOutputDay = TimeOperations.numberOfDays(prevOutputMonth, prevOutputYear);
+			}
+		}
+		prevOutputDate = new Date(prevOutputYear-1900, prevOutputMonth-1, prevOutputDay);
+	}
+
+	public static void initMemDate(){
+		memStartYear  = startYear;
+		memStartMonth = startMonth;
+		memStartDay   = startDay;
+
+		prevMemYear  = memStartYear;
+		prevMemMonth = memStartMonth;
+		prevMemDay   = memStartDay;
+
+		prevMemDate  = new Date(prevMemYear-1900 , prevMemMonth-1 , prevMemDay);
+		memStartDate = new Date(memStartYear-1900, memStartMonth-1, memStartDay);
 	}
 }

@@ -6,7 +6,8 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
 
-public class WRESLFile  {
+// Package-private class
+class WRESLFile  {
     private ParseTree parseTree;
     private Set<Path> parentFiles;
     private Set<Path> childFiles;

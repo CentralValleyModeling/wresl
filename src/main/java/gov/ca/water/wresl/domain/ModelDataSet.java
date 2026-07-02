@@ -65,6 +65,14 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
     // --- METHODS
     // ------------------------------------------------------------
 
+    public void clearFutureSvMap() {
+        this.svFutMap = new HashMap<String, Svar>();
+    }
+
+    public void clearFutureAsMap(){
+        this.asFutMap = new HashMap<String, Alias>();
+    }
+
     // Append data from another model
     public void appendModelDataSet(ModelDataSet mds) {
         this.wtList.addAll(mds.wtList);

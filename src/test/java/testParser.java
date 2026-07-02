@@ -13,12 +13,11 @@ public class testParser {
 
 
     public static void main(String[] args) {
-        Path mainWRESL = Path.of(args[0]).normalize();
-        logger.atInfo().setMessage("mainWresl={}").addArgument(mainWRESL).log();
-        Study study = new Study("TEST", mainWRESL);
+        logger.atInfo().setMessage("mainWresl={}").addArgument(args[0]).log();
+        Study study = new Study();
         StudyDataSet sds = new StudyDataSet();
         try {
-            sds = study.compile();
+            sds = study.compile(args[0]);
         }
         catch (SyntaxErrorException e) {
             System.err.println("WRESL+ syntax error(s) encountered in file "+e.getSourceFile());

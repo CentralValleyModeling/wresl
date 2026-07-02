@@ -1,59 +1,60 @@
 package gov.ca.water.wrims.engine.core.components;
 
+import gov.ca.water.utilities.Param;
+import gov.ca.water.utilities.TimeOperations;
+import gov.ca.water.wresl.domain.ModelDataSet;
 import gov.ca.water.wresl.domain.StudyDataSet;
 import gov.ca.water.wresl.errors.EvaluationErrorException;
 import gov.ca.water.wresl.errors.SyntaxErrorException;
 import gov.ca.water.wresl.parsing.Study;
-import gov.ca.water.wrims.engine.core.components.ControlData;
 import gov.ca.water.wrims.engine.core.config.ConfigUtils;
+import gov.ca.water.wrims.engine.core.evaluator.WeightEval;
 import gov.ca.water.wrims.engine.core.fromWrims2.StudyUtils;
 import gov.ca.water.wrims.engine.core.ilp.ILP;
 import gov.ca.water.wrims.engine.core.launch.LaunchConfiguration;
+import gov.ca.water.wrims.engine.core.solver.*;
 import gov.ca.water.wrims.engine.core.sql.DataBaseProfile;
 import gov.ca.water.wrims.engine.core.sql.MySQLCWriter;
 import gov.ca.water.wrims.engine.core.sql.MySQLRWriter;
 import gov.ca.water.wrims.engine.core.sql.SQLServerRWriter;
 import gov.ca.water.wrims.engine.core.tools.General;
-import org.antlr.runtime.RecognitionException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.w3c.dom.Element;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
+import org.antlr.v4.runtime.tree.ParseTree;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 import java.io.*;
-import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Map;
 
 public class ControllerBatch {
-    public boolean enableProgressLog = false;
-    public boolean enableConfigProgress = false;
+    private boolean enableProgressLog = false;
+    private boolean enableConfigProgress = false;
+    private boolean runCompleted = false;
     private MySQLCWriter mySQLCWriter;
     private MySQLRWriter mySQLRWriter;
     private SQLServerRWriter sqlServerRWriter;
 
-    public ControllerBatch(String[] args) {
+    public void ControllerBatch(String[] args) {
         long startTimeInMillis = Calendar.getInstance().getTimeInMillis();
-        try {
-            new DataBaseProfile(args);
-            processArgs(args);
-            if (ILP.loggingUsageMemeory) General.getPID();
-            connectToDataBase();
-            if (enableConfigProgress) {
-                try {
-                    FileWriter progressFile= new FileWriter(StudyUtils.configFilePath+".prgss");
-                    PrintWriter pw = new PrintWriter(progressFile);
-                    pw.println("Parsing and preprocessing the model ...");
-                    pw.close();
-                    progressFile.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+        new DataBaseProfile(args);
+        processArgs(args);
+        if (ILP.loggingUsageMemeory) General.getPID();
+        connectToDataBase();
+        if (enableConfigProgress) {
+            try {
+                FileWriter progressFile= new FileWriter(StudyUtils.configFilePath+".prgss");
+                PrintWriter pw = new PrintWriter(progressFile);
+                pw.println("Parsing and preprocessing the model ...");
+                pw.close();
+                progressFile.close();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
+        }
+        StudyDataSet sds = new StudyDataSet();
+        try {
+            Study study = new Study();
+            sds = study.compile(FilePaths.fullMainPath);
         }
         catch (SyntaxErrorException e) {
             System.err.println("WRESL+ syntax error(s) encountered in file "+e.getSourceFile());
@@ -66,6 +67,25 @@ public class ControllerBatch {
             System.err.println("Evaluation error: " + e.getErrorMessage());
             System.err.println("                  " +"File " + e.getSourceFile() + ", line " + e.getLine());
         }
+        long afterParsing = Calendar.getInstance().getTimeInMillis();
+        ControlData.t_parse=(int) (afterParsing-startTimeInMillis);
+        System.out.println("Parsing Time is "+ControlData.t_parse/60000+"min"+Math.round((ControlData.t_parse/60000.0-ControlData.t_parse/60000)*60)+"sec");
+
+        ILP.getIlpDir();
+        ILP.setVarDir();
+        ILP.createNoteFile();
+        ILP.setMaximumFractionDigits();
+
+        runModel(sds);
+        if (ControlData.showTimeUsage) TimeUsage.showTimeUsage();
+        long endTimeInMillis = Calendar.getInstance().getTimeInMillis();
+        int runPeriod=(int) (endTimeInMillis-startTimeInMillis);
+        System.out.println("=================Run Time is "+runPeriod/60000+"min"+Math.round((runPeriod/60000.0-runPeriod/60000)*60)+"sec====");
+        ILP.writeNoteLn("Total time", "(sec): "+                        Math.round(runPeriod/1000.0));
+        ILP.writeNoteLn("Total time", "(min): "+                        Math.round(runPeriod/1000.0/60));
+        ILP.writeNoteLn("Total time", "(sec): "+                        Math.round(runPeriod/1000.0), ILP._noteFile_timeusage);
+        ILP.writeNoteLn("Total time", "(min): "+                        Math.round(runPeriod/1000.0/60), ILP._noteFile_timeusage);
+        runCompleted = true;
     }
 
 
@@ -129,5 +149,81 @@ public class ControllerBatch {
         }
     }
 
+    public void runModel(StudyDataSet sds){
+        System.out.println("==============Run Study Start============");
 
+        runModelILP(sds);
+
+        WeightEval.outputWtTableAR();
+
+        if (Error.getTotalError()>0){
+            System.out.println("=================Run ends with errors====");
+            System.exit(1);
+        } else {
+            System.out.println("=================Run ends!================");
+        }
+    }
+
+
+    public void runModelILP(StudyDataSet sds) {
+
+        ILP.initializeIlp();
+
+        List<String> modelList = sds.getModelList();
+        Map<String, ModelDataSet> modelDataSetMap = sds.getModelDataSetMap();
+
+        if (ControlData.solverName.equalsIgnoreCase("clp0")) {
+            ControlData.solverType = Param.SOLVER_CLP0;
+            // initiate clp0
+            Clp0Solver.init();
+        } else if (ControlData.solverName.equalsIgnoreCase("clp1")) {
+            ControlData.solverType = Param.SOLVER_CLP1;
+            // initiate clp
+            ClpSolver.init(true);
+        } else if (ControlData.solverName.equalsIgnoreCase("clp")) {
+            ControlData.solverType = Param.SOLVER_CLP;
+            // initiate clp
+            ClpSolver.init(false);
+        } else if (ControlData.solverName.equalsIgnoreCase("cbc0")) {
+            ControlData.solverType = Param.SOLVER_CBC0;
+            // initiate cbc0
+            Cbc0Solver.init();
+        } else if (ControlData.solverName.equalsIgnoreCase("cbc1")) {
+            ControlData.solverType = Param.SOLVER_CBC1;
+            // initiate cbc file passing jni
+            CbcSolver.init(true, sds);
+        } else if (ControlData.solverName.equalsIgnoreCase("cbc")) {
+            ControlData.solverType = Param.SOLVER_CBC;
+            // initiate cbc file passing jni
+            CbcSolver.init(false, sds);
+        } else if (ControlData.solverName.equalsIgnoreCase("lpsolve")) {
+            ControlData.solverType = Param.SOLVER_LPSOLVE;
+            // initiate lpsolve
+        } else if (ControlData.solverName.toLowerCase().contains("xa")) {
+            ControlData.solverType = Param.SOLVER_XA; //default
+            new InitialXASolver();
+        } else {
+            Error.addConfigError("Solver name not recognized: " + ControlData.solverName);
+            Error.writeErrorLog();
+        }
+
+        ControlData.initOutputDate();
+        ControlData.initMemDate();
+
+        List<ParseTree> modelConditionParsers = sds.getModelConditionParseTrees();
+        boolean noError = true;
+        VariableTimeStep.initialCurrTimeStep(modelList);
+        VariableTimeStep.initialCycleStartDate();
+        VariableTimeStep.setCycleEndDate(sds);
+        int sectionI = 0;
+        time_marching:
+        while (VariableTimeStep.checkEndDate(ControlData.cycleStartDay, ControlData.cycleStartMonth, ControlData.cycleStartYear, ControlData.endDay, ControlData.endMonth, ControlData.endYear) <= 0 && noError) {
+            if (ControlData.solverType == Param.SOLVER_XA && ControlData.solverName.toLowerCase().contains("xalog")) SetXALog.enableXALog();
+            ClearValue.clearValues(modelList, modelDataSetMap);
+            sds.clearVarTimeArrayCycleValueMap();
+            sds.clearVarCycleIndexByTimeStep();
+            int i=0;
+
+        }
+    }
 }

@@ -15,7 +15,8 @@ import java.util.regex.Pattern;
 
 import static gov.ca.water.utilities.MiscUtilities.getWreslText;
 
-public class Evaluator extends wreslBaseVisitor<IntDouble> {
+// Package-private class
+class Evaluator extends wreslBaseVisitor<IntDouble> {
 
     private static String absReferencePath = null;                         // Absolute path of the folder that the main WRESL file is located
     private final Map<String,LookUpTable> tableSeries = new HashMap<>();   // Map that stores lookup table data
@@ -58,7 +59,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         for (String parameter : parameterMap.keySet()) {
             Svar svar = INSTANCE.commonSvarsMap.get(parameter);
             try {
-                INSTANCE.commonSvarsMap.get(parameter).setData(INSTANCE.evaluate(svar));
+                INSTANCE.commonSvarsMap.get(parameter).setData(INSTANCE.evaluateSvarDvar(svar));
             }
             catch (EvaluationErrorException e) {
                 throw new EvaluationErrorException(svar.fromWresl, svar.line, e.getErrorMessage());
@@ -107,7 +108,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // ------------------------------------------------------------
     // --- EVALUATE A WRESL COMPONENT (SVAR, DVAR)
     // ------------------------------------------------------------
-    public static IntDouble evaluate(WRESLComponent wreslData) throws EvaluationErrorException {
+    public static IntDouble evaluateSvarDvar(WRESLComponent wreslData) throws EvaluationErrorException {
         // Data to store source file and line number for the WRESL component in case there is an evolution error
         String sourceFile = "";
         int line = -1;

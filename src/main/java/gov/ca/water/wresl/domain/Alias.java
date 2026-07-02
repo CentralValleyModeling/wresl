@@ -26,4 +26,8 @@ public class Alias extends WRESLComponent implements Serializable {
     public String timeArraySize = Param.zero;
     public ParseTree timeArraySizeParseTree = null;
 
+   // Methods
+    public void setData(IntDouble data){
+        this.data=data;
+    }
 }

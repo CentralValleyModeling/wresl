@@ -19,7 +19,8 @@ import java.util.*;
 
 import static gov.ca.water.utilities.MiscUtilities.getWreslText;
 
-public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
+// Package-private class
+class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     private static final Logger log = LoggerFactory.getLogger(Antlr_To_WRIMS.class);
     // Main WRESL file, absolute folder that it resides, and list of WRESL files
     private Path mainFilePath;

@@ -25,8 +25,10 @@ dependencies {
     implementation name: 'xaoptimizer', version: '2016.11.04'
     implementation name: 'hec-monolith', version: '6.0.0'
     implementation name: 'hec-nucleus-metadata', version: '4.9.0'
+    implementation name: 'lookup-compat', version: '4.0.0'
     implementation name: 'linearsolver', version: '2013-01-10'
     implementation name: 'jcbc', version: '2021-12-27'
+    implementation name: 'org-openide-util-lookup', version: 'RELEASE260'
 
 
     // LOGGING
