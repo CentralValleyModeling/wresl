@@ -1,7 +1,6 @@
 package gov.ca.water.wrims.engine.core.components;
 
 import gov.ca.water.utilities.Param;
-import gov.ca.water.utilities.TimeOperations;
 import gov.ca.water.wresl.domain.ModelDataSet;
 import gov.ca.water.wresl.domain.StudyDataSet;
 import gov.ca.water.wresl.errors.EvaluationErrorException;
@@ -21,7 +20,6 @@ import gov.ca.water.wrims.engine.core.tools.General;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.io.*;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
@@ -223,7 +221,30 @@ public class ControllerBatch {
             sds.clearVarTimeArrayCycleValueMap();
             sds.clearVarCycleIndexByTimeStep();
             int i=0;
+            while (i<modelList.size() && noError){
+                int cycleI=i+1;
+                String strCycleI=cycleI+"";
+                boolean isSelectedCycleOutput=General.isSelectedCycleOutput(strCycleI);
 
+                String model=modelList.get(i);
+                ModelDataSet mds=modelDataSetMap.get(model);
+                ControlData.currModelDataSet=mds;
+                ControlData.currCycleName=model;
+                ControlData.currCycleIndex=i;
+                VariableTimeStep.setCycleTimeStep(sds);
+                VariableTimeStep.setCurrentDate(sds, ControlData.cycleStartDay, ControlData.cycleStartMonth, ControlData.cycleStartYear);
+
+                while(VariableTimeStep.checkEndDate(ControlData.currDay, ControlData.currMonth, ControlData.currYear, ControlData.cycleEndDay, ControlData.cycleEndMonth, ControlData.cycleEndYear)<0 && noError) {
+                    ParseTree modelCondition = modelConditionParsers.get(i);
+                    boolean condition=false;
+                    try {
+
+                    } catch (Exception e){
+
+                    }
+                }
+
+            }
         }
     }
 }
