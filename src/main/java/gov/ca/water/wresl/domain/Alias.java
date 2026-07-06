@@ -30,4 +30,6 @@ public class Alias extends WRESLComponent implements Serializable {
     public void setData(IntDouble data){
         this.data=data;
     }
+
+    public IntDouble getData() {return this.data; }
 }

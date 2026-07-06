@@ -259,4 +259,40 @@ public class ControlData {
 		prevMemDate  = new Date(prevMemYear-1900 , prevMemMonth-1 , prevMemDay);
 		memStartDate = new Date(memStartYear-1900, memStartMonth-1, memStartDay);
 	}
+
+	public static void setMemDate() {
+		prevMemYear  = memStartYear;
+		prevMemMonth = memStartMonth;
+		prevMemDay   = memStartDay;
+
+		int years = monMemSection / 12;
+		int remainingMonths = monMemSection % 12;
+		memStartYear  = outputYear-years;
+		memStartMonth = outputMonth-remainingMonths+1;
+		if (memStartMonth <= 0) {
+			memStartYear  = memStartYear - 1;
+			memStartMonth = memStartMonth + 12;
+		} else if (memStartMonth > 12) {
+			memStartYear  = memStartYear + 1;
+			memStartMonth = memStartMonth - 12;
+		}
+		if (TimeOperations.isMonthlyInterval(timeStep)) {
+			memStartDay = TimeOperations.numberOfDays(memStartMonth, memStartYear);
+		} else {
+			memStartDay = 1;
+		}
+
+		prevMemDate  = new Date(prevMemYear-1900, prevMemMonth-1, prevMemDay);
+		memStartDate = new Date(memStartYear-1900, memStartMonth-1, memStartDay);
+	}
+
+	public static void setOutputDate() {
+		prevOutputYear  = outputYear;
+		prevOutputMonth = outputMonth;
+		prevOutputDay   = outputDay;
+
+		outputYear      = outputYear + yearOutputSection;
+
+		prevOutputDate  = new Date(prevOutputYear-1900, prevOutputMonth-1, prevOutputDay);
+	}
 }

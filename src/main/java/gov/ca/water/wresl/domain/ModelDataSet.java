@@ -21,7 +21,7 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
     public Map<String, External> exMap = new HashMap<>();
 
     // Svar timeseries data structure
-    public ArrayList<String> tsList = new ArrayList<>();
+    public List<String> tsList = new ArrayList<>();
     public Map<String, Timeseries> tsMap = new HashMap<>();
 
     // Svar data structure
@@ -120,5 +120,19 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
         this.dvarTimeArrayUsedByLaterCycle.addAll(mds.dvarTimeArrayUsedByLaterCycle);
         this.svarUsedByLaterCycle.addAll(mds.svarUsedByLaterCycle);
         this.aliasUsedByLaterCycle.addAll(mds.aliasUsedByLaterCycle);
+    }
+
+    // Process model components and prepare model for simulation
+    public void processModel() {
+ //       resetSlackSurplusWeight(); // this clears slack and surplus vars
+        long t1 = Calendar.getInstance().getTimeInMillis();
+        processTimeseries();
+    }
+
+    private void processTimeseries() {
+        List<String> tsList           = this.tsList;
+        Map<String, Timeseries> tsMap = this.tsMap;
+    //    ProcessTimeseries pt = new ProcessTimeseries(tsList, tsMap, 0, tsList.size()-1);
+    //    pool.invoke(pt);
     }
 }

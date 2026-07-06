@@ -39,7 +39,7 @@ public final class TimeOperations {
             entry(10, 31),
             entry(11, 30),
             entry(12, 31));
-    private static final Map<String, Integer> monthNameNumberMap = Map.ofEntries(
+    private static final Map<String, Integer> monthNumberMap = Map.ofEntries(
             entry("jan", 1),
             entry("feb", 2),  // Need to decide based on year
             entry("mar", 3),
@@ -52,6 +52,7 @@ public final class TimeOperations {
             entry("oct", 10),
             entry("nov", 11),
             entry("dec", 12));
+
 
     // Number of days in a given month (month is given as String)
     public static int numberOfDays(String month, int year) {
@@ -179,8 +180,8 @@ public final class TimeOperations {
     }
 
     public static boolean range(int dataMonth, String m1, String m2) {
-        int mon1 = monthNameNumberMap.get(m1);
-        int mon2 = monthNameNumberMap.get(m2);
+        int mon1 = monthNumberMap.get(m1);
+        int mon2 = monthNumberMap.get(m2);
 
         if (mon1 <= mon2) {
             if (dataMonth >= mon1 && dataMonth <= mon2) {
@@ -231,7 +232,12 @@ public final class TimeOperations {
     }
 
     public static int monthValue(String month) {
-        return monthNameNumberMap.get(month);
+        return monthNumberMap.get(month);
     }
+
+    public static String dssTimeEndDay(int year, int month, int day){
+        return dayName(day)+monthNameNumeric(month)+year+" 2400";
+    }
+
 
 }

@@ -1,5 +1,6 @@
 package gov.ca.water.wresl.parsing;
 
+import gov.ca.water.utilities.TimeOperations;
 import gov.ca.water.wresl.domain.IntDouble;
 import gov.ca.water.wresl.domain.Svar;
 import gov.ca.water.wresl.domain.WRESLComponent;
@@ -16,10 +17,11 @@ import java.util.regex.Pattern;
 import static gov.ca.water.utilities.MiscUtilities.getWreslText;
 
 // Package-private class
-class Evaluator extends wreslBaseVisitor<IntDouble> {
+public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
     private static String absReferencePath = null;                         // Absolute path of the folder that the main WRESL file is located
     private final Map<String,LookUpTable> tableSeries = new HashMap<>();   // Map that stores lookup table data
+    private final LinkedHashMap<String,Svar> commonSvarsMap = new LinkedHashMap<>();       // Parameter data provided through the INITIAL WRESL keyword
 
     // Enumerators
     private enum Logical {
@@ -29,8 +31,10 @@ class Evaluator extends wreslBaseVisitor<IntDouble> {
         Logical(int value) {this.value = value;}
     }
 
-    // Temporary variables that will be used by multiple methods
-    Map<String,Svar> commonSvarsMap;
+    // Runtime data
+    private int currentDay;
+    private int currentMonth;
+    private int currentYear;
 
     // Singleton constructor
     // This setup allows us to treat Evaluator class as if it is a static class (even though
@@ -51,12 +55,12 @@ class Evaluator extends wreslBaseVisitor<IntDouble> {
     // ------------------------------------------------------------
     // --- EVALUATE INITIAL DATA
     // ------------------------------------------------------------
-    public static void evaluateInitialData(Map<String, Svar> parameterMap) throws EvaluationErrorException {
+    public static void setInitialData(LinkedHashMap<String, Svar> parameterMap) throws EvaluationErrorException {
         // Copy parameter map into common memory
-        INSTANCE.commonSvarsMap = parameterMap;
+        INSTANCE.commonSvarsMap.putAll(parameterMap);
 
         // Loop over parameter list and evaluate
-        for (String parameter : parameterMap.keySet()) {
+        for (String parameter : INSTANCE.commonSvarsMap.keySet()) {
             Svar svar = INSTANCE.commonSvarsMap.get(parameter);
             try {
                 INSTANCE.commonSvarsMap.get(parameter).setData(INSTANCE.evaluateSvarDvar(svar));
@@ -65,12 +69,6 @@ class Evaluator extends wreslBaseVisitor<IntDouble> {
                 throw new EvaluationErrorException(svar.fromWresl, svar.line, e.getErrorMessage());
             }
         }
-
-        // Update parameter values
-        parameterMap = INSTANCE.commonSvarsMap;
-
-        // Clear common memory
-        INSTANCE.commonSvarsMap = null;
     }
 
 
@@ -85,10 +83,8 @@ class Evaluator extends wreslBaseVisitor<IntDouble> {
     // ------------------------------------------------------------
     // --- EVALUATE A CONDITION
     // ------------------------------------------------------------
-    public static boolean evaluateCondition(ParseTree expCompareParseTree, Map<String, Svar> parameterMap) {
-        // Store parameter map in common memory
-        INSTANCE.commonSvarsMap = parameterMap;
-
+    // Evaluate whn only the condition parser is provided
+    public static boolean evaluateCondition(ParseTree expCompareParseTree) {
         IntDouble condition = INSTANCE.visit(expCompareParseTree);
         boolean result;
         if (condition.getValue().intValue() == Logical.TRUE.value) {
@@ -98,12 +94,21 @@ class Evaluator extends wreslBaseVisitor<IntDouble> {
             result = false;
         }
 
-        // Clear scratch memory
-        INSTANCE.commonSvarsMap = null;
-
         return result;
     }
 
+    // Evaluate when simulation dynamic data along with condition parser are provided
+    public static boolean evaluateCondition(int currentDay, int currentMonth, int currentYear, ParseTree expCompareParseTree) {
+        // If null ParseTree; that means condition always evaluates to true
+        if (expCompareParseTree == null) {return true; }
+
+        // Store simulation day, month and year
+        INSTANCE.currentDay = currentDay;
+        INSTANCE.currentMonth = currentMonth;
+        INSTANCE.currentYear = currentYear;
+
+        return evaluateCondition(expCompareParseTree);
+    }
 
     // ------------------------------------------------------------
     // --- EVALUATE A WRESL COMPONENT (SVAR, DVAR)
@@ -579,6 +584,32 @@ class Evaluator extends wreslBaseVisitor<IntDouble> {
     public IntDouble visitIntNumber(wreslParser.IntNumberContext ctx) {
         Number intValue = Integer.valueOf(Integer.parseInt(ctx.INT().getText()));
         return new IntDouble(intValue, true);
+    }
+
+    @Override
+    // currentMonthReference
+    public IntDouble visitCurrentMonthReference(wreslParser.CurrentMonthReferenceContext ctx) {
+        Number intValue = Integer.valueOf(INSTANCE.currentMonth);
+        return new IntDouble(intValue, true);
+    }
+
+    @Override
+    public IntDouble visitMonthReference(wreslParser.MonthReferenceContext ctx) {
+        String month = getWreslText(ctx.MONTH());
+        if (month.contains("prev")) {
+            month = month.substring(4);
+            int currentMonthValue = INSTANCE.currentMonth;
+            int monthValue = TimeOperations.monthValue(month);
+            if (currentMonthValue > monthValue) {
+                return new IntDouble(monthValue-currentMonthValue, true);
+            } else if (currentMonthValue < monthValue) {
+                return new IntDouble(currentMonthValue-monthValue-12, true);
+            } else {
+                return new IntDouble (-12, true);
+            }
+        } else {
+            return new IntDouble(TimeOperations.monthValue(month), true);
+        }
     }
 
 

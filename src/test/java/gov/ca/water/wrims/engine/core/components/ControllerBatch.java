@@ -1,14 +1,20 @@
 package gov.ca.water.wrims.engine.core.components;
 
 import gov.ca.water.utilities.Param;
+import gov.ca.water.utilities.TimeOperations;
 import gov.ca.water.wresl.domain.ModelDataSet;
 import gov.ca.water.wresl.domain.StudyDataSet;
 import gov.ca.water.wresl.errors.EvaluationErrorException;
 import gov.ca.water.wresl.errors.SyntaxErrorException;
+import gov.ca.water.wresl.parsing.Evaluator;
 import gov.ca.water.wresl.parsing.Study;
 import gov.ca.water.wrims.engine.core.config.ConfigUtils;
+import gov.ca.water.wrims.engine.core.evaluator.AssignPastCycleVariable;
+import gov.ca.water.wrims.engine.core.evaluator.CsvOperation;
+import gov.ca.water.wrims.engine.core.evaluator.DssOperation;
 import gov.ca.water.wrims.engine.core.evaluator.WeightEval;
 import gov.ca.water.wrims.engine.core.fromWrims2.StudyUtils;
+import gov.ca.water.wrims.engine.core.hdf5.HDF5Writer;
 import gov.ca.water.wrims.engine.core.ilp.ILP;
 import gov.ca.water.wrims.engine.core.launch.LaunchConfiguration;
 import gov.ca.water.wrims.engine.core.solver.*;
@@ -21,6 +27,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.io.*;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -68,6 +75,8 @@ public class ControllerBatch {
         long afterParsing = Calendar.getInstance().getTimeInMillis();
         ControlData.t_parse=(int) (afterParsing-startTimeInMillis);
         System.out.println("Parsing Time is "+ControlData.t_parse/60000+"min"+Math.round((ControlData.t_parse/60000.0-ControlData.t_parse/60000)*60)+"sec");
+
+        new PreRunModel(sds);
 
         ILP.getIlpDir();
         ILP.setVarDir();
@@ -137,6 +146,7 @@ public class ControllerBatch {
         ControlData.currDay=ControlData.startDay;
     }
 
+
     public void connectToDataBase(){
         if (ControlData.outputType==2){
             mySQLCWriter=new MySQLCWriter();
@@ -146,6 +156,7 @@ public class ControllerBatch {
             sqlServerRWriter=new SQLServerRWriter();
         }
     }
+
 
     public void runModel(StudyDataSet sds){
         System.out.println("==============Run Study Start============");
@@ -236,14 +247,111 @@ public class ControllerBatch {
 
                 while(VariableTimeStep.checkEndDate(ControlData.currDay, ControlData.currMonth, ControlData.currYear, ControlData.cycleEndDay, ControlData.cycleEndMonth, ControlData.cycleEndYear)<0 && noError) {
                     ParseTree modelCondition = modelConditionParsers.get(i);
-                    boolean condition=false;
+                    boolean condition;
                     try {
-
-                    } catch (Exception e){
-
+                        condition = Evaluator.evaluateCondition(ControlData.currDay, ControlData.currMonth, ControlData.currYear, modelCondition);
+                    } catch (Exception e) {
+                        Error.addEvaluationError("Model condition evaluation has error.");
+                        condition = false;
+                    }
+                    
+                    if (condition){
+                        ClearValue.clearCycleLoopValue(modelList, modelDataSetMap);
+                        ControlData.currSvMap=mds.svMap;
+                        ControlData.currSvFutMap=mds.svFutMap;
+                        ControlData.currDvMap=mds.dvMap;
+                        ControlData.currDvSlackSurplusMap=mds.dvSlackSurplusMap;
+                        ControlData.currAliasMap=mds.asMap;
+                        ControlData.currGoalMap=mds.gMap;
+                        ControlData.currTsMap=mds.tsMap;
+                        ControlData.isPostProcessing=false;
+                        mds.processModel();
+                    } else {
+                        if (ControlData.outputType==1){
+                            if (ControlData.isOutputCycle && isSelectedCycleOutput){
+                                HDF5Writer.skipOneCycle(mds, cycleI);
+                            }
+                        }
+                        System.out.println("Cycle "+cycleI+" in "+ControlData.currYear+"/"+ControlData.currMonth+"/"+ControlData.currDay+" Skipped. ("+model+")");
+                        new AssignPastCycleVariable();
+                        ControlData.currTimeStep.set(ControlData.currCycleIndex, ControlData.currTimeStep.get(ControlData.currCycleIndex)+1);
+                        if (TimeOperations.isMonthlyInterval(ControlData.timeStep)){
+                            VariableTimeStep.currTimeAddOneMonth();
+                        }else{
+                            VariableTimeStep.currTimeAddOneDay();
+                        }
                     }
                 }
+                i=i+1;
+            }
+            Date date1= new Date(ControlData.currYear-1900, ControlData.currMonth-1, ControlData.currDay);
+            Date date2= new Date(ControlData.outputYear-1900, ControlData.outputMonth-1, ControlData.outputDay);
+            Date date3= new Date(ControlData.endYear-1900, ControlData.endMonth-1, ControlData.endDay);
+            if (ControlData.yearOutputSection>0 && (date1.after(date2) || date1.after(date3))){
+                if (ControlData.writeInitToDVOutput && sectionI==0){
+                    DssOperation.writeInitDvarAliasToDSS();
+                }
+                sectionI++;
+                DssOperation.writeDVAliasToDSS();
+                ControlData.setMemDate();
+                DssOperation.shiftData();
+                ControlData.setOutputDate();
+            }
+            VariableTimeStep.setCycleStartDate(ControlData.cycleEndDay, ControlData.cycleEndMonth, ControlData.cycleEndYear);
+            VariableTimeStep.setCycleEndDate(sds);
+        }
+        if (ControlData.solverType == Param.SOLVER_LPSOLVE) {
+            //ControlData.lpssolver.deleteLp();
+        } else if (ControlData.solverType == Param.SOLVER_CLP0) {
+            // close clp exe
+        } else if (ControlData.solverType == Param.SOLVER_CBC0) {
+            // close cbc exe
+        } else if (ControlData.solverType == Param.SOLVER_CBC || ControlData.solverType == Param.SOLVER_CBC1) {
+            CbcSolver.close();
+        } else if (ControlData.solverType == Param.SOLVER_CLP1 || ControlData.solverType == Param.SOLVER_CLP) {
+            ClpSolver.close();
+        } else {
+            ControlData.xasolver.close();
+        }
 
+        if (ControlData.yearOutputSection<0 && ControlData.writeInitToDVOutput) DssOperation.writeInitDvarAliasToDSS();
+        if (ControlData.yearOutputSection<0) DssOperation.writeDVAliasToDSS();
+        ControlData.dvDss.close();
+        if (ControlData.outputType==1){
+            HDF5Writer.createDvarAliasLookup();
+            HDF5Writer.writeTimestepData();
+            HDF5Writer.writeCyclesDvAlias();
+            HDF5Writer.closeDataStructure();
+        }else if (ControlData.outputType==2){
+            mySQLCWriter.process();
+        }else if (ControlData.outputType==3){
+            mySQLRWriter.process();
+        }else if (ControlData.outputType==4){
+            sqlServerRWriter.process();
+        }else if (ControlData.outputType==5){
+            CsvOperation co = new CsvOperation();
+            co.ouputCSV(FilePaths.fullCsvPath, 0);
+        }
+
+        // write complete or fail
+        if (enableProgressLog || enableConfigProgress) {
+            try {
+                FileWriter progressFile;
+                if (enableConfigProgress){
+                    progressFile= new FileWriter(StudyUtils.configFilePath+".prgss");
+                }else{
+                    progressFile= new FileWriter(FilePaths.mainDirectory + "progress.txt", true);
+                }
+                PrintWriter pw = new PrintWriter(progressFile);
+                if (Error.getTotalError() > 0) {
+                    pw.println("Run failed.");
+                } else {
+                    pw.println("Run completed.");
+                }
+                pw.close();
+                progressFile.close();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
     }

@@ -36,7 +36,6 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     private String currentFile;                                   // WRESL file that's being parsed
     private Map<String, ArrayList<String>> modelsWithinModelsMap; // List of models included in each model/group
     private String currentModelOrGroupName = "";                  // Name of model or group that is currently being parsed
-    private LinkedHashMap<String, Svar> tempParameterMap;         // Temporary map of Svars defined in the INITIAL statement
     private List<String> includeFileList;                         // List of include files refernced by a model
 
     // ------------------------------------------------------------
@@ -134,12 +133,23 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
         // Loop through models and process data
         Map<String, Timeseries> tsMap = new HashMap<>();
+        Map<String, List<String>> tsTimeStepMap = new HashMap<>();
         Expression_To_Vars varFinder = new Expression_To_Vars();
+        int indx = -1;
         for (String modelName : this.sds.getModelList()) {
+            indx = indx + 1;
             ModelDataSet mds = modelDataSetMap.get(modelName);
 
             // Compile input timeseries data map
             tsMap.putAll(mds.tsMap);
+
+            // Compile input timeseries timesteps
+            String modelTimeStep = modelTimeStepList.get(indx);
+            for (String tsName:mds.tsMap.keySet()) {
+                if (!tsTimeStepMap.containsKey(tsName)) {
+                    tsTimeStepMap.put(tsName, Arrays.asList(modelTimeStep));
+                }
+            }
 
             // Evaluate weights when possible (i.e. when they don't depend on some dynamic value such a taf-cfs)
             for (String weightName : mds.wtList) {
@@ -157,6 +167,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             mds = convertAliasToGoal(mds);
         }
         this.sds.setTimeseriesMap(tsMap);
+        this.sds.setTimeseriesTimeStepMap(tsTimeStepMap);
 
 
         // Check for duplicate Dvars within each model
@@ -214,7 +225,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     // INITIAL; Svars listed under INITIAL statement are stored as parameters in StudyDataSet
     public VisitorResult visitInitial(wreslParser.InitialContext ctx) {
         ArrayList<String> tempParameterList = new ArrayList<>();
-        this.tempParameterMap = new LinkedHashMap<>();
+        LinkedHashMap tempParameterMap = new LinkedHashMap<>();
 
         // Loop through children; they should all be SVARs
         for (int i = 0; i <= ctx.children.size() - 1; i++) {
@@ -228,16 +239,12 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             // WRESL component can only be an SVAR as dictated by the grammar
             Svar svar = (Svar) result.data().get(0);
             tempParameterList.add(svar.name);
-            this.tempParameterMap.put(svar.name, svar);
+            tempParameterMap.put(svar.name, svar);
 
         }
 
-        // Process parameters (Svars)
-        Evaluator.evaluateInitialData(this.tempParameterMap);
-
-        // Store parameter data in permanently
-        this.sds.setParameterList(tempParameterList);
-        this.sds.setParameterMap(this.tempParameterMap);
+        // Process parameters (Svars) and store them in the Evaluator object
+        Evaluator.setInitialData(tempParameterMap);
 
         return null;
     }
@@ -257,10 +264,11 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         sq.modelName = getWreslText(sqBodyCtx.OBJECT_NAME());
         sq.order = Integer.parseInt(getWreslText(sqBodyCtx.INT()));
 
-        // Condition, if exists
+        // Condition, if exists; create parse tree based on lower case of condition
         if (sqBodyCtx.sequenceCondition() != null) {
              sq.condition = getWreslText(sqBodyCtx.sequenceCondition().expression());
-             sq.conditionParseTree = sqBodyCtx.sequenceCondition().expression();
+             sq.conditionParseTree = generateExpressionParseTree(sq.condition);
+    //         sq.conditionParseTree = sqBodyCtx.sequenceCondition().expression();
         }
 
         // Timestep, if exists
@@ -1654,13 +1662,13 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         VisitorResult result;
 
         // Process first IF clause
-        if (Evaluator.evaluateCondition(ctx.ifClause().expression(), this.tempParameterMap)) {
+        if (Evaluator.evaluateCondition(ctx.ifClause().expression())) {
             return visit(ctx.ifClause().ifBlock());
         }
 
         // Process ELSE IF clauses
         for (int i=0; i<ctx.elseIfClause().size(); i++) {
-            if (Evaluator.evaluateCondition(ctx.elseIfClause(i).expression(), this.tempParameterMap)) {
+            if (Evaluator.evaluateCondition(ctx.elseIfClause(i).expression())) {
                 return visit(ctx.elseIfClause(i).ifBlock());
             }
         }
@@ -1747,7 +1755,6 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         this.modelsAndGroups = null;
         this.modelsWithinModelsMap = null;
         this.includeFileList = null;
-        this.tempParameterMap = null;
         this.wreslFilesMap = null;
     }
 

@@ -11,7 +11,7 @@ import java.util.Map;
 
 public class ClearValue {
 
-	public static void clearCycleLoopValue(ArrayList<String> modelList, Map<String, ModelDataSet> modelDataSetMap){
+	public static void clearCycleLoopValue(List<String> modelList, Map<String, ModelDataSet> modelDataSetMap){
 			String model=modelList.get(ControlData.currCycleIndex);
 			ModelDataSet mds=modelDataSetMap.get(model);
 			List<String> dvList = mds.dvList;

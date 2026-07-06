@@ -11,7 +11,6 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     private String absMainFilePath;
 
     private List<String> parameterList = new ArrayList<>();
-    private LinkedHashMap<String, Svar> parameterMap = new LinkedHashMap<>();
 
     private List<String> modelList = new ArrayList<>();
     private List<String> modelConditionList = new ArrayList<>();
@@ -46,14 +45,6 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
 
     public void setParameterList(List<String> parameterList) {
         this.parameterList = parameterList;
-    }
-
-    public LinkedHashMap<String, Svar> getParameterMap() {
-        return new LinkedHashMap<String, Svar>(this.parameterMap);
-    }
-
-    public void setParameterMap(LinkedHashMap<String, Svar> parameterMap) {
-        this.parameterMap = parameterMap;
     }
 
     public Map<String, Timeseries> getTimeseriesMap() {
