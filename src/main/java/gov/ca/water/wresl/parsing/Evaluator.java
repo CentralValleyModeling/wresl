@@ -23,6 +23,13 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     private final Map<String,LookUpTable> tableSeries = new HashMap<>();   // Map that stores lookup table data
     private final LinkedHashMap<String,Svar> commonSvarsMap = new LinkedHashMap<>();       // Parameter data provided through the INITIAL WRESL keyword
 
+    // Class describing a lookup table
+    private class LookUpTable {
+        private String name = null;
+        private Map<String, Integer> field = new HashMap<>();
+        private List<Number[]> data = new ArrayList<>();
+    }
+
     // Enumerators
     private enum Logical {
         TRUE(1),
@@ -663,17 +670,10 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
 
     // ------------------------------------------------------------
-    // --- HELPER CLASS AND METHODS FOR LOOKUP TABLE PROCESSING
+    // --- HELPER METHODS FOR LOOKUP TABLE PROCESSING
     // ------------------------------------------------------------
 
-    // Class describing a lookup table
-    private class LookUpTable {
-        private String name = null;
-        private Map<String, Integer> field = new HashMap<>();
-        private List<Number[]> data = new ArrayList<>();
-    }
-
-    // Given conditions, find/calculate a value based on data in a lokkup table
+    // Given conditions, find/calculate a value based on data in a lookup table
     private IntDouble findDataInLookupTable(String tableName, String select, Map<String, Number> where, Map<String, Number> given, String use) throws EvaluationErrorException {
 
         // If table hasn't been copied into memory yet, do so
