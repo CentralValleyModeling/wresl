@@ -265,7 +265,16 @@ public class ControllerBatch {
                         ControlData.currGoalMap=mds.gMap;
                         ControlData.currTsMap=mds.tsMap;
                         ControlData.isPostProcessing=false;
-                        mds.processModel();
+                        mds.processModel(ControlData.currStudyDataSet.getVarCycleValueMap(),
+                                         ControlData.currStudyDataSet.getVarTimeArrayCycleValueMap(),
+                                         ControlData.currStudyDataSet.getVarCycleIndexList(),
+                                         ControlData.currStudyDataSet.getVarCycleIndexValueMap(),
+                                         ControlData.nThreads,
+                                         ControlData.showRunTimeMessage,
+                                         ControlData.timeStep,
+                                         ControlData.currYear,
+                                         ControlData.currMonth,
+                                         ControlData.currDay);
                     } else {
                         if (ControlData.outputType==1){
                             if (ControlData.isOutputCycle && isSelectedCycleOutput){

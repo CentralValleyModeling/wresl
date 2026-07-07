@@ -63,7 +63,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         for (String parameter : INSTANCE.commonSvarsMap.keySet()) {
             Svar svar = INSTANCE.commonSvarsMap.get(parameter);
             try {
-                INSTANCE.commonSvarsMap.get(parameter).setData(INSTANCE.evaluateSvarDvar(svar));
+                INSTANCE.commonSvarsMap.get(parameter).setData(INSTANCE.evaluateSvarDvar(0, 0, 0, svar));
             }
             catch (EvaluationErrorException e) {
                 throw new EvaluationErrorException(svar.fromWresl, svar.line, e.getErrorMessage());
@@ -75,7 +75,11 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // ------------------------------------------------------------
     // --- EVALUATE AN EXPRESSION PROVIDED AS A PARSE TREE
     // ------------------------------------------------------------
-    public static IntDouble evaluateExpression(ParseTree expression) {
+    public static IntDouble evaluateExpression(int currentDay, int currentMonth, int currentYear, ParseTree expression) {
+        INSTANCE.currentDay = currentDay;
+        INSTANCE.currentMonth = currentMonth;
+        INSTANCE.currentYear = currentYear;
+
         return INSTANCE.visit(expression);
     }
 
@@ -83,20 +87,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // ------------------------------------------------------------
     // --- EVALUATE A CONDITION
     // ------------------------------------------------------------
-    // Evaluate whn only the condition parser is provided
-    public static boolean evaluateCondition(ParseTree expCompareParseTree) {
-        IntDouble condition = INSTANCE.visit(expCompareParseTree);
-        boolean result;
-        if (condition.getValue().intValue() == Logical.TRUE.value) {
-            result = true;
-        }
-        else {
-            result = false;
-        }
-
-        return result;
-    }
-
     // Evaluate when simulation dynamic data along with condition parser are provided
     public static boolean evaluateCondition(int currentDay, int currentMonth, int currentYear, ParseTree expCompareParseTree) {
         // If null ParseTree; that means condition always evaluates to true
@@ -107,13 +97,18 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         INSTANCE.currentMonth = currentMonth;
         INSTANCE.currentYear = currentYear;
 
-        return evaluateCondition(expCompareParseTree);
+        IntDouble condition = INSTANCE.visit(expCompareParseTree);
+        if (condition.getValue().intValue() == Logical.TRUE.value) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     // ------------------------------------------------------------
     // --- EVALUATE A WRESL COMPONENT (SVAR, DVAR)
     // ------------------------------------------------------------
-    public static IntDouble evaluateSvarDvar(WRESLComponent wreslData) throws EvaluationErrorException {
+    public static IntDouble evaluateSvarDvar(int currentDay, int currentMonth, int currentYear, WRESLComponent wreslData) throws EvaluationErrorException {
         // Data to store source file and line number for the WRESL component in case there is an evolution error
         String sourceFile = "";
         int line = -1;
@@ -133,13 +128,13 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                             break;
                         }
                         // Process case conditions until one of them turns true
-                        else if (INSTANCE.evaluateCaseCondition(svar.caseConditionParseTree.get(i))) {
+                        else if (INSTANCE.evaluateCondition(currentDay, currentMonth, currentYear, svar.caseConditionParseTree.get(i))) {
                             index = i;
                             break;
                         }
                     }
 
-                    // If index is still -1, case conditions where not defined properly; generate error
+                    // If index is still -1, case conditions were not defined properly; generate error
                     if (index == -1) {
                         throw new EvaluationErrorException(sourceFile, line, "A viable condition cannot be found for Svar " + svar.name + " defined in file " + svar.fromWresl + " at line " + svar.line + "!");
                     }
@@ -156,21 +151,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         }
         catch (EvaluationErrorException e) {
             throw new EvaluationErrorException(sourceFile, line, e.getErrorMessage());
-        }
-    }
-
-
-    // ------------------------------------------------------------
-    // --- EVALUATE CASE CONDITION
-    // ------------------------------------------------------------
-    private boolean evaluateCaseCondition(ParseTree caseConditionTree) {
-        // An IntDouble value of 0 means false, 1 means true
-        IntDouble result = INSTANCE.visit(caseConditionTree);
-        if (result.getValue().intValue() == 0) {
-            return false;
-        }
-        else {
-            return true;
         }
     }
 

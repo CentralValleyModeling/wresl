@@ -123,16 +123,36 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
     }
 
     // Process model components and prepare model for simulation
-    public void processModel() {
+    public void processModel(Map<String, Map<String, IntDouble>> varCycleValueMap,
+                             Map<String, Map<String, IntDouble>> varTimeArrayCycleValueMap,
+                             List<String> varCycleIndexList,
+                             Map<String, Map<String, IntDouble>> varCycleIndexValueMap,
+                             int nThreads,
+                             boolean showRunTimeMessage,
+                             String timeStep,
+                             int currYear,
+                             int currMonth,
+                             int currDay) {
  //       resetSlackSurplusWeight(); // this clears slack and surplus vars
         long t1 = Calendar.getInstance().getTimeInMillis();
-        processTimeseries();
+        Timeseries dummyTS = new Timeseries();
+        dummyTS.processTimeseries(this.tsList, this.tsMap, nThreads, showRunTimeMessage, timeStep, currYear, currMonth, currDay);
+        if (showRunTimeMessage) System.out.println("Process Timeseries Done.");
+        long t2 = Calendar.getInstance().getTimeInMillis();
+        Svar dummySvar = new Svar();
+        dummySvar.processSvar(this.svList,
+                              this.svMap,
+                              varCycleValueMap,
+                              varTimeArrayCycleValueMap,
+                              this.svarUsedByLaterCycle,
+                              varCycleIndexList,
+                              varCycleIndexValueMap,
+                              this.name,
+                              showRunTimeMessage,
+                              currYear,
+                              currMonth,
+                              currDay);
     }
 
-    private void processTimeseries() {
-        List<String> tsList           = this.tsList;
-        Map<String, Timeseries> tsMap = this.tsMap;
-    //    ProcessTimeseries pt = new ProcessTimeseries(tsList, tsMap, 0, tsList.size()-1);
-    //    pool.invoke(pt);
-    }
+
 }

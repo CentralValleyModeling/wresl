@@ -6,7 +6,6 @@ import gov.ca.water.wrims.engine.core.commondata.solverdata.SolverData;
 import gov.ca.water.wresl.domain.Dvar;
 import gov.ca.water.wresl.domain.StudyDataSet;
 import gov.ca.water.wresl.domain.IntDouble;
-import gov.ca.water.wrims.engine.core.commondata.solverdata.*;
 import gov.ca.water.wrims.engine.core.components.ControlData;
 import gov.ca.water.wrims.engine.core.components.Error;
 import gov.ca.water.wrims.engine.core.evaluator.DataTimeSeries;

@@ -1,6 +1,9 @@
 package gov.ca.water.wresl.domain;
 
+import gov.ca.water.utilities.ParallelVars;
 import gov.ca.water.utilities.Param;
+import gov.ca.water.wresl.errors.EvaluationErrorException;
+import gov.ca.water.wresl.parsing.Evaluator;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.io.Serializable;
@@ -84,6 +87,30 @@ public class Svar extends WRESLComponent implements Serializable {
     // Get data
     public IntDouble getData() {
         return this.data;
+    }
+
+
+    // --------------------
+    // --- PROCESS A SET OF SVARs
+    // --------------------
+    public void processSvar(List<String> svList,
+                            Map<String, Svar> svMap,
+                            Map<String, Map<String, IntDouble>> varCycleValueMap,
+                            Map<String, Map<String, IntDouble>> varTimeArrayCycleValueMap,
+                            Set<String> svarUsedByLaterCycle,
+                            List<String> varCycleIndexList,
+                            Map<String, Map<String, IntDouble>> varCycleIndexValueMap,
+                            String model,
+                            boolean showRunTimeMessage,
+                            int currYear,
+                            int currMonth,
+                            int currDay) {
+        for (String svName: svList) {
+            System.out.println(svName);
+            if (showRunTimeMessage) System.out.println("Processing svar "+svName);
+            Svar svar=svMap.get(svName);
+            svar.setData(Evaluator.evaluateSvarDvar(currDay, currMonth, currYear, svar));
+        }
     }
 
 }

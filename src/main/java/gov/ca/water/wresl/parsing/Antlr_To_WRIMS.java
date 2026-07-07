@@ -156,7 +156,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                 WeightElement weight = mds.wtMap.get(weightName);
                 try {
                     // Evaluate weight value and set parse tree to null to indicate this value is already evaluated
-                    weight.value = Evaluator.evaluateExpression(weight.weightParseTree).getValue().doubleValue();
+                    weight.value = Evaluator.evaluateExpression(0, 0, 0, weight.weightParseTree).getValue().doubleValue();
                     weight.weightParseTree = null;
                 } catch (EvaluationErrorException | NullPointerException e) {
                     // Do nothing at this point since this error is likely due to a dynamic variable within the expression
@@ -541,6 +541,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             svar.needVarFromEarlierCycle = true;
             VisitorResult result1 = visit(ctx.arraySizeDefinition());
             svar.timeArraySize = visitorResultToString(result1);
+            svar.timeArraySizeParseTree = generateExpressionParseTree(svar.timeArraySize);
         }
 
         // Return data
@@ -1662,13 +1663,13 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         VisitorResult result;
 
         // Process first IF clause
-        if (Evaluator.evaluateCondition(ctx.ifClause().expression())) {
+        if (Evaluator.evaluateCondition(0, 0, 0, ctx.ifClause().expression())) {
             return visit(ctx.ifClause().ifBlock());
         }
 
         // Process ELSE IF clauses
         for (int i=0; i<ctx.elseIfClause().size(); i++) {
-            if (Evaluator.evaluateCondition(ctx.elseIfClause(i).expression())) {
+            if (Evaluator.evaluateCondition(0, 0, 0, ctx.elseIfClause(i).expression())) {
                 return visit(ctx.elseIfClause(i).ifBlock());
             }
         }
