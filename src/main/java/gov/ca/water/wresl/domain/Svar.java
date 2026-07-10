@@ -54,7 +54,39 @@ public class Svar extends WRESLComponent implements Serializable {
     public Map<Integer, ArrayList<String>> timeMap_caseCondition = new HashMap<>();
     public Map<Integer, ArrayList<String>> timeMap_caseExpression = new HashMap<>();
 
-    
+
+    // --------------------
+    // --- CONSTRUCTORS
+    // --------------------
+
+    // Copy contents of an svar into another one
+    public Svar copyOf() {
+        Svar svarCopy = new Svar();
+
+        svarCopy.dssBPart = this.dssBPart;
+        svarCopy.format = this.format;
+        svarCopy.kind = this.kind;
+        svarCopy.units = this.units;
+        svarCopy.convertToUnits = this.convertToUnits;
+        svarCopy.dependants = this.dependants;
+        svarCopy.neededVarInCycleSet = this.neededVarInCycleSet;
+        svarCopy.needVarFromEarlierCycle =this.needVarFromEarlierCycle;
+        svarCopy.data = this.data.copyOf();
+        svarCopy.timeArraySize = this.timeArraySize;
+        svarCopy.timeArraySizeParseTree = this.timeArraySizeParseTree;
+        svarCopy.caseName = this.caseName;
+        svarCopy.caseCondition = this.caseCondition;
+        svarCopy.caseConditionParseTree = this.caseConditionParseTree;
+        svarCopy.caseExpression = this.caseExpression;
+        svarCopy.caseExpressionParseTree = this.caseExpressionParseTree;
+        svarCopy.timeMap_caseName = this.timeMap_caseName;
+        svarCopy.timeMap_caseCondition = this.timeMap_caseCondition;
+        svarCopy.timeMap_caseExpression = this.timeMap_caseExpression;
+
+        return svarCopy;
+    }
+
+
     // --------------------
     // --- SETTERS
     // --------------------
@@ -79,6 +111,11 @@ public class Svar extends WRESLComponent implements Serializable {
         this.data = data;
     }
 
+    // Set name
+    public void setName(String name) {
+        this.name = name;
+    }
+
 
     // --------------------
     // --- GETTERS
@@ -90,27 +127,6 @@ public class Svar extends WRESLComponent implements Serializable {
     }
 
 
-    // --------------------
-    // --- PROCESS A SET OF SVARs
-    // --------------------
-    public void processSvar(List<String> svList,
-                            Map<String, Svar> svMap,
-                            Map<String, Map<String, IntDouble>> varCycleValueMap,
-                            Map<String, Map<String, IntDouble>> varTimeArrayCycleValueMap,
-                            Set<String> svarUsedByLaterCycle,
-                            List<String> varCycleIndexList,
-                            Map<String, Map<String, IntDouble>> varCycleIndexValueMap,
-                            String model,
-                            boolean showRunTimeMessage,
-                            int currYear,
-                            int currMonth,
-                            int currDay) {
-        for (String svName: svList) {
-            System.out.println(svName);
-            if (showRunTimeMessage) System.out.println("Processing svar "+svName);
-            Svar svar=svMap.get(svName);
-            svar.setData(Evaluator.evaluateSvarDvar(currDay, currMonth, currYear, svar));
-        }
-    }
+
 
 }

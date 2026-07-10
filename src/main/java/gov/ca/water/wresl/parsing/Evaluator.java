@@ -1,9 +1,7 @@
 package gov.ca.water.wresl.parsing;
 
 import gov.ca.water.utilities.TimeOperations;
-import gov.ca.water.wresl.domain.IntDouble;
-import gov.ca.water.wresl.domain.Svar;
-import gov.ca.water.wresl.domain.WRESLComponent;
+import gov.ca.water.wresl.domain.*;
 import gov.ca.water.wresl.errors.EvaluationErrorException;
 import gov.ca.water.wresl.grammar.wreslBaseVisitor;
 import gov.ca.water.wresl.grammar.wreslParser;
@@ -19,9 +17,13 @@ import static gov.ca.water.utilities.MiscUtilities.getWreslText;
 // Package-private class
 public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
-    private static String absReferencePath = null;                         // Absolute path of the folder that the main WRESL file is located
-    private final Map<String,LookUpTable> tableSeries = new HashMap<>();   // Map that stores lookup table data
-    private final LinkedHashMap<String,Svar> commonSvarsMap = new LinkedHashMap<>();       // Parameter data provided through the INITIAL WRESL keyword
+    private static String absReferencePath = null;                            // Absolute path of the folder that the main WRESL file is located
+    private final Map<String,LookUpTable> tableSeries = new HashMap<>();      // Map that stores lookup table data
+
+    // Variables that are used for common data used by methods
+    private StudyDataSet sds = new StudyDataSet();                 // This holds all the information for the study
+    private ModelDataSet currentModelDataSet = new ModelDataSet(); // This holds the data for the current model we are working on
+    private int futureArrayIndex = 0;                              // Future array index to be used when future arrays are utilized
 
     // Class describing a lookup table
     private class LookUpTable {
@@ -60,26 +62,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
 
     // ------------------------------------------------------------
-    // --- EVALUATE INITIAL DATA
-    // ------------------------------------------------------------
-    public static void setInitialData(LinkedHashMap<String, Svar> parameterMap) throws EvaluationErrorException {
-        // Copy parameter map into common memory
-        INSTANCE.commonSvarsMap.putAll(parameterMap);
-
-        // Loop over parameter list and evaluate
-        for (String parameter : INSTANCE.commonSvarsMap.keySet()) {
-            Svar svar = INSTANCE.commonSvarsMap.get(parameter);
-            try {
-                INSTANCE.commonSvarsMap.get(parameter).setData(INSTANCE.evaluateSvarDvar(0, 0, 0, svar));
-            }
-            catch (EvaluationErrorException e) {
-                throw new EvaluationErrorException(svar.fromWresl, svar.line, e.getErrorMessage());
-            }
-        }
-    }
-
-
-    // ------------------------------------------------------------
     // --- EVALUATE AN EXPRESSION PROVIDED AS A PARSE TREE
     // ------------------------------------------------------------
     public static IntDouble evaluateExpression(int currentDay, int currentMonth, int currentYear, ParseTree expression) {
@@ -94,15 +76,23 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // ------------------------------------------------------------
     // --- EVALUATE A CONDITION
     // ------------------------------------------------------------
-    // Evaluate when simulation dynamic data along with condition parser are provided
-    public static boolean evaluateCondition(int currentDay, int currentMonth, int currentYear, ParseTree expCompareParseTree) {
-        // If null ParseTree; that means condition always evaluates to true
-        if (expCompareParseTree == null) {return true; }
-
+    // Simulation day, month and year are provided
+    public static boolean evaluateCondition(StudyDataSet sds, int currentDay, int currentMonth, int currentYear, ParseTree expCompareParseTree) {
         // Store simulation day, month and year
         INSTANCE.currentDay = currentDay;
         INSTANCE.currentMonth = currentMonth;
         INSTANCE.currentYear = currentYear;
+
+        return INSTANCE.evaluateCondition(sds, expCompareParseTree);
+    }
+
+    // No information about simulation day, month and year is provided
+    public static boolean evaluateCondition(StudyDataSet sds, ParseTree expCompareParseTree) {
+        // If null ParseTree; that means condition always evaluates to true
+        if (expCompareParseTree == null) {return true; }
+
+        // Store StudyDataSet in common memory to be used by visitor methods
+        if (sds != null) INSTANCE.sds = sds;
 
         IntDouble condition = INSTANCE.visit(expCompareParseTree);
         if (condition.getValue().intValue() == Logical.TRUE.value) {
@@ -112,52 +102,113 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         }
     }
 
-    // ------------------------------------------------------------
-    // --- EVALUATE A WRESL COMPONENT (SVAR, DVAR)
-    // ------------------------------------------------------------
-    public static IntDouble evaluateSvarDvar(int currentDay, int currentMonth, int currentYear, WRESLComponent wreslData) throws EvaluationErrorException {
-        // Data to store source file and line number for the WRESL component in case there is an evolution error
-        String sourceFile = "";
-        int line = -1;
 
+    // ------------------------------------------------------------
+    // --- EVALUATE AN SVAR
+    // ------------------------------------------------------------
+    private static IntDouble evaluateSvar(Svar svar) throws EvaluationErrorException {
         try {
-            switch (wreslData) {
-                // Evaluate Svar
-                case Svar svar -> {
-                    sourceFile = svar.fromWresl;
-                    line = svar.line;
-                    int index = -1;
-                    // Process case conditions and figure out which case expression to use
-                    for (int i = 0; i < svar.caseName.size(); i++) {
-                        // Is case condition "always"?
-                        if (svar.caseCondition.get(i).equals("always")) {
-                            index = i;
-                            break;
-                        }
-                        // Process case conditions until one of them turns true
-                        else if (INSTANCE.evaluateCondition(currentDay, currentMonth, currentYear, svar.caseConditionParseTree.get(i))) {
+            int index = -1;
+            // Process case conditions and figure out which case expression to use
+            if (svar.caseConditionParseTree == null) {
+                index = 0;
+            } else {
+                for (int i = 0; i < svar.caseName.size(); i++) {
+                    // Process case conditions until one of them turns true
+                    ParseTree caseConditionParseTree = svar.caseConditionParseTree.get(i);
+                    if (caseConditionParseTree == null) {
+                        index = i;
+                    } else {
+                        if (INSTANCE.evaluateCondition(null, caseConditionParseTree)) {
                             index = i;
                             break;
                         }
                     }
-
-                    // If index is still -1, case conditions were not defined properly; generate error
-                    if (index == -1) {
-                        throw new EvaluationErrorException(sourceFile, line, "A viable condition cannot be found for Svar " + svar.name + " defined in file " + svar.fromWresl + " at line " + svar.line + "!");
-                    }
-
-                    // We know which expression to evaluate; evaluate caseExpression
-                    return INSTANCE.visit(svar.caseExpressionParseTree.get(index));
-                }
-
-                default -> {
-                    // Here to complete switch statement but should not need this if overall parsing code is correct
-                    throw new EvaluationErrorException("WRESL data is not recognized for evaluation!");
                 }
             }
+
+            // If index is still -1, case conditions were not defined properly; generate error
+            if (index == -1) {
+                throw new EvaluationErrorException(svar.fromWresl, svar.line, "A viable condition cannot be found for Svar " + svar.name + " defined in file " + svar.fromWresl + " at line " + svar.line + "!");
+            }
+
+            // We know which expression to evaluate; evaluate caseExpression
+            return INSTANCE.visit(svar.caseExpressionParseTree.get(index));
         }
         catch (EvaluationErrorException e) {
-            throw new EvaluationErrorException(sourceFile, line, e.getErrorMessage());
+            throw new EvaluationErrorException(svar.fromWresl, svar.line, e.getErrorMessage());
+        }
+    }
+
+
+    // ------------------------------------------------------------
+    // --- PROCESS A MODEL
+    // ------------------------------------------------------------
+    // Gateway method to process a model stored in a ModelDataSet object
+    public static boolean processModel(StudyDataSet sds, int modelIndex, int currentDay, int currentMonth, int currentYear, int nThreads, boolean showRunTimeMessage) {
+        // Set simulation time related parameters
+        INSTANCE.currentDay = currentDay;
+        INSTANCE.currentMonth = currentMonth;
+        INSTANCE.currentYear = currentYear;
+
+        // Store StudyDataSet in common memory to be used by visitor methods
+        INSTANCE.sds = sds;
+
+        // Check if condition to process model holds true
+        ParseTree modelConditionParseTree = sds.getModelConditionParseTree(modelIndex);
+        boolean toBeProcessed = Evaluator.evaluateCondition(null, modelConditionParseTree);
+        if (!toBeProcessed) { return false; }
+
+        // Retrieve ModelDataSet
+        INSTANCE.currentModelDataSet = sds.getModelDataSet(modelIndex);
+
+        // Clear future arrays
+        INSTANCE.currentModelDataSet.clearFutureSvMap();
+        INSTANCE.currentModelDataSet.clearFutureAsMap();
+
+        // Process Timeseries data
+        processTimeseries();
+        if (showRunTimeMessage) System.out.println("Completed Timeseries processing");
+
+        // Process Svars
+        processSvars(null, INSTANCE.currentModelDataSet.svList, INSTANCE.currentModelDataSet.svMap, showRunTimeMessage);
+        if (showRunTimeMessage) System.out.println("Completed Svar processing.");
+
+        return true;
+    }
+
+    // Process timeseries
+    private static void processTimeseries() {
+    }
+
+    // Process Svars
+    public static void processSvars(StudyDataSet sds, List<String> svList, Map<String, Svar> svMap, boolean showRunTimeMessage) {
+        // Store sds in common data space so it can be used by all visitor methods
+        if (sds != null) INSTANCE.sds = sds;
+
+        for (String svName: svList) {
+            if (showRunTimeMessage) System.out.println("Processing svar "+svName);
+            Svar svar = svMap.get(svName);
+
+            System.out.println(svName);
+
+            // Process svar
+            INSTANCE.futureArrayIndex = 0;
+            IntDouble data = INSTANCE.evaluateSvar(svar);
+            svar.setData(data);
+
+            // If svar utilizes future arrays, process those arrays
+            if (svar.timeArraySizeParseTree != null) {
+                IntDouble futureArraySize = INSTANCE.visit(svar.timeArraySizeParseTree);
+                for (int indx=1; indx<=futureArraySize.getValue().intValue(); indx++) {
+                    Svar futureSvar = svar.copyOf();
+                    String futureSvName = svName + "__fut__" + indx;
+                    futureSvar.setName(futureSvName);
+                    INSTANCE.futureArrayIndex = indx;
+                    futureSvar.setData(INSTANCE.evaluateSvar(futureSvar));
+                    INSTANCE.currentModelDataSet.addFutureSvar(futureSvar);
+                }
+            }
         }
     }
 
@@ -543,8 +594,10 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         // Variable name
         String varName = getWreslText(ctx.OBJECT_NAME());
 
-        // Find the variable in common variables
-        Svar var = INSTANCE.commonSvarsMap.get(varName);
+        // Retrieve variable data
+        Svar var;
+        var = INSTANCE.currentModelDataSet.getSvar(varName);   // Is this an Svar?
+        if (var == null) var = this.sds.getParameter(varName); // A parameter?
         if (var == null) {
             throw new EvaluationErrorException("Variable " + varName + " is not defined!");
         }
@@ -560,30 +613,28 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     }
 
     @Override
-    // doubleNumber
-    public IntDouble visitDoubleNumber(wreslParser.DoubleNumberContext ctx) {
-        Number doubleValue = Double.valueOf(Double.parseDouble(ctx.DOUBLE().getText()));
-        return new IntDouble(doubleValue,false);
-    }
-
-    @Override
-    // intNumber
-    public IntDouble visitIntNumber(wreslParser.IntNumberContext ctx) {
-        Number intValue = Integer.valueOf(Integer.parseInt(ctx.INT().getText()));
-        return new IntDouble(intValue, true);
-    }
-
-    @Override
     // currentMonthReference
+    // Always return value based on water year months (i.e. Oct = 1, Sep =12)
+    // INSTANCE.currentMonth is calendar month number
     public IntDouble visitCurrentMonthReference(wreslParser.CurrentMonthReferenceContext ctx) {
-        Number intValue = Integer.valueOf(INSTANCE.currentMonth);
+        String monthName = TimeOperations.monthName(INSTANCE.currentMonth);
+        Number intValue = Integer.valueOf(TimeOperations.waterYearMonthValue(monthName));
         return new IntDouble(intValue, true);
     }
 
     @Override
+    public IntDouble visitWaterYearReference(wreslParser.WaterYearReferenceContext ctx) {
+        return new IntDouble(TimeOperations.waterYearValue(INSTANCE.currentMonth, INSTANCE.currentYear), true);
+    }
+
+    @Override
+    // monthReference
+    // Always return value based on water year months (i.e. Oct = 1, Sep =12)
+    // INSTANCE.currentMonth is calendar month number
     public IntDouble visitMonthReference(wreslParser.MonthReferenceContext ctx) {
         String month = getWreslText(ctx.MONTH());
         if (month.contains("prev")) {
+            // For "prev" month reference, it doesn't matter if we operate on calendar or water year months since returned value is relative to the current month
             month = month.substring(4);
             int currentMonthValue = INSTANCE.currentMonth;
             int monthValue = TimeOperations.monthValue(month);
@@ -595,8 +646,27 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 return new IntDouble (-12, true);
             }
         } else {
-            return new IntDouble(TimeOperations.monthValue(month), true);
+            return new IntDouble(TimeOperations.waterYearMonthValue(month), true);
         }
+    }
+
+    @Override
+    public IntDouble visitFutureArrayIndexReference(wreslParser.FutureArrayIndexReferenceContext ctx) {
+        return new IntDouble(INSTANCE.futureArrayIndex, true);
+    }
+
+    @Override
+    // doubleNumber
+    public IntDouble visitDoubleNumber(wreslParser.DoubleNumberContext ctx) {
+        Number doubleValue = Double.valueOf(Double.parseDouble(ctx.DOUBLE().getText()));
+        return new IntDouble(doubleValue,false);
+    }
+
+    @Override
+    // intNumber
+    public IntDouble visitIntNumber(wreslParser.IntNumberContext ctx) {
+        Number intValue = Integer.valueOf(Integer.parseInt(ctx.INT().getText()));
+        return new IntDouble(intValue, true);
     }
 
 
@@ -672,7 +742,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // ------------------------------------------------------------
     // --- HELPER METHODS FOR LOOKUP TABLE PROCESSING
     // ------------------------------------------------------------
-
     // Given conditions, find/calculate a value based on data in a lookup table
     private IntDouble findDataInLookupTable(String tableName, String select, Map<String, Number> where, Map<String, Number> given, String use) throws EvaluationErrorException {
 
@@ -826,7 +895,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
                 // Strip comments from line; remove leading and trailing spaces
                 if (strLine.indexOf("!") != -1) { strLine = strLine.substring(0, strLine.indexOf("!")); }
-                strLine.strip();
+                strLine = strLine.strip();
 
                 // if there is nothing left in strLine, continue
                 if (strLine.equals("")) {continue;}
@@ -838,7 +907,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                     // Second line of entry; read and process field names
                     if ((strLine = br.readLine()) == null) {throw new EvaluationErrorException("No field names were found in table " + tableName + ".table!");}
                     if (strLine.indexOf("!") != -1) { strLine = strLine.substring(0, strLine.indexOf("!")); }
-                    strLine.strip();
+                    strLine = strLine.strip();
                     String[] fieldNames = strLine.toLowerCase().split("\\s+");
                     fieldSize = fieldNames.length;
                     for (int i=0; i<fieldSize; i++) {

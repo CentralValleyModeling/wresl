@@ -131,7 +131,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         }
         this.sds.setModelDataSetMap(modelDataSetMap);
 
-        // Loop through models and process data
+        // Loop through models and process data, check for errors
         Map<String, Timeseries> tsMap = new HashMap<>();
         Map<String, List<String>> tsTimeStepMap = new HashMap<>();
         Expression_To_Vars varFinder = new Expression_To_Vars();
@@ -224,9 +224,6 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     @Override
     // INITIAL; Svars listed under INITIAL statement are stored as parameters in StudyDataSet
     public VisitorResult visitInitial(wreslParser.InitialContext ctx) {
-        ArrayList<String> tempParameterList = new ArrayList<>();
-        LinkedHashMap tempParameterMap = new LinkedHashMap<>();
-
         // Loop through children; they should all be SVARs
         for (int i = 0; i <= ctx.children.size() - 1; i++) {
             // Skip anything that is not Svar definition
@@ -237,14 +234,12 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             VisitorResult result = visit(ctx.getChild(i));
 
             // WRESL component can only be an SVAR as dictated by the grammar
-            Svar svar = (Svar) result.data().get(0);
-            tempParameterList.add(svar.name);
-            tempParameterMap.put(svar.name, svar);
-
+            Svar parameter = (Svar) result.data().get(0);
+            this.sds.addParameter(parameter);
         }
 
-        // Process parameters (Svars) and store them in the Evaluator object
-        Evaluator.setInitialData(tempParameterMap);
+        // Process parameters (Svars)
+        Evaluator.processSvars(this.sds, this.sds.getParameterList(), this.sds.getParameterMap(), false);
 
         return null;
     }
@@ -288,7 +283,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
     @Override
     // MODEL
-    public VisitorResult visitModel(wreslParser.ModelContext ctx) throws EvaluationErrorException {
+    public VisitorResult visitModel(wreslParser.ModelContext ctx) throws EvaluationErrorException, SyntaxErrorException {
         ModelDataSet mds = new ModelDataSet();
         this.currentModelOrGroupName = getWreslText(ctx.OBJECT_NAME());
 
@@ -321,10 +316,22 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                 String name = data.name;
                 switch (data) {
                     case Svar svar -> {
+                        // Make sure svar is not defined as a parameter
+                        if (this.sds.getParameter(name) != null) {
+                            throw new SyntaxErrorException(svar.fromWresl, svar.line, "Svar '"+name+"' is previously defined as an initial parameter!");
+                        }
+                        // Make sure svar is not defined more than once
+                        if (mds.svList.contains(name)) {
+                            throw new SyntaxErrorException(svar.fromWresl, svar.line, "Svar '"+name+"' is defined more than once in model '"+mds.name+"'!");
+                        }
                         mds.svList.add(name);
                         mds.svMap.put(name, svar);
                     }
                     case Dvar dvar -> {
+                        // Make sure dvar is not defined more than once
+                        if (mds.dvList.contains(name)) {
+                            throw new SyntaxErrorException(dvar.fromWresl, dvar.line, "Dvar '"+name+"' is defined more than once in model '"+mds.name+"'!");
+                        }
                         mds.dvList.add(name);
                         mds.dvMap.put(name, dvar);
                     }
@@ -333,14 +340,26 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         mds.wtMap.put(name, weight);
                     }
                     case Timeseries ts -> {
+                        // Make sure ts is not defined more than once
+                        if (mds.tsList.contains(name)) {
+                            throw new SyntaxErrorException(ts.fromWresl, ts.line, "Timeseries '"+name+"' is defined more than once in model '"+mds.name+"'!");
+                        }
                         mds.tsList.add(name);
                         mds.tsMap.put(name, ts);
                     }
                     case Goal goal -> {
+                        // Make sure goal is not defined more than once
+                        if (mds.gList.contains(name)) {
+                            throw new SyntaxErrorException(goal.fromWresl, goal.line, "Goal '"+name+"' is defined more than once in model '"+mds.name+"'!");
+                        }
                         mds.gList.add(name);
                         mds.gMap.put(name, goal);
                     }
                     case Alias alias -> {
+                        // Make sure alias is not defined more than once
+                        if (mds.asList.contains(name)) {
+                            throw new SyntaxErrorException(alias.fromWresl, alias.line, "Alias '"+name+"' is defined more than once in model '"+mds.name+"'!");
+                        }
                         mds.asList.add(name);
                         mds.asMap.put(name, alias);
                     }
@@ -1611,7 +1630,11 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         ParseTree caseConditionTree;
         if (ctx.caseCondition() != null) {
             caseCondition = getWreslText(ctx.caseCondition().getChild(1));
-            caseConditionTree = ctx.caseCondition().caseConditionExpression();
+            if (caseCondition.equals(Param.always)) {
+                caseConditionTree = null;
+            } else {
+                caseConditionTree = ctx.caseCondition().caseConditionExpression();
+            }
         }
         else {
             caseCondition = Param.always;
@@ -1663,13 +1686,13 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         VisitorResult result;
 
         // Process first IF clause
-        if (Evaluator.evaluateCondition(0, 0, 0, ctx.ifClause().expression())) {
+        if (Evaluator.evaluateCondition(this.sds, ctx.ifClause().expression())) {
             return visit(ctx.ifClause().ifBlock());
         }
 
         // Process ELSE IF clauses
         for (int i=0; i<ctx.elseIfClause().size(); i++) {
-            if (Evaluator.evaluateCondition(0, 0, 0, ctx.elseIfClause(i).expression())) {
+            if (Evaluator.evaluateCondition(this.sds, ctx.elseIfClause(i).expression())) {
                 return visit(ctx.elseIfClause(i).ifBlock());
             }
         }

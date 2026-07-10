@@ -67,10 +67,12 @@ public class ControllerBatch {
             for (int i=0; i<syntaxErrors.size(); i++) {
                 System.err.println(syntaxErrors.get(i));
             }
+            return;
         }
         catch (EvaluationErrorException e) {
             System.err.println("Evaluation error: " + e.getErrorMessage());
             System.err.println("                  " +"File " + e.getSourceFile() + ", line " + e.getLine());
+            return;
         }
         long afterParsing = Calendar.getInstance().getTimeInMillis();
         ControlData.t_parse=(int) (afterParsing-startTimeInMillis);
@@ -232,7 +234,7 @@ public class ControllerBatch {
             sds.clearVarTimeArrayCycleValueMap();
             sds.clearVarCycleIndexByTimeStep();
             int i=0;
-            while (i<modelList.size() && noError){
+            while (i<modelList.size() && noError) {
                 int cycleI=i+1;
                 String strCycleI=cycleI+"";
                 boolean isSelectedCycleOutput=General.isSelectedCycleOutput(strCycleI);
@@ -246,36 +248,8 @@ public class ControllerBatch {
                 VariableTimeStep.setCurrentDate(sds, ControlData.cycleStartDay, ControlData.cycleStartMonth, ControlData.cycleStartYear);
 
                 while(VariableTimeStep.checkEndDate(ControlData.currDay, ControlData.currMonth, ControlData.currYear, ControlData.cycleEndDay, ControlData.cycleEndMonth, ControlData.cycleEndYear)<0 && noError) {
-                    ParseTree modelCondition = modelConditionParsers.get(i);
-                    boolean condition;
-                    try {
-                        condition = Evaluator.evaluateCondition(ControlData.currDay, ControlData.currMonth, ControlData.currYear, modelCondition);
-                    } catch (Exception e) {
-                        Error.addEvaluationError("Model condition evaluation has error.");
-                        condition = false;
-                    }
-                    
-                    if (condition){
-                        ClearValue.clearCycleLoopValue(modelList, modelDataSetMap);
-                        ControlData.currSvMap=mds.svMap;
-                        ControlData.currSvFutMap=mds.svFutMap;
-                        ControlData.currDvMap=mds.dvMap;
-                        ControlData.currDvSlackSurplusMap=mds.dvSlackSurplusMap;
-                        ControlData.currAliasMap=mds.asMap;
-                        ControlData.currGoalMap=mds.gMap;
-                        ControlData.currTsMap=mds.tsMap;
-                        ControlData.isPostProcessing=false;
-                        mds.processModel(ControlData.currStudyDataSet.getVarCycleValueMap(),
-                                         ControlData.currStudyDataSet.getVarTimeArrayCycleValueMap(),
-                                         ControlData.currStudyDataSet.getVarCycleIndexList(),
-                                         ControlData.currStudyDataSet.getVarCycleIndexValueMap(),
-                                         ControlData.nThreads,
-                                         ControlData.showRunTimeMessage,
-                                         ControlData.timeStep,
-                                         ControlData.currYear,
-                                         ControlData.currMonth,
-                                         ControlData.currDay);
-                    } else {
+                    boolean modelProcessed = Evaluator.processModel(sds, i, ControlData.currDay, ControlData.currMonth, ControlData.currYear, ControlData.nThreads, ControlData.showRunTimeMessage);
+                    if (!modelProcessed) {
                         if (ControlData.outputType==1){
                             if (ControlData.isOutputCycle && isSelectedCycleOutput){
                                 HDF5Writer.skipOneCycle(mds, cycleI);

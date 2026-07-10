@@ -1,5 +1,6 @@
 package gov.ca.water.utilities;
 
+import com.google.common.collect.ImmutableBiMap;
 import mil.army.usace.hec.metadata.Interval;
 import mil.army.usace.hec.metadata.IntervalFactory;
 
@@ -39,20 +40,34 @@ public final class TimeOperations {
             entry(10, 31),
             entry(11, 30),
             entry(12, 31));
-    private static final Map<String, Integer> monthNumberMap = Map.ofEntries(
-            entry("jan", 1),
-            entry("feb", 2),  // Need to decide based on year
-            entry("mar", 3),
-            entry("apr", 4),
-            entry("may", 5),
-            entry("jun", 6),
-            entry("jul", 7),
-            entry("aug", 8),
-            entry("sep", 9),
-            entry("oct", 10),
-            entry("nov", 11),
-            entry("dec", 12));
-
+    private static final ImmutableBiMap<String, Integer> waterYearMonthNumberBiMap = ImmutableBiMap.<String, Integer>builder()
+            .put(Map.entry("oct", 1))
+            .put(Map.entry("nov", 2))  // Need to decide based on year
+            .put(Map.entry("dec", 3))
+            .put(Map.entry("jan", 4))
+            .put(Map.entry("feb", 5))
+            .put(Map.entry("mar", 6))
+            .put(Map.entry("apr", 7))
+            .put(Map.entry("may", 8))
+            .put(Map.entry("jun", 9))
+            .put(Map.entry("jul", 10))
+            .put(Map.entry("aug", 11))
+            .put(Map.entry("sep", 12))
+            .build();
+    private static final ImmutableBiMap<String, Integer> monthNumberBiMap = ImmutableBiMap.<String, Integer>builder()
+            .put(Map.entry("jan", 1))
+            .put(Map.entry("feb", 2))
+            .put(Map.entry("mar", 3))
+            .put(Map.entry("apr", 4))
+            .put(Map.entry("may", 5))
+            .put(Map.entry("jun", 6))
+            .put(Map.entry("jul", 7))
+            .put(Map.entry("aug", 8))
+            .put(Map.entry("sep", 9))
+            .put(Map.entry("oct", 10))
+            .put(Map.entry("nov", 11))
+            .put(Map.entry("dec", 12))
+            .build();
 
     // Number of days in a given month (month is given as String)
     public static int numberOfDays(String month, int year) {
@@ -180,8 +195,8 @@ public final class TimeOperations {
     }
 
     public static boolean range(int dataMonth, String m1, String m2) {
-        int mon1 = monthNumberMap.get(m1);
-        int mon2 = monthNumberMap.get(m2);
+        int mon1 = monthNumberBiMap.get(m1);
+        int mon2 = monthNumberBiMap.get(m2);
 
         if (mon1 <= mon2) {
             if (dataMonth >= mon1 && dataMonth <= mon2) {
@@ -232,7 +247,27 @@ public final class TimeOperations {
     }
 
     public static int monthValue(String month) {
-        return monthNumberMap.get(month);
+        return monthNumberBiMap.get(month);
+    }
+
+    public static int waterYearMonthValue(String month) {
+        return waterYearMonthNumberBiMap.get(month);
+    }
+
+    public static String monthName(int month) {
+        return monthNumberBiMap.inverse().get(month);
+    }
+
+    public static String waterYearMonthName(int month) {
+        return waterYearMonthNumberBiMap.inverse().get(month);
+    }
+
+    public static int waterYearValue(int month, int year) {
+        if (month >= 10) {
+            return year + 1;
+        } else {
+            return year;
+        }
     }
 
     public static String dssTimeEndDay(int year, int month, int day){

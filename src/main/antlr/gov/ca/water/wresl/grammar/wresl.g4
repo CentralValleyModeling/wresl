@@ -261,7 +261,7 @@ variableReference
     | CURRENT_MONTH                      #currentMonthReference
     | WATER_YEAR                         #waterYearReference
     | MONTH                              #monthReference
-    | FUTURE_ARRAY_MAXIMUM               #arrayMaximumReference
+    | FUTURE_ARRAY_INDEX                 #futureArrayIndexReference
     | DOUBLE                             #doubleNumber
     | INT                                #intNumber
     ;
@@ -369,7 +369,7 @@ MONTH:
     ;
 STEP_1MON: '1mon';
 STEP_1DAY: '1day';
-FUTURE_ARRAY_MAXIMUM: '$m' ;
+FUTURE_ARRAY_INDEX: '$m' ;
 // Keywords - instructions
 VALUE: 'value';
 EXTERNAL: 'external';

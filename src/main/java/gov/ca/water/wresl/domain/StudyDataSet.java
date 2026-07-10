@@ -1,5 +1,6 @@
 package gov.ca.water.wresl.domain;
 
+import gov.ca.water.wresl.errors.SyntaxErrorException;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.io.Serializable;
@@ -11,6 +12,7 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     private String absMainFilePath;
 
     private List<String> parameterList = new ArrayList<>();
+    private LinkedHashMap<String, Svar> parameterMap = new LinkedHashMap<>();
 
     private List<String> modelList = new ArrayList<>();
     private List<String> modelConditionList = new ArrayList<>();
@@ -39,12 +41,33 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     // -----------------
     // Methods
     // -----------------
+    public void addParameter(Svar parameter) throws SyntaxErrorException {
+        // Check that parameter is not defined more than once
+        if (this.parameterList.contains(parameter.name)) {
+            throw new SyntaxErrorException(parameter.fromWresl, parameter.line,"Initial parameter "+parameter.name+" is defined more than once!");
+        }
+        this.parameterList.add(parameter.name);
+        this.parameterMap.put(parameter.name, parameter);
+    }
+
+    public Svar getParameter(String parameterName) {
+        return this.parameterMap.get(parameterName);
+    }
+
     public List<String> getParameterList() {
-        return new ArrayList<String>(this.parameterList);
+        return this.parameterList;
     }
 
     public void setParameterList(List<String> parameterList) {
         this.parameterList = parameterList;
+    }
+
+    public LinkedHashMap<String, Svar> getParameterMap() {
+        return this.parameterMap;
+    }
+
+    public void setParameterMap(LinkedHashMap<String, Svar> parameterMap) {
+        this.parameterMap = parameterMap;
     }
 
     public Map<String, Timeseries> getTimeseriesMap() {
@@ -95,12 +118,20 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         this.modelTimeStepList = modelTimeStepList;
     }
 
+    public ParseTree getModelConditionParseTree(int modelIndex) {
+        return this.modelConditionParseTrees.get(modelIndex);
+    }
+
     public List<ParseTree> getModelConditionParseTrees() {
         return this.modelConditionParseTrees;
     }
 
     public void setModelConditionParseTrees(List<ParseTree> modelConditionParseTrees) {
         this.modelConditionParseTrees = modelConditionParseTrees;
+    }
+
+    public ModelDataSet getModelDataSet(int modelIndex) {
+        return this.modelDataSetMap.get(this.modelList.get(modelIndex));
     }
 
     public Map<String, ModelDataSet> getModelDataSetMap() {

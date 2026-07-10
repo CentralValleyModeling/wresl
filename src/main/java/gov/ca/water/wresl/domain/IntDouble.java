@@ -36,13 +36,11 @@ public class IntDouble {
 
 
     public IntDouble copyOf(){
-        IntDouble newIntDouble;
-        if (isInteger){
-            newIntDouble = new IntDouble(data.intValue(), isInteger);
-        }else{
-            newIntDouble = new IntDouble(data.doubleValue(), isInteger);
+        if (this.isInteger){
+            return new IntDouble(this.data.intValue(), this.isInteger);
+        } else {
+            return new IntDouble(this.data.doubleValue(), this.isInteger);
         }
-        return newIntDouble;
     }
 
 
