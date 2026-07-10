@@ -38,17 +38,9 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     public Map<Integer,LinkedHashSet<String>> cycIntDvMap=new HashMap<>();
 
 
-    // -----------------
-    // Methods
-    // -----------------
-    public void addParameter(Svar parameter) throws SyntaxErrorException {
-        // Check that parameter is not defined more than once
-        if (this.parameterList.contains(parameter.name)) {
-            throw new SyntaxErrorException(parameter.fromWresl, parameter.line,"Initial parameter "+parameter.name+" is defined more than once!");
-        }
-        this.parameterList.add(parameter.name);
-        this.parameterMap.put(parameter.name, parameter);
-    }
+    // ------------------------------------------------------------
+    // --- GETTERS
+    // ------------------------------------------------------------
 
     public Svar getParameter(String parameterName) {
         return this.parameterMap.get(parameterName);
@@ -58,48 +50,28 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         return this.parameterList;
     }
 
-    public void setParameterList(List<String> parameterList) {
-        this.parameterList = parameterList;
-    }
-
     public LinkedHashMap<String, Svar> getParameterMap() {
         return this.parameterMap;
     }
 
-    public void setParameterMap(LinkedHashMap<String, Svar> parameterMap) {
-        this.parameterMap = parameterMap;
+    public Timeseries getTimeseries(String tsName) {
+        return this.timeseriesMap.get(tsName);
     }
 
     public Map<String, Timeseries> getTimeseriesMap() {
         return new HashMap<String, Timeseries>(this.timeseriesMap);
     }
 
-    public void setTimeseriesMap(Map<String, Timeseries> timeseriesMap) {
-        this.timeseriesMap = timeseriesMap;
-    }
-
     public Map<String, List<String>> getTimeseriesTimeStepMap() {
         return new HashMap<String, List<String>>(this.timeseriesTimeStepMap);
-    }
-
-    public void setTimeseriesTimeStepMap(Map<String, List<String>> timeseriesTimeStepMap) {
-        this.timeseriesTimeStepMap = timeseriesTimeStepMap;
     }
 
     public String getAbsMainFilePath() {
         return new String(absMainFilePath);
     }
 
-    public void setAbsMainFilePath(String absMainFilePath) {
-        this.absMainFilePath = absMainFilePath;
-    }
-
     public List<String> getModelList() {
         return new ArrayList<String>(this.modelList);
-    }
-
-    public void setModelList(List<String> modelList) {
-        this.modelList = modelList;
     }
 
     public List<String> getModelConditionList() {
@@ -110,24 +82,12 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         return this.modelTimeStepList;
     }
 
-    public void setModelConditionList(List<String> modelConditionList) {
-        this.modelConditionList = modelConditionList;
-    }
-
-    public void setModelTimeStepList(List<String> modelTimeStepList) {
-        this.modelTimeStepList = modelTimeStepList;
-    }
-
     public ParseTree getModelConditionParseTree(int modelIndex) {
         return this.modelConditionParseTrees.get(modelIndex);
     }
 
     public List<ParseTree> getModelConditionParseTrees() {
         return this.modelConditionParseTrees;
-    }
-
-    public void setModelConditionParseTrees(List<ParseTree> modelConditionParseTrees) {
-        this.modelConditionParseTrees = modelConditionParseTrees;
     }
 
     public ModelDataSet getModelDataSet(int modelIndex) {
@@ -138,16 +98,8 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         return new HashMap<String, ModelDataSet>(this.modelDataSetMap);
     }
 
-    public void setModelDataSetMap(Map<String, ModelDataSet> modelDataSetMap) {
-        this.modelDataSetMap = modelDataSetMap;
-    }
-
     public Map<String, Map<String, IntDouble>> getVarCycleValueMap() {
         return this.varCycleValueMap;
-    }
-
-    public void setVarCycleValueMap(Map<String, Map<String, IntDouble>> varCycleValueMap) {
-        this.varCycleValueMap = varCycleValueMap;
     }
 
     public Map<String, Map<String, IntDouble>> getVarTimeArrayCycleValueMap() {
@@ -158,8 +110,82 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         return this.varCycleIndexValueMap;
     }
 
+    public List<String> getVarCycleIndexList(){
+        return this.varCycleIndexList;
+    }
+
+    public List<String> getDvarTimeArrayCycleIndexList(){
+        return this.dvarTimeArrayCycleIndexList;
+    }
+
+
+    // ------------------------------------------------------------
+    // --- SETTERS
+    // ------------------------------------------------------------
+
+    public void setParameterList(List<String> parameterList) {
+        this.parameterList = parameterList;
+    }
+
+    public void setParameterMap(LinkedHashMap<String, Svar> parameterMap) {
+        this.parameterMap = parameterMap;
+    }
+
+    public void setTimeseriesMap(Map<String, Timeseries> timeseriesMap) {
+        this.timeseriesMap = timeseriesMap;
+    }
+
+    public void setTimeseriesTimeStepMap(Map<String, List<String>> timeseriesTimeStepMap) {
+        this.timeseriesTimeStepMap = timeseriesTimeStepMap;
+    }
+
+    public void setAbsMainFilePath(String absMainFilePath) {
+        this.absMainFilePath = absMainFilePath;
+    }
+
+    public void setModelList(List<String> modelList) {
+        this.modelList = modelList;
+    }
+
+    public void setModelConditionList(List<String> modelConditionList) {
+        this.modelConditionList = modelConditionList;
+    }
+
+    public void setModelTimeStepList(List<String> modelTimeStepList) {
+        this.modelTimeStepList = modelTimeStepList;
+    }
+
+    public void setModelConditionParseTrees(List<ParseTree> modelConditionParseTrees) {
+        this.modelConditionParseTrees = modelConditionParseTrees;
+    }
+
+    public void setModelDataSetMap(Map<String, ModelDataSet> modelDataSetMap) {
+        this.modelDataSetMap = modelDataSetMap;
+    }
+
+    public void setVarCycleValueMap(Map<String, Map<String, IntDouble>> varCycleValueMap) {
+        this.varCycleValueMap = varCycleValueMap;
+    }
+
     public void setVarCycleIndexValueMap(Map<String, Map<String, IntDouble>> varCycleIndexValueMap) {
         this.varCycleIndexValueMap = varCycleIndexValueMap;
+    }
+
+    public void setVarCycleIndexList(List<String> varCycleIndexList){
+        this.varCycleIndexList = varCycleIndexList;
+    }
+
+
+    // ------------------------------------------------------------
+    // --- MISC. METHODS
+    // ------------------------------------------------------------
+    public void addParameter(Svar parameter) throws SyntaxErrorException {
+        // Check that parameter is not defined more than once
+        if (this.parameterList.contains(parameter.name)) {
+            throw new SyntaxErrorException(parameter.fromWresl, parameter.line,"Initial parameter "+parameter.name+" is defined more than once!");
+        }
+        this.parameterList.add(parameter.name);
+        this.parameterMap.put(parameter.name, parameter);
     }
 
     public void clearVarTimeArrayCycleValueMap(){
@@ -169,17 +195,5 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     public void clearVarCycleIndexByTimeStep(){
         this.varCycleIndexValueMap = new HashMap<String, Map<String, IntDouble>>();
         this.dvarTimeArrayCycleIndexList = new ArrayList<String> ();
-    }
-
-    public List<String> getVarCycleIndexList(){
-        return this.varCycleIndexList;
-    }
-
-    public void setVarCycleIndexList(List<String> varCycleIndexList){
-        this.varCycleIndexList = varCycleIndexList;
-    }
-
-    public List<String> getDvarTimeArrayCycleIndexList(){
-        return this.dvarTimeArrayCycleIndexList;
     }
 }
