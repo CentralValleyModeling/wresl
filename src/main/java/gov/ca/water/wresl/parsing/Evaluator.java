@@ -76,17 +76,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // ------------------------------------------------------------
     // --- EVALUATE A CONDITION
     // ------------------------------------------------------------
-    // Simulation day, month and year are provided
-    public static boolean evaluateCondition(StudyDataSet sds, int currentDay, int currentMonth, int currentYear, ParseTree expCompareParseTree) {
-        // Store simulation day, month and year
-        INSTANCE.currentDay = currentDay;
-        INSTANCE.currentMonth = currentMonth;
-        INSTANCE.currentYear = currentYear;
-
-        return INSTANCE.evaluateCondition(sds, expCompareParseTree);
-    }
-
-    // No information about simulation day, month and year is provided
     public static boolean evaluateCondition(StudyDataSet sds, ParseTree expCompareParseTree) {
         // If null ParseTree; that means condition always evaluates to true
         if (expCompareParseTree == null) {return true; }
@@ -107,37 +96,30 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // --- EVALUATE AN SVAR
     // ------------------------------------------------------------
     private static IntDouble evaluateSvar(Svar svar) throws EvaluationErrorException {
-        try {
-            int index = -1;
-            // Process case conditions and figure out which case expression to use
-            if (svar.caseConditionParseTree == null) {
-                index = 0;
-            } else {
-                for (int i = 0; i < svar.caseName.size(); i++) {
-                    // Process case conditions until one of them turns true
-                    ParseTree caseConditionParseTree = svar.caseConditionParseTree.get(i);
-                    if (caseConditionParseTree == null) {
+        int index = -1;
+        // Process case conditions and figure out which case expression to use
+        if (svar.caseConditionParseTree == null) {
+            index = 0;
+        } else {
+            for (int i = 0; i < svar.caseName.size(); i++) {
+                // Process case conditions until one of them turns true
+                ParseTree caseConditionParseTree = svar.caseConditionParseTree.get(i);
+                if (caseConditionParseTree == null) {
+                    index = i;
+                } else {
+                    if (INSTANCE.evaluateCondition(null, caseConditionParseTree)) {
                         index = i;
-                    } else {
-                        if (INSTANCE.evaluateCondition(null, caseConditionParseTree)) {
-                            index = i;
-                            break;
-                        }
+                        break;
                     }
                 }
             }
-
-            // If index is still -1, case conditions were not defined properly; generate error
-            if (index == -1) {
-                throw new EvaluationErrorException(svar.fromWresl, svar.line, "A viable condition cannot be found for Svar " + svar.name + " defined in file " + svar.fromWresl + " at line " + svar.line + "!");
-            }
-
-            // We know which expression to evaluate; evaluate caseExpression
-            return INSTANCE.visit(svar.caseExpressionParseTree.get(index));
         }
-        catch (EvaluationErrorException e) {
-            throw new EvaluationErrorException(svar.fromWresl, svar.line, e.getErrorMessage());
+        // If index is still -1, case conditions were not defined properly; generate error
+        if (index == -1) {
+            throw new EvaluationErrorException(svar.fromWresl, svar.line, "A viable condition cannot be found for Svar " + svar.name + " defined in file " + svar.fromWresl + " at line " + svar.line + "!");
         }
+        // We know which expression to evaluate; evaluate caseExpression
+        return INSTANCE.visit(svar.caseExpressionParseTree.get(index));
     }
 
 
@@ -191,6 +173,12 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             Svar svar = svMap.get(svName);
 
             System.out.println(svName);
+
+            // Process timeseries svar
+            if (svar.isTimeseries) {
+                svar.setData(new IntDouble(0.0, false)); // Dummy; will need to actually use read ts data
+                continue;
+            }
 
             // Process svar
             INSTANCE.futureArrayIndex = 0;

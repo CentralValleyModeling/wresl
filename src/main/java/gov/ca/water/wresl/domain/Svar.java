@@ -1,9 +1,6 @@
 package gov.ca.water.wresl.domain;
 
-import gov.ca.water.utilities.ParallelVars;
 import gov.ca.water.utilities.Param;
-import gov.ca.water.wresl.errors.EvaluationErrorException;
-import gov.ca.water.wresl.parsing.Evaluator;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.io.Serializable;
@@ -13,6 +10,7 @@ public class Svar extends WRESLComponent implements Serializable {
     private static final long serialVersionUID = 1L;
 
     // These properties are the same for all Svar time array
+    public boolean isTimeseries = false;
     public String dssBPart = Param.undefined;
     public String format = Param.undefined;
     public String kind = Param.undefined;
@@ -65,7 +63,7 @@ public class Svar extends WRESLComponent implements Serializable {
         svarCopy.caseConditionParseTree = this.caseConditionParseTree;
         svarCopy.caseExpression = this.caseExpression;
         svarCopy.caseExpressionParseTree = this.caseExpressionParseTree;
-     
+
         return svarCopy;
     }
 
