@@ -41,20 +41,6 @@ public class Svar extends WRESLComponent implements Serializable {
     public List<ParseTree> caseExpressionParseTree = new ArrayList<>();
 
 
-    // These maps are for time array of Svar if future definitions have different expressions
-    //      example 1:  define(3) someSvar {
-    //                                      (0) { value 99   }
-    //                                      (1) { value a+b  }
-    //                                      (2) { value 7    }
-    //                                      (3) { value 2*k  }   }
-    //      example 2:  define(3) someSvar {
-    //                                      (0:2) { value 99   }
-    //                                      (3)   { value 2*k  }   }
-    public Map<Integer, ArrayList<String>> timeMap_caseName = new HashMap<>();
-    public Map<Integer, ArrayList<String>> timeMap_caseCondition = new HashMap<>();
-    public Map<Integer, ArrayList<String>> timeMap_caseExpression = new HashMap<>();
-
-
     // --------------------
     // --- CONSTRUCTORS
     // --------------------
@@ -79,10 +65,7 @@ public class Svar extends WRESLComponent implements Serializable {
         svarCopy.caseConditionParseTree = this.caseConditionParseTree;
         svarCopy.caseExpression = this.caseExpression;
         svarCopy.caseExpressionParseTree = this.caseExpressionParseTree;
-        svarCopy.timeMap_caseName = this.timeMap_caseName;
-        svarCopy.timeMap_caseCondition = this.timeMap_caseCondition;
-        svarCopy.timeMap_caseExpression = this.timeMap_caseExpression;
-
+     
         return svarCopy;
     }
 
