@@ -34,7 +34,6 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
     // Scratch memory used for data that needs to be access by multiple methods
     private String currentFile;                                   // WRESL file that's being parsed
-    private Map<String, ArrayList<String>> modelsWithinModelsMap; // List of models included in each model/group
     private String currentModelOrGroupName = "";                  // Name of model or group that is currently being parsed
     private List<String> includeFileList;                         // List of include files refernced by a model
 
@@ -49,8 +48,6 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         this.sequenceData = new HashMap<>();
         this.modelsAndGroups = new HashMap<>();
         this.sds = new StudyDataSet();
-
-        this.modelsWithinModelsMap = new HashMap<>();
     }
 
 
@@ -113,22 +110,6 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         this.sds.setModelConditionList(modelConditionList);
         this.sds.setModelConditionParseTrees(modelConditionParseTreeList);
         this.sds.setModelTimeStepList(modelTimeStepList);
-
-        // Check that models/groups included in other models/groups exist
-        //   If no issues, insert model/group data into referencing model
-        for (String thisModel: this.modelsWithinModelsMap.keySet()) {
-            List<String> includedModelsList = this.modelsWithinModelsMap.get(thisModel);
-            ModelDataSet mds = modelDataSetMap.get(thisModel);
-            for (String includedModel: includedModelsList) {
-                if (!this.modelsAndGroups.containsKey(includedModel)) {
-                    throw new EvaluationErrorException("Model/group " + includedModel + " referenced from model " + thisModel + " is not defined!");
-                }
-
-                // Insert model/group data into referencing model
-                ModelDataSet mdsIncluded = this.modelsAndGroups.get(includedModel);
-                mds.appendModelDataSet(mdsIncluded);
-            }
-        }
         this.sds.setModelDataSetMap(modelDataSetMap);
 
         // Loop through models and process data, check for errors
@@ -367,6 +348,16 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         mds.exList.add(name);
                         mds.exMap.put(name, external);
                     }
+                    case WRESL_String includedGroupModel -> {
+                        String incGroupModel = includedGroupModel.text;
+                        // Make sure included group or model is already defined
+                        if (!this.modelsAndGroups.containsKey(incGroupModel)) {
+                            throw new EvaluationErrorException("Model/group " + incGroupModel + " referenced from model " + mds.name + " is not defined!");
+                        }
+                        // Insert model/group data into referencing model
+                        ModelDataSet mdsIncluded = this.modelsAndGroups.get(incGroupModel);
+                        mds.appendModelDataSet(mdsIncluded);
+                    }
                     default -> {
                         throw new EvaluationErrorException("Error in processing WRESL data for model " + this.currentModelOrGroupName);
                     }
@@ -504,17 +495,8 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         // Included model name
         String includedModel = getWreslText(ctx.modelReference().OBJECT_NAME());
 
-        // Add included model to list of models referenced by a model
-        if (this.currentModelOrGroupName.contains(this.currentModelOrGroupName)) {
-            this.modelsWithinModelsMap.get(this.currentModelOrGroupName).add(includedModel);
-        }
-        else {
-            ArrayList<String> includedModels = new ArrayList<>(List.of(includedModel));
-            this.modelsWithinModelsMap.put(this.currentModelOrGroupName, includedModels);
-        }
-
-        // Return null since we have already stored the necessary data in modelsWithinModelsMap data
-        return null;
+        // Return the name of the included model to be appended to the model being compiled
+        return new VisitorResult(new WRESL_String(includedModel));
     }
 
     @Override
@@ -522,17 +504,8 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         // Included model name
         String includedModel = getWreslText(ctx.groupReference().OBJECT_NAME());
 
-        // Add included model to list of models referenced by a model
-        if (this.modelsWithinModelsMap.containsKey(this.currentModelOrGroupName)) {
-            this.modelsWithinModelsMap.get(this.currentModelOrGroupName).add(includedModel);
-        }
-        else {
-            ArrayList<String> includedModels = new ArrayList<>(List.of(includedModel));
-            this.modelsWithinModelsMap.put(this.currentModelOrGroupName, includedModels);
-        }
-
-        // Return null since we have already stored the necessary data in modelsWithinModelsMap data
-        return null;
+        // Return the name of the included group to be appended to the model being compiled
+        return new VisitorResult(new WRESL_String(includedModel));
     }
 
 
@@ -1776,7 +1749,6 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     private void clearMemory() {
         this.sequenceData = null;
         this.modelsAndGroups = null;
-        this.modelsWithinModelsMap = null;
         this.includeFileList = null;
         this.wreslFilesMap = null;
     }
