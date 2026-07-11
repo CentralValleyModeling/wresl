@@ -601,6 +601,14 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     }
 
     @Override
+    // daysInMonthReference
+    public IntDouble visitDaysInMonthReference(wreslParser.DaysInMonthReferenceContext ctx) {
+        String monthName = TimeOperations.monthName(INSTANCE.currentMonth);
+        Number daysInMonth = Integer.valueOf(TimeOperations.numberOfDays(INSTANCE.currentMonth, INSTANCE.currentYear));
+        return new IntDouble(daysInMonth, true);
+    }
+
+    @Override
     // currentMonthReference
     // Always return value based on water year months (i.e. Oct = 1, Sep =12)
     // INSTANCE.currentMonth is calendar month number

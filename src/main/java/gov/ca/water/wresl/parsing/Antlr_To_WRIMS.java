@@ -295,7 +295,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         // On entry: store file referiing to Model context
         String parentFile = this.currentFile;
 
-        // Instantiate the list of include models
+        // Instantiate the list of include files
         this.includeFileList = new ArrayList<>();
 
         // Check that model is not defined more than once
