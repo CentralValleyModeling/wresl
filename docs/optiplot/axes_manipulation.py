@@ -3,6 +3,19 @@ from matplotlib.lines import Line2D
 import pulp
 
 from .logs import get_logger
+from .style import (
+    DEFAULT_COLOR,
+    DEFAULT_LINESTYLE,
+    DEFAULT_LINEWIDTH,
+    EQUALITY_COLOR,
+    EQUALITY_LINEWIDTH,
+    EQUALITY_LINESTYLE,
+    VARIABLE_LIMIT_COLOR,
+    SINGLE_INTERACTIVITY_COLOR,
+    SINGLE_INTERACTIVITY_LINESTYLE,
+    SINGLE_INTERACTIVITY_LINEWIDTH,
+    SINGLE_INTERACTIVITY_ALPHA,
+)
 
 LOGGER = get_logger(__name__)
 
@@ -42,14 +55,46 @@ def get_bounds(v: pulp.LpVariable):
 
 
 def make_key(ax: Axes):
-    solution = Line2D([0], [0], color="g", marker="o", linestyle="")
-    var_limit = Line2D([0], [0], color="r")
-    equality_limit = Line2D([0], [0], color="xkcd:cyan", linestyle=":")
-    bound_limit = Line2D([0], [0], color="xkcd:blue")
-    ax.legend(
-        [solution, var_limit, equality_limit, bound_limit],
-        ["Solution", "Variable Limit", "Equality Constraint", "Regular Constraint"],
+
+    single_var_bound = Line2D(
+        [0],
+        [0],
+        color=SINGLE_INTERACTIVITY_COLOR,
+        ls=SINGLE_INTERACTIVITY_LINESTYLE,
+        lw=SINGLE_INTERACTIVITY_LINEWIDTH,
+        alpha=SINGLE_INTERACTIVITY_ALPHA,
+    )
+    var_limit = Line2D(
+        [0],
+        [0],
+        color=VARIABLE_LIMIT_COLOR,
+        lw=DEFAULT_LINEWIDTH,
+        ls=DEFAULT_LINESTYLE,
+    )
+    equality_limit = Line2D(
+        [0],
+        [0],
+        color=EQUALITY_COLOR,
+        lw=EQUALITY_LINEWIDTH,
+        ls=EQUALITY_LINESTYLE,
+    )
+    bound_limit = Line2D(
+        [0],
+        [0],
+        color=DEFAULT_COLOR,
+        lw=DEFAULT_LINEWIDTH,
+        ls=DEFAULT_LINESTYLE,
+    )
+    leg = ax.legend(
+        [var_limit, equality_limit, bound_limit, single_var_bound],
+        [
+            "X/Y Bounds",
+            "Hard Equality Constraint",
+            "Constraint in X and Y",
+            "Constraint in X or Y",
+        ],
         bbox_to_anchor=(0.5, 0),
         loc="lower center",
         ncol=2,
     )
+    leg.set_zorder(99)

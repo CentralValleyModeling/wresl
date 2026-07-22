@@ -10,7 +10,7 @@ def calc_slope_intercept(
     x: pulp.LpVariable,
     y: pulp.LpVariable,
     expression: pulp.LpConstraint,
-):
+) -> tuple[float, float, str]:
     LOGGER.info(f"reducing constraint '{expression.name}': {expression}")
     if y not in expression.keys():
         LOGGER.debug(f"constraint is not a function of {y.name}")
@@ -40,7 +40,7 @@ def _calc_intercept_for_1_var(v: pulp.LpVariable, expression: pulp.LpConstraint)
     else:
         kind = SENSE_MAP[expression.sense]
     LOGGER.debug(f"constraint reduced to: {v.name} {kind} {c:+f}")
-    return 0.0, c
+    return 0.0, c, kind
 
 
 def _calc_slope_intercept_2_vars(
@@ -66,8 +66,8 @@ def _calc_slope_intercept_2_vars(
             b -= var.value() * const
     b = b / y_const
     if y_const < 0:
-        kind = SENSE_MAP[-expression.sense * -1]
+        kind = SENSE_MAP[expression.sense * -1]
     else:
-        kind = SENSE_MAP[-expression.sense]
+        kind = SENSE_MAP[expression.sense]
     LOGGER.debug(f"constraint reduced to: {y.name} {kind} {m} * {x.name} {b:+f}")
-    return m, b
+    return m, b, kind
