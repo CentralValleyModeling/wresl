@@ -1,9 +1,18 @@
 package gov.ca.water.wresl.domain;
 
+import gov.ca.water.io.DSS.CondensedReferenceCacheAndRead;
+import gov.ca.water.io.DSS.DssOperations;
+import gov.ca.water.io.HDF5.HDF5Reader;
+import gov.ca.water.utilities.MiscUtilities;
+import gov.ca.water.utilities.ParallelVars;
+import gov.ca.water.utilities.TimeOperations;
 import gov.ca.water.wresl.errors.SyntaxErrorException;
+import hec.heclib.dss.HecDss;
+import hec.heclib.util.HecTime;
+import hec.io.TimeSeriesContainer;
 import org.antlr.v4.runtime.tree.ParseTree;
 
-import java.io.Serializable;
+import java.io.*;
 import java.util.*;
 
 public class StudyDataSet extends WRESLComponent implements Serializable  {
@@ -20,8 +29,12 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     private List<ParseTree> modelConditionParseTrees = new ArrayList<>();
 
     ///  < timeseries name, timeseries object >
-    private Map<String, Timeseries> timeseriesMap = new HashMap<>();
-    private Map<String, List<String>> timeseriesTimeStepMap = new HashMap<>();
+    private Map<String, Timeseries> svTS = new HashMap<>();                    // Actual Timeseries map that holds the data read from SV file
+    private Map<String, Timeseries> svInit = new HashMap<>();                  // Timeseries that are read from INIT file to initialize timeseries Svars
+    private Map<String, Timeseries> dvAliasTS = new HashMap<>();
+    private Map<String, Timeseries> dvAliasInit = new HashMap<>();
+    private Map<String, Timeseries> timeseriesMap = new HashMap<>();           // Temporary Timeseries map used to develop other Timeseries maps
+    private Map<String, List<String>> timeseriesTimeStepMap = new HashMap<>(); // Map that holds timesteps for timeseries data
 
     ///  < modelName, modelDataSet >
     private Map<String, ModelDataSet> modelDataSetMap = new HashMap<>();
@@ -60,6 +73,14 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
 
     public Map<String, Timeseries> getTimeseriesMap() {
         return new HashMap<String, Timeseries>(this.timeseriesMap);
+    }
+
+    public Timeseries getSVTimeseries(String tsName) {
+        return this.svTS.get(tsName);
+    }
+
+    public Timeseries getSVInitTimeseries(String tsName) {
+        return this.svInit.get(tsName);
     }
 
     public Map<String, List<String>> getTimeseriesTimeStepMap() {
@@ -196,4 +217,521 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         this.varCycleIndexValueMap = new HashMap<String, Map<String, IntDouble>>();
         this.dvarTimeArrayCycleIndexList = new ArrayList<String> ();
     }
+
+    // Read timeseries data from the SV DSS file
+    public void readSVTimeSeriesData(CondensedReferenceCacheAndRead.CondensedReferenceCache cacheTS, CondensedReferenceCacheAndRead.CondensedReferenceCache cacheTS2, String partA, String partF, int studyStartYear, int studyStartMonth, int studyStartDay) {
+      // Loop through models timeseries and read data
+      this.timeseriesMap.forEach((tsName, ts) -> {
+          List<String> timeStepList = this.timeseriesTimeStepMap.get(tsName);
+          boolean success = false;
+          for (String timeStep : timeStepList) {
+              success = ts.readTimeseries(cacheTS, partA, partF, timeStep, studyStartYear, studyStartMonth, studyStartDay);
+              if (cacheTS2 != null) {
+                  success = ts.readTimeseries(cacheTS2, partA, partF, timeStep, studyStartYear, studyStartMonth, studyStartDay);
+              }
+
+              // Add Timeseries to the list of SV timeseries, if read successfully
+              if (success) {
+                  String svTSName = DssOperations.entryNameTS(ts.name, timeStep);
+                  this.svTS.put(svTSName, ts.copyOf());
+              }
+          }
+      });
+    }
+
+    // Read initial data from DSS INIT file
+    public void readInitialData(CondensedReferenceCacheAndRead.CondensedReferenceCache cacheInitTS,String partA, String partF, int studyStartYear, int studyStartMonth, int studyStartDay) {
+        // Loop through models timeseries and read data
+        this.timeseriesMap.forEach((tsName, ts) -> {
+            List<String> timeStepList = this.timeseriesTimeStepMap.get(tsName);
+            boolean success = false;
+            for (String timeStep : timeStepList) {
+                success = ts.readTimeseries(cacheInitTS, partA, partF, timeStep, studyStartYear, studyStartMonth, studyStartDay);
+
+                // Add Timeseries to the list of SV timeseries, if read successfully
+                if (success) {
+                    String svTSName = DssOperations.entryNameTS(ts.name, timeStep);
+                    this.svInit.put(svTSName, ts.copyOf());
+                }
+            }
+        });
+    }
+
+
+    // Read timeseries data from HDF5 file
+    public void readSVTimeSeriesData(String fileName, String partA, String partF, int studyStartYear, int studyStartMonth, int studyStartDay) {
+        // First, open file
+        HDF5Reader.openSVFile(fileName, partA, partF);
+
+        // Loop through models timeseries and read data
+        this.timeseriesMap.forEach((tsName, ts) -> {
+            List<String> timeStepList = this.timeseriesTimeStepMap.get(tsName);
+            boolean success = false;
+            for (String timeStep : timeStepList) {
+                success = ts.readTimeseries(timeStep, studyStartYear, studyStartMonth, studyStartDay);
+
+                // Add Timeseries to the list of SV timeseries, if read successfully
+                if (success) {
+                    String svTSName = ts.name + "@" + timeStep;
+                    this.svTS.put(svTSName, ts);
+                }
+            }
+        });
+
+        // Close HDF5 file
+        HDF5Reader.closeSVFile();
+    }
+
+
+    // Read initial data from HDF5 file
+    public void readInitialData(String fileName, String partA, String partF, int studyStartYear, int studyStartMonth, int studyStartDay) {
+        // First, open file
+        HDF5Reader.openInitFile(fileName, partA, partF);
+
+        // Loop through models timeseries and read data
+        this.timeseriesMap.forEach((tsName, ts) -> {
+            List<String> timeStepList = this.timeseriesTimeStepMap.get(tsName);
+            boolean success = false;
+            for (String timeStep : timeStepList) {
+                success = ts.readTimeseries(timeStep, studyStartYear, studyStartMonth, studyStartDay);
+
+                // Add Timeseries to the list of SV timeseries, if read successfully
+                if (success) {
+                    String svTSName = ts.name + "@" + timeStep;
+                    this.svInit.put(svTSName, ts);
+                }
+            }
+        });
+
+        // Close HDF5 file
+        HDF5Reader.closeInitFile();
+    }
+
+
+    // ------------------------------------------------------------
+    // --- DATA SAVERS
+    // ------------------------------------------------------------
+
+    public void saveSvarTSData(HecDss dss, String fileName, String timeStep, String partA, String partF) {
+        System.out.println("write svar timeseries to "+fileName);
+        Set svTsSet = this.svTS.keySet();
+        Iterator iterator = svTsSet.iterator();
+        Map<String, Timeseries> allTsMap = this.svTS;
+        while(iterator.hasNext()){
+            String svTsName=(String)iterator.next();
+            String svName=DssOperations.getTSName(svTsName);
+            String ctu = "none";
+            String units="none";
+            if (allTsMap.containsKey(svName)){
+                Timeseries ts=allTsMap.get(svName);
+                units = ts.units;
+                ctu=ts.convertToUnits;
+            }
+            Timeseries dds=this.svTS.get(svTsName);
+            List<Double> values=dds.getData();
+            TimeSeriesContainer dc = new TimeSeriesContainer();
+            dc.type="PER-AVER";
+            int size=values.size();
+            dc.numberValues=size;
+            dc.units=dds.getUnits().toUpperCase();
+            dc.values=new double[size];
+            Date startDate=dds.getStartTime();
+            Calendar startCalendar=Calendar.getInstance();
+            Date startDate1 = new Date(startDate.getYear(), startDate.getMonth(), startDate.getDate(), 24, 0);
+            startCalendar.setTime(startDate1);
+            dc.setStartTime(new HecTime(startCalendar));
+            //startDate.setTime(startDate.getTime()-1*24*60*60);
+            int year=startDate.getYear()+1900;
+            int month=startDate.getMonth()+1;
+            int day=startDate.getDate();
+            //String startDateStr=TimeOperation.dssTimeEndDay(year, month, day);
+            //long startJulmin = TimeFactory.getInstance().createTime(startDateStr).getTimeInMinutes();
+            if (units.equals("taf") && ctu.equals("cfs")) {
+                for (int i=0; i<size; i++){
+                    Double value=values.get(i);
+                    if (value == null) {
+                        dc.values[i]=-901.0;
+                    } else {
+                        if (value == -901.0 || value == -902.0) {
+                            dc.values[i]=value;
+                        } else {
+                            ParallelVars prvs=TimeOperations.findTime(timeStep, i, year, month, day);
+                            dc.values[i]=value/ MiscUtilities.tafcfs("taf_cfs", timeStep, prvs);
+                        }
+                    }
+                }
+            } else if (units.equals("cfs") && ctu.equals("taf")) {
+                for (int i=0; i<size; i++){
+                    Double value=values.get(i);
+                    if (value == null){
+                        dc.values[i]=-901.0;
+                    }else{
+                        if (value == -901.0 || value == -902.0){
+                            dc.values[i]=value;
+                        }else{
+                            ParallelVars prvs=TimeOperations.findTime(timeStep, i, year, month, day);
+                            dc.values[i]=value/ MiscUtilities.tafcfs("cfs_taf", timeStep, prvs);
+                        }
+                    }
+                }
+            }else{
+                for (int i=0; i<size; i++){
+                    Double value=values.get(i);
+                    dc.values[i]=value;
+                }
+            }
+            //boolean storeFlags = false;
+            dc.setName("/"+partA+"/"+svName+"/"+dds.getKind()+"//"+dds.getTimeStep()+"/"+partF+"/");
+            dc.setStoreAsDoubles(true);
+            try {
+                dss.put(dc);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            //writer.storeTimeSeriesData(pathName, startJulmin, dd, storeFlags);
+        }
+        System.out.println("Svar file saved.");
+    }
+
+
+    // ------------------------------------------------------------
+    // --- METHODS TO WRITE DATA TO A CSV FILE
+    // ------------------------------------------------------------
+    public void outputCSV(String csvLocalPath,
+                          int scenarioIndex,
+                          int ovOption,
+                          String ovFileName,
+                          boolean isSimOutput,
+                          boolean writeInitToDVOutput,
+                          String partA,
+                          String partF) {
+
+        // Initialize
+        String slackPrefix="slack__";
+        String surplusPrefix="surplus__";
+        Map<String, String> ovPartBC=new HashMap<>();
+
+        if (ovOption != 0){
+            procOVFile(ovOption, ovFileName, ovPartBC);
+        }
+
+        try {
+            System.out.println("Writing data to CSV file...");
+
+            File csvFile= new File(csvLocalPath);
+            csvFile.getParentFile().mkdirs();
+            FileWriter fw = new FileWriter(csvFile);
+            BufferedWriter bw = new BufferedWriter(fw, 8192);
+            String line="id,PartA,PartF,Timestep,Units,Date_Time,Variable,Kind,Value\n";
+            bw.write(line);
+            Set<String> keys = this.dvAliasTS.keySet();
+            Iterator<String> it = keys.iterator();
+            while (it.hasNext()){
+                String name=it.next();
+                String nameUp= DssOperations.getTSName(name).toUpperCase();
+                Timeseries dds = this.dvAliasTS.get(name);
+                String origKindName=dds.getKind();
+                boolean isWritten=false;
+                if (ovOption==0){
+                    isWritten=true;
+                }else{
+                    if (ovPartBC.containsKey(nameUp)){
+                        if (ovPartBC.get(nameUp).equals(origKindName.toUpperCase())){
+                            isWritten = true;
+                        }
+                    }
+                }
+                if (isWritten && !nameUp.startsWith(slackPrefix) && !nameUp.startsWith(surplusPrefix)){
+                    String timestep=dds.getTimeStep().toUpperCase();
+                    Date date = dds.getStartTime();
+                    String unitsName=formUnitsName(dds.getUnits());
+                    String variableName=formVariableName(nameUp);
+                    String kindName=formKindName(origKindName);
+                    List<Double> data = dds.getData();
+                    if (timestep.equals("1DAY")){
+                        if (!isSimOutput) date= TimeOperations.backOneDay(date);
+                        for (int i=0; i<data.size(); i++){
+                            double value = data.get(i);
+                            if (value != -901.0 && value !=-902.0){
+                                line = scenarioIndex+","+partA+","+partF+",1DAY,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+ value +"\n";
+                                bw.write(line);
+                            }else{
+                                if (isSimOutput){
+                                    line = scenarioIndex+","+partA+","+partF+",1DAY,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+ value +"\n";
+                                    bw.write(line);
+                                }
+                            }
+                            date= TimeOperations.addOneDay(date);
+                        }
+                    }else{
+                        if (!isSimOutput) date= TimeOperations.backOneMonth(date);
+                        for (int i=0; i<data.size(); i++){
+                            double value = data.get(i);
+                            if (value != -901.0 && value !=-902.0){
+                                line = scenarioIndex+","+partA+","+partF+",1MON,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+ value +"\n";
+                                bw.write(line);
+                            }else{
+                                if (isSimOutput){
+                                    line = scenarioIndex+","+partA+","+partF+",1MON,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+ value +"\n";
+                                    bw.write(line);
+                                }
+                            }
+                            date= TimeOperations.addOneMonth(date);
+                        }
+                    }
+                }
+            }
+            Set<String> svKeys = this.svTS.keySet();
+            it = svKeys.iterator();
+            while (it.hasNext()){
+                String name=it.next();
+                String nameUp=DssOperations.getTSName(name).toUpperCase();
+                Timeseries dds = this.svTS.get(name);
+                String origKindName = dds.getKind();
+                boolean isWritten=false;
+                if (ovOption==0){
+                    isWritten=true;
+                }else{
+                    if (ovPartBC.containsKey(nameUp)){
+                        if (ovPartBC.get(nameUp).equals(origKindName.toUpperCase())){
+                            isWritten = true;
+                        }
+                    }
+                }
+                if (isWritten && !nameUp.startsWith(slackPrefix) && !nameUp.startsWith(surplusPrefix)){
+                    String timestep=dds.getTimeStep().toUpperCase();
+                    String units=dds.getUnits();
+                    String unitsName=formUnitsName(units);
+                    String convertToUnits = dds.getConvertToUnits();
+                    Date date = dds.getStartTime();
+                    String variableName=formVariableName(nameUp);
+                    String kindName=formKindName(origKindName);
+                    List<Double> data = dds.getData();
+                    if (timestep.equals("1DAY")){
+                        //date=TimeOperation.backOneDay(date);
+                        for (int i=0; i<data.size(); i++){
+                            double value = data.get(i);
+                            if (value != -901.0 && value !=-902.0){
+                                line = scenarioIndex+","+partA+","+partF+",1DAY,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+ convertValue(value, units, convertToUnits, date, timestep) +"\n";
+                                bw.write(line);
+                            }
+                            date= TimeOperations.addOneDay(date);
+                        }
+                    }else{
+                        //date=TimeOperation.backOneMonth(date);
+                        for (int i=0; i<data.size(); i++){
+                            double value = data.get(i);
+                            if (value != -901.0 && value !=-902.0){
+                                line = scenarioIndex+","+partA+","+partF+",1MON,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+convertValue(value, units, convertToUnits, date, timestep)+"\n";
+                                bw.write(line);
+                            }
+                            date= TimeOperations.addOneMonth(date);
+                        }
+                    }
+                }
+            }
+            if (writeInitToDVOutput){
+                keys = this.dvAliasInit.keySet();
+                it = keys.iterator();
+                while (it.hasNext()){
+                    String name=it.next();
+                    if (isSimOutput || svKeys.contains(name)){
+                        String nameUp=DssOperations.getTSName(name).toUpperCase();
+                        Timeseries dds = this.dvAliasInit.get(name);
+                        String origKindName=dds.getKind();
+                        boolean isWritten=false;
+                        if (ovOption==0){
+                            isWritten=true;
+                        }else{
+                            if (ovPartBC.containsKey(nameUp)){
+                                if (ovPartBC.get(nameUp).equals(origKindName.toUpperCase())){
+                                    isWritten = true;
+                                }
+                            }
+                        }
+                        if (isWritten && !nameUp.startsWith(slackPrefix) && !nameUp.startsWith(surplusPrefix)){
+                            String timestep=dds.getTimeStep().toUpperCase();
+                            Date date = dds.getStartTime();
+                            String units=dds.getUnits();
+                            String unitsName=formUnitsName(units);
+                            String convertToUnits=dds.getConvertToUnits();
+                            String variableName=formVariableName(nameUp);
+                            String kindName=formKindName(origKindName);
+                            List<Double> data = dds.getData();
+                            if (timestep.equals("1DAY")){
+                                date= TimeOperations.backOneDay(date);
+                                for (int i=0; i<data.size(); i++){
+                                    double value = data.get(i);
+                                    if (value != -901.0 && value !=-902.0){
+                                        line = scenarioIndex+","+partA+","+partF+",1DAY,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+convertValue(value, units, convertToUnits, date, timestep)+"\n";
+                                        bw.write(line);
+                                    }
+                                    date= TimeOperations.addOneDay(date);
+                                }
+                            }else{
+                                date= TimeOperations.backOneMonth(date);
+                                for (int i=0; i<data.size(); i++){
+                                    double value = data.get(i);
+                                    if (value != -901.0 && value !=-902.0){
+                                        line = scenarioIndex+","+partA+","+partF+",1MON,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+convertValue(value, units, convertToUnits, date, timestep)+"\n";
+                                        bw.write(line);
+                                    }
+                                    date= TimeOperations.addOneMonth(date);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (isSimOutput && writeInitToDVOutput){
+                keys = this.svInit.keySet();
+                it = keys.iterator();
+                while (it.hasNext()){
+                    String name=it.next();
+                    String nameUp=DssOperations.getTSName(name).toUpperCase();
+                    Timeseries dds = this.svInit.get(name);
+                    String origKindName=dds.getKind();
+                    boolean isWritten=false;
+                    if (ovOption==0){
+                        isWritten=true;
+                    }else{
+                        if (ovPartBC.containsKey(nameUp)){
+                            if (ovPartBC.get(nameUp).equals(origKindName.toUpperCase())){
+                                isWritten = true;
+                            }
+                        }
+                    }
+                    if (isWritten && !nameUp.startsWith(slackPrefix) && !nameUp.startsWith(surplusPrefix)){
+                        String timestep=dds.getTimeStep().toUpperCase();
+                        Date date = dds.getStartTime();
+                        String units=dds.getUnits();
+                        String unitsName=formUnitsName(units);
+                        String convertToUnits=dds.getConvertToUnits();
+                        String variableName=formVariableName(nameUp);
+                        String kindName=formKindName(origKindName);
+                        List<Double> data = dds.getData();
+                        if (timestep.equals("1DAY")){
+                            date= TimeOperations.backOneDay(date);
+                            for (int i=0; i<data.size(); i++){
+                                double value = data.get(i);
+                                if (value != -901.0 && value !=-902.0){
+                                    line = scenarioIndex+","+partA+","+partF+",1DAY,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+convertValue(value, units, convertToUnits, date, timestep)+"\n";
+                                    bw.write(line);
+                                }
+                                date= TimeOperations.addOneDay(date);
+                            }
+                        }else{
+                            date= TimeOperations.backOneMonth(date);
+                            for (int i=0; i<data.size(); i++){
+                                double value = data.get(i);
+                                if (value != -901.0 && value !=-902.0){
+                                    line = scenarioIndex+","+partA+","+partF+",1MON,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+convertValue(value, units, convertToUnits, date, timestep)+"\n";
+                                    bw.write(line);
+                                }
+                                date= TimeOperations.addOneMonth(date);
+                            }
+                        }
+                    }
+                }
+            }
+            bw.close();
+            fw.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("Wrote data to CSV file");
+    }
+
+    private void procOVFile(int ovOption, String ovFileName, Map<String, String> ovPartBC) {
+        File ovFile = new File (ovFileName);
+        if (!ovFile.exists()){
+            System.out.println("Output variable file doesn't exist. All the timeseries will be written to the csv file.");
+            ovOption=0;
+            return;
+        }
+        try {
+            FileInputStream fs = new FileInputStream(ovFile.getAbsolutePath());
+            BufferedReader br = new BufferedReader(new InputStreamReader(fs));
+            String line=br.readLine();
+            if (br == null) {
+                System.out.println("Output variable file doesn't contain data. All the timeseries will be written to the csv file.");
+            };
+            while((line=br.readLine()) !=null){
+                line=line.replace(" ", "").replace("\t",  "").toUpperCase();
+                if (line.equals("")) return;
+                String[] parts = line.split(",");
+                if (parts.length>=2){
+                    ovPartBC.put(parts[0], parts[1]);
+                }
+            }
+            br.close();
+            fs.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            System.out.println("Output variable file doesn't exist. All the timeseries will be written to the csv file.");
+            ovOption=0;
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Output variable file has errors. All the timeseries will be written to the csv file.");
+            ovOption=0;
+        }
+    }
+
+    private String formKindName(String name){
+        String kindName = name.replaceAll("-", "_");
+        return kindName;
+    }
+
+    private String formDateData(Date date){
+        int year=date.getYear()+1900;
+        int month=date.getMonth()+1;
+        int day = date.getDate();
+        return year+"-"+TimeOperations.monthNameNumeric(month)+"-"+TimeOperations.dayName(day)+" 00:00:00";
+    }
+
+    private String formUnitsName(String units){
+        String newUnits=units.replaceAll("/", "_").replaceAll("-", "_");
+        return newUnits;
+    }
+
+    private String formVariableName(String name){
+        String variableName = name.replaceAll("-", "_");
+        return variableName;
+    }
+
+    private double convertValue(double value, String units, String convertToUnits, Date date, String timestep) {
+        if (units.equalsIgnoreCase("cfs") && convertToUnits.equalsIgnoreCase("taf")) {
+            return value*factorTafToCfs(date, timestep);
+        }else if (units.equalsIgnoreCase("taf") && convertToUnits.equalsIgnoreCase("cfs")) {
+            return value*factorCfsToTaf(date, timestep);
+        } else {
+            return value;
+        }
+    }
+
+    private double factorCfsToTaf(Date date, String timestep) {
+        if (TimeOperations.isMonthlyInterval(timestep)) {
+            int year=date.getYear()+1900;
+            int month=date.getMonth()+1;
+            int daysInMonth=TimeOperations.numberOfDays(month, year);
+            return daysInMonth / 504.1666667;
+        } else {
+            return 1 / 504.1666667;
+        }
+    }
+
+    private double factorTafToCfs(Date date, String timestep){
+        if (TimeOperations.isMonthlyInterval(timestep)) {
+            int year=date.getYear()+1900;
+            int month=date.getMonth()+1;
+            int daysInMonth=TimeOperations.numberOfDays(month, year);
+            return 504.1666667 / daysInMonth;
+        } else {
+            return 504.1666667;
+        }
+    }
+
+
+
 }

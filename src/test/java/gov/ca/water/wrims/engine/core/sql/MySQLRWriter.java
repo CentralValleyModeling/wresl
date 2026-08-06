@@ -10,9 +10,10 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import gov.ca.water.wresl.domain.StudyDataSet;
 import gov.ca.water.wrims.engine.core.components.ControlData;
 import gov.ca.water.wrims.engine.core.components.FilePaths;
-import gov.ca.water.wrims.engine.core.evaluator.CsvOperation;
+import gov.ca.water.wrims.engine.core.fromWrims2.CsvOperation;
 
 public class MySQLRWriter{
 	
@@ -188,7 +189,7 @@ public class MySQLRWriter{
 		int index = FilePaths.fullDvarDssPath.lastIndexOf(".");
 		csvPath = FilePaths.fullDvarDssPath.substring(0, index)+".csv";
 		csvMySQLPath = csvPath.replace("\\", "\\\\");
-		
+
 		CsvOperation co = new CsvOperation();
 		co.ouputCSV(csvPath, scenarioIndex);
 	}

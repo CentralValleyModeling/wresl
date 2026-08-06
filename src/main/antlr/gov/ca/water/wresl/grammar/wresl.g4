@@ -235,12 +235,12 @@ columnName
 // Expressions
 // -----------------------------
 expression
-    : expression opMultiplicationDivision expression                        #expressionMultDiv
+    : (PLUS | MINUS) expression                                             #expressionSigned // +1, or -1 without a left hand side
+    | expression opMultiplicationDivision expression                        #expressionMultDiv
     | expression opAdditionSubtraction expression                           #expressionAddSub
     | expression opCompare expression                                       #expressionComparison
     | NOT expression                                                        #expressionNot
     | expression opLogical expression                                       #expressionLogical
-    | (PLUS | MINUS) expression                                             #expressionSigned // +1, or -1 without a left hand side
     | sumExpressionBody                                                     #expressionSum
     | variableReference                                                     #expressionReference
     | (preDefinedFunction | OBJECT_NAME) OPEN_PAREN arguments? CLOSE_PAREN  #expressionCall

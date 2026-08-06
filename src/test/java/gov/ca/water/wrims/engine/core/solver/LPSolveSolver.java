@@ -2,6 +2,7 @@ package gov.ca.water.wrims.engine.core.solver;
 
 import java.util.*;
 
+import gov.ca.water.io.DSS.DssOperations;
 import gov.ca.water.wrims.engine.core.commondata.solverdata.SolverData;
 import gov.ca.water.wresl.domain.Dvar;
 import gov.ca.water.wresl.domain.StudyDataSet;
@@ -222,10 +223,10 @@ public class LPSolveSolver {
 					varCycleIndexValueMap.put(dvName, cycleValue);
 				}
 			}
-			String entryNameTS=DssOperation.entryNameTS(dvName, ControlData.timeStep);
+			String entryNameTS=DssOperations.entryNameTS(dvName, ControlData.timeStep);
 			DataTimeSeries.saveDataToTimeSeries(dvName, entryNameTS, value, dvar);
 			if (timeArrayDvList.contains(dvName)){
-				entryNameTS=DssOperation.entryNameTS(dvName+"__fut__0", ControlData.timeStep);
+				entryNameTS= DssOperations.entryNameTS(dvName+"__fut__0", ControlData.timeStep);
 				DataTimeSeries.saveDataToTimeSeries(entryNameTS, value, dvar, 0);
 			}
 		}

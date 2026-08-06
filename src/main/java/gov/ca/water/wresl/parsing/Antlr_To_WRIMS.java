@@ -17,7 +17,7 @@ import java.io.*;
 import java.nio.file.Path;
 import java.util.*;
 
-import static gov.ca.water.utilities.MiscUtilities.getWreslText;
+import static gov.ca.water.wresl.parsing.Utilities.getWreslText;
 
 // Package-private class
 class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
@@ -244,7 +244,6 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         if (sqBodyCtx.sequenceCondition() != null) {
              sq.condition = getWreslText(sqBodyCtx.sequenceCondition().expression());
              sq.conditionParseTree = generateExpressionParseTree(sq.condition);
-    //         sq.conditionParseTree = sqBodyCtx.sequenceCondition().expression();
         }
 
         // Timestep, if exists
@@ -397,7 +396,6 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             // Copy returned data into ModelDataSet
             for (int j=0; j<=result.data().size()-1; j++) {
                 WRESLComponent data = result.data().get(j);
-       //         if (data == null) continue;
                 String name = data.name;
                 switch (data) {
                     case Svar svar -> {
@@ -1381,105 +1379,99 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     // WRESL+ type
     @Override
     public VisitorResult visitTimeSeriesTypeTS(wreslParser.TimeSeriesTypeTSContext ctx) {
-        Svar svar = new Svar();
+        Timeseries ts = new Timeseries();
 
         List<String> errorMessages = new ArrayList<>();
 
         // Retrieve ts name
-        svar.name = getWreslText(ctx.OBJECT_NAME());
-        svar.dssBPart = svar.name;
+        ts.name = getWreslText(ctx.OBJECT_NAME());
+        ts.dssBPart = ts.name;
 
         // Source file and line number
-        svar.fromWresl = this.currentFile;
-        svar.line = ctx.TIMESERIES().getSymbol().getLine();
+        ts.fromWresl = this.currentFile;
+        ts.line = ctx.TIMESERIES().getSymbol().getLine();
 
         // Process KIND; check that only one exists
         if (ctx.kind().size() != 1) {
             errorMessages.add("There must be one and only one KIND keyword in a TIMESERIES statement!");
-            throw new SyntaxErrorException(svar.fromWresl, svar.line, errorMessages);
+            throw new SyntaxErrorException(ts.fromWresl, ts.line, errorMessages);
         } else {
-            svar.kind = visitorResultToString(visit(ctx.kind().get(0).specificationString()));
+            ts.kind = visitorResultToString(visit(ctx.kind().get(0).specificationString()));
         }
 
         // Process UNITS; check that one exists
         if (ctx.units().size() != 1) {
             errorMessages.add("There must be one and only one UNITS keyword in a TIMESERIES statement!");
-            throw new SyntaxErrorException(svar.fromWresl, svar.line, errorMessages);
+            throw new SyntaxErrorException(ts.fromWresl, ts.line, errorMessages);
         } else {
-            svar.units = visitorResultToString(visit(ctx.units().get(0).specificationString()));
+            ts.units = visitorResultToString(visit(ctx.units().get(0).specificationString()));
         }
 
         // Process CONVERT; it is optional and if exists there should be only one
         if (!ctx.convert().isEmpty()) {
             if (ctx.convert().size() != 1) {
                 errorMessages.add("There must be one and only one CONVERT keyword in a TIMESERIES statement!");
-                throw new SyntaxErrorException(svar.fromWresl, svar.line, errorMessages);
+                throw new SyntaxErrorException(ts.fromWresl, ts.line, errorMessages);
             } else {
-                svar.convertToUnits = visitorResultToString(visit(ctx.convert().get(0).specificationString()));
+                ts.convertToUnits = visitorResultToString(visit(ctx.convert().get(0).specificationString()));
             }
         }
 
-        // Mark this svar as a timeseries svar
-        svar.isTimeseries = true;
-
-        return new VisitorResult(svar);
+        return new VisitorResult(ts);
     }
 
     @Override
     // WRESL type
     public VisitorResult visitTimeSeriesTypeDef(wreslParser.TimeSeriesTypeDefContext ctx) {
-        Svar svar = new Svar();
+        Timeseries ts = new Timeseries();
         List<String> errorMessages = new ArrayList<>();
 
         // Retrieve ts name
-        svar.name = getWreslText(ctx.OBJECT_NAME());
+        ts.name = getWreslText(ctx.OBJECT_NAME());
 
         // Source file and line number
-        svar.fromWresl = this.currentFile;
-        svar.line = ctx.DEFINE().getSymbol().getLine();
+        ts.fromWresl = this.currentFile;
+        ts.line = ctx.DEFINE().getSymbol().getLine();
 
         // Process optional B part; if exists there should be only one
         if (!ctx.optionalBPart().isEmpty()) {
             if (ctx.optionalBPart().size() != 1) {
                 errorMessages.add("There must be one and only one optional B part defined in a TIMESERIES statement!");
-                throw new SyntaxErrorException(svar.fromWresl, svar.line, errorMessages);
+                throw new SyntaxErrorException(ts.fromWresl, ts.line, errorMessages);
             } else {
-                svar.dssBPart = visitorResultToString(visit(ctx.optionalBPart().get(0).specificationString()));
+                ts.dssBPart = visitorResultToString(visit(ctx.optionalBPart().get(0).specificationString()));
             }
         } else {
-            svar.dssBPart = svar.name;
+            ts.dssBPart = ts.name;
         }
 
         // Process KIND; check that only one exists
         if (ctx.kind().size() != 1) {
             errorMessages.add("There must be one and only one KIND keyword in a TIMESERIES statement!");
-            throw new SyntaxErrorException(svar.fromWresl, svar.line, errorMessages);
+            throw new SyntaxErrorException(ts.fromWresl, ts.line, errorMessages);
         } else {
-            svar.kind = visitorResultToString(visit(ctx.kind().get(0).specificationString()));
+            ts.kind = visitorResultToString(visit(ctx.kind().get(0).specificationString()));
         }
 
         // Process UNITS; check that one exists
         if (ctx.units().size() != 1) {
             errorMessages.add("There must be one and only one UNITS keyword in a TIMESERIES statement!");
-            throw new SyntaxErrorException(svar.fromWresl, svar.line, errorMessages);
+            throw new SyntaxErrorException(ts.fromWresl, ts.line, errorMessages);
         } else {
-            svar.units = visitorResultToString(visit(ctx.units().get(0).specificationString()));
+            ts.units = visitorResultToString(visit(ctx.units().get(0).specificationString()));
         }
 
         // Process CONVERT; it is optional and if exists there should be only one
         if (!ctx.convert().isEmpty()) {
             if (ctx.convert().size() != 1) {
                 errorMessages.add("There must be one and only one CONVERT keyword in a TIMESERIES statement!");
-                throw new SyntaxErrorException(svar.fromWresl, svar.line, errorMessages);
+                throw new SyntaxErrorException(ts.fromWresl, ts.line, errorMessages);
             } else {
-                svar.convertToUnits = visitorResultToString(visit(ctx.convert().get(0).specificationString()));
+                ts.convertToUnits = visitorResultToString(visit(ctx.convert().get(0).specificationString()));
             }
         }
 
-        // Mark this svar as a timeseries svar
-        svar.isTimeseries = true;
-
-        return new VisitorResult(svar);
+        return new VisitorResult(ts);
     }
 
 

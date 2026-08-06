@@ -1,5 +1,7 @@
 package gov.ca.water.wresl.parsing;
 
+import gov.ca.water.io.DSS.DssOperations;
+import gov.ca.water.utilities.ParallelVars;
 import gov.ca.water.utilities.TimeOperations;
 import gov.ca.water.wresl.domain.*;
 import gov.ca.water.wresl.errors.EvaluationErrorException;
@@ -12,7 +14,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static gov.ca.water.utilities.MiscUtilities.getWreslText;
+import static gov.ca.water.wresl.parsing.Utilities.getWreslText;
 
 // Package-private class
 public class Evaluator extends wreslBaseVisitor<IntDouble> {
@@ -173,12 +175,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             Svar svar = svMap.get(svName);
 
             System.out.println(svName);
-
-            // Process timeseries svar
-            if (svar.isTimeseries) {
-                svar.setData(new IntDouble(0.0, false)); // Dummy; will need to actually use read ts data
-                continue;
-            }
 
             // Process svar
             INSTANCE.futureArrayIndex = 0;
@@ -582,22 +578,66 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         // Variable name
         String varName = getWreslText(ctx.OBJECT_NAME());
 
-        // Retrieve variable data
-        Svar var;
-        var = INSTANCE.currentModelDataSet.getSvar(varName);   // Is this an Svar?
-        if (var == null) var = this.sds.getParameter(varName); // A parameter?
-        if (var == null) {
-            throw new EvaluationErrorException("Variable " + varName + " is not defined!");
+        IntDouble varData;
+
+        // This is an svar
+        Svar var = INSTANCE.currentModelDataSet.getSvar(varName);                       // Is this an Svar?
+        if (var != null) {
+            varData = var.getData();
+            if (varData == null) {
+                throw new EvaluationErrorException("Variable " + varName + " is being used before its value is computed!");
+            }
+            return varData;
         }
 
-        // Make sure variable value is already computed
-        IntDouble varData = var.getData();
-        if (varData == null) {
-            throw new EvaluationErrorException("Variable " + varName + " is being used before its value is computed!");
+        // This is a parameter
+        var = INSTANCE.sds.getParameter(varName);
+        if (var != null) {
+            varData = var.getData();
+            if (varData == null) {
+                throw new EvaluationErrorException("Variable " + varName + " is being used before its value is computed!");
+            }
+            return varData;
         }
 
-        // Return data
-        return varData;
+        // This is a timeseries data
+        Timeseries tsVar = INSTANCE.sds.getTimeseries(varName);
+        if (tsVar != null) {
+            // Now retrieve the corresponding SV timeseries data
+            String tsName = DssOperations.entryNameTS(varName, tsVar.timeStep);
+            Timeseries svTSVar = INSTANCE.sds.getSVTimeseries(tsName);
+
+            // Retrieve timestep offset and make sure it is an integer number
+            IntDouble temp = visit(ctx.timestepOffset().expression());
+            if (!temp.isInt()) {
+                throw new EvaluationErrorException("Timeseries index for " + varName + " must be an integer value.");
+            }
+            int timeOffset = temp.getValue().intValue();
+            ParallelVars prvs = TimeOperations.findTime(svTSVar.timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+
+            // Retrieve data from Timeseries
+            Double value;
+            value = svTSVar.retrieveDataForTime(prvs, false);
+            if (value != null) { return new IntDouble(value.doubleValue(), false); }
+
+            // If made it this far, retrieve from initial data
+            Timeseries svInit = INSTANCE.sds.getSVInitTimeseries(tsName);
+            value = svInit.retrieveDataForTime(prvs, true);
+            if (value != null ) { return new IntDouble(value.doubleValue(), false); }
+
+            // If made it this far, value was not found; generate error
+            throw new EvaluationErrorException(tsVar.fromWresl, tsVar.line, "Was not able to retrieve data from the timeseries data for the provided time index.");
+        }
+
+        // This is an alias
+        Alias asVar = INSTANCE.currentModelDataSet.asMap.get(varName);
+        if (asVar != null) {
+            return null;  // Need to implement
+        }
+
+
+        // If made it this far, variable was not found; generate error
+        throw new EvaluationErrorException("Variable " + varName + " is not defined!");
     }
 
     @Override
@@ -637,7 +677,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             if (currentMonthValue > monthValue) {
                 return new IntDouble(monthValue-currentMonthValue, true);
             } else if (currentMonthValue < monthValue) {
-                return new IntDouble(currentMonthValue-monthValue-12, true);
+                return new IntDouble(monthValue-currentMonthValue-12, true);
             } else {
                 return new IntDouble (-12, true);
             }

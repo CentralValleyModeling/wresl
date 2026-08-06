@@ -1,5 +1,8 @@
 package gov.ca.water.wrims.engine.core.sql;
 
+import gov.ca.water.io.DSS.DssOperations;
+import gov.ca.water.wresl.domain.StudyDataSet;
+import gov.ca.water.wrims.engine.core.fromWrims2.CsvOperation;
 import hec.heclib.dss.DSSPathname;
 import hec.heclib.util.HecTime;
 import hec.io.TimeSeriesContainer;
@@ -17,13 +20,12 @@ import java.util.Set;
 
 import gov.ca.water.wrims.engine.core.components.ControlData;
 import gov.ca.water.wrims.engine.core.components.FilePaths;
-import gov.ca.water.wrims.engine.core.evaluator.CondensedReferenceCacheAndRead;
-import gov.ca.water.wrims.engine.core.evaluator.CsvOperation;
+import gov.ca.water.io.DSS.CondensedReferenceCacheAndRead;
 import gov.ca.water.wrims.engine.core.evaluator.DataTimeSeries;
 import gov.ca.water.wrims.engine.core.evaluator.DssDataSet;
 import gov.ca.water.wrims.engine.core.evaluator.DssDataSetFixLength;
 import gov.ca.water.wrims.engine.core.evaluator.DssOperation;
-import gov.ca.water.wrims.engine.core.evaluator.CondensedReferenceCacheAndRead.CondensedReferenceCache;
+import gov.ca.water.io.DSS.CondensedReferenceCacheAndRead.CondensedReferenceCache;
 
 public class DssToSQLDatabase {
 
@@ -142,7 +144,7 @@ public class DssToSQLDatabase {
 	        dds.setFromDssFile(true);
 	        dds.generateStudyStartIndex();
 	        String name=hts.bPart().toLowerCase();
-	        String entryNameTS=DssOperation.entryNameTS(name, timeStep);
+	        String entryNameTS= DssOperations.entryNameTS(name, timeStep);
 	        ddsMap.put(entryNameTS, dds);
 		}
 		return ddsMap;
@@ -190,7 +192,7 @@ public class DssToSQLDatabase {
 	        dds.setStartTime(startDate);
 	        dds.setFromDssFile(true);
 	        String name=hts.bPart().toLowerCase();
-	        String entryNameTS=DssOperation.entryNameTS(name, timeStep);
+	        String entryNameTS=DssOperations.entryNameTS(name, timeStep);
 	        ddsMap.put(entryNameTS, dds);
 		}
 		return ddsMap;

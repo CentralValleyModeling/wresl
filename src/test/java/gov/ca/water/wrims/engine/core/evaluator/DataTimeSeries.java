@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 
+import gov.ca.water.io.DSS.DssOperations;
 import gov.ca.water.wresl.domain.Dvar;
 import gov.ca.water.utilities.TimeOperations;
 import gov.ca.water.wrims.engine.core.components.ControlData;
@@ -14,9 +15,7 @@ public class DataTimeSeries {
 	public static ArrayList<HashMap<String, DssDataSetFixLength>> dvAliasTSCycles = new ArrayList<HashMap<String, DssDataSetFixLength>> ();
 	public static HashMap<String, DssDataSet> svInit = new HashMap<String, DssDataSet> ();
 	public static HashMap<String, DssDataSet> dvAliasInit = new HashMap<String, DssDataSet> ();
-	public static ArrayList<String> lookSvDss=new ArrayList<String>();
-	public static ArrayList<String> lookInitDss=new ArrayList<String>();
-	
+
 	public static void saveDataToTimeSeries(String dvName, String entryNameTS, double value, Dvar dvar){
 		saveDataToTimeSeries(entryNameTS, value, dvar, 0);
 		if (dvName.contains("__fut__")){
@@ -24,7 +23,7 @@ public class DataTimeSeries {
 			if (dvNameParts.length==2){
 				try{
 					int offset=Integer.parseInt(dvNameParts[1]);
-					String newEntryNameTS=DssOperation.entryNameTS(dvNameParts[0], ControlData.timeStep);
+					String newEntryNameTS= DssOperations.entryNameTS(dvNameParts[0], ControlData.timeStep);
 					saveDataToTimeSeries(newEntryNameTS, value, dvar, offset);
 				}catch(NumberFormatException e){
 				}

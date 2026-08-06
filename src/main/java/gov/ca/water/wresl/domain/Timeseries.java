@@ -1,177 +1,285 @@
 package gov.ca.water.wresl.domain;
 
+import gov.ca.water.io.DSS.CondensedReferenceCacheAndRead;
+import gov.ca.water.io.DSS.DssOperations;
+import gov.ca.water.io.HDF5.HDF5Reader;
+import gov.ca.water.utilities.MiscUtilities;
 import gov.ca.water.utilities.ParallelVars;
 import gov.ca.water.utilities.Param;
 import gov.ca.water.utilities.TimeOperations;
+import hec.heclib.util.HecTime;
+import hec.io.TimeSeriesContainer;
 
 import java.io.Serializable;
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.RecursiveTask;
 
 public class Timeseries extends WRESLComponent implements Serializable {
-    private static final ForkJoinPool pool = new ForkJoinPool();
     private static final long serialVersionUID = 1L;
 
     public String dssBPart = Param.undefined;
-    public String format = Param.undefined;
     public String kind = Param.undefined;
     public String units = Param.undefined;
     public String convertToUnits = Param.undefined;
+    public String timeStep = "";
+    public Date startTime;
+    public int studyStartIndex = -1;
 
-    private IntDouble data = null;
+    private List<Double> data = new ArrayList<>();
 
 
-    public void processTimeseries(List<String> tsList, Map<String, Timeseries> tsMap, int nThreads, boolean showRunTimeMessage, String timeStep, int currYear, int currMonth, int currDay) {
-        ProcessTimeseries pt = new ProcessTimeseries(tsList, tsMap, 0, tsList.size()-1, nThreads, showRunTimeMessage, timeStep, currYear, currMonth, currDay);
-        pool.invoke(pt);
+    // --------------------
+    // --- SETTERS
+    // --------------------
+    public void setDssBPart(String dssBPart) { this.dssBPart = dssBPart; }
+
+    public void setKind(String kind) { this.kind = kind; }
+
+    public void setUnits(String units) { this.units = units; }
+
+    public void setConvertToUnits(String convertToUnits) { this.convertToUnits = convertToUnits; }
+
+
+    // --------------------
+    // --- GETTERS
+    // --------------------
+    public String getKind() {
+        return this.kind;
     }
 
-    // ------------------------------------------------------------
-    // --- HELPER CLASS AND METHODS TO PROCESS TIMESERIES DATA IN PARALLEL
-    // ------------------------------------------------------------
-    private class ProcessTimeseries extends RecursiveTask<Integer> {
-        private int threshold;
-        private int start;
-        private int end;
-        private int nThreads;
-        private List<String> tList;
-        private Map<String, Timeseries> tMap;
-        private boolean showRunTimeMessage;
-        private String timeStep;
-        private int currYear;
-        private int currMonth;
-        private int currDay;
+    public String getTimeStep(){
+        return this.timeStep;
+    }
 
-        private ProcessTimeseries(List<String> tList, Map<String, Timeseries> tMap, int start, int end, int nThreads, boolean showRunTimeMessage, String timeStep, int currYear, int currMonth, int currDay) {
-            this.start              = start;
-            this.end                = end;
-            this.nThreads           = nThreads;
-            this.tList              = tList;
-            this.tMap               = tMap;
-            this.threshold          = (int) Math.ceil(tList.size()*1.0/nThreads);
-            this.showRunTimeMessage = showRunTimeMessage;
-            this.timeStep           = timeStep;
-            this.currYear           = currYear;
-            this.currMonth          = currMonth;
-            this.currDay            = currDay;
+    public Date getStartTime(){
+        return this.startTime;
+    }
+
+    public List<Double> getData(){
+        return this.data;
+    }
+
+    public String getUnits(){
+        return this.units;
+    }
+
+    public String getConvertToUnits(){
+        return this.convertToUnits;
+    }
+
+
+    // --------------------
+    // --- MISC. METHODS
+    // --------------------
+
+    // Create a copy of the Timeseries data
+    public Timeseries copyOf() {
+        Timeseries tsCopy = new Timeseries();
+
+        tsCopy.dssBPart = this.dssBPart;
+        tsCopy.kind = this.kind;
+        tsCopy.units = this.units;
+        tsCopy.convertToUnits = this.convertToUnits;
+        tsCopy.timeStep = this.timeStep;
+        tsCopy.startTime = this.startTime;
+        tsCopy.studyStartIndex = this.studyStartIndex;
+        tsCopy.data = this.data;
+
+        return tsCopy;
+    }
+
+    // Read timeseries data from DSS file
+    public boolean readTimeseries(CondensedReferenceCacheAndRead.CondensedReferenceCache cacheTS, String partA, String partF, String timeStep, int studyStartYear, int studyStartMonth, int studyStartDay) {
+        // Read data
+        TimeSeriesContainer tsc;
+        tsc = DssOperations.readTimeSeriesData(cacheTS, this.units, timeStep, partA, this.dssBPart, this.kind, "", partF);
+
+        // Return "false" if data was not read
+        if (tsc == null) {return false;}
+
+        // DSS data time related info
+        HecTime startTime = tsc.getStartTime();
+        int tsStartYear = startTime.year();
+        int tsStartMonth = startTime.month();
+        int tsStartDay = startTime.day();
+
+        // Data that is read
+        List<Double> dataArray = new ArrayList<>();
+        double[] values = tsc.values;
+        if (this.units.equals("taf") && this.convertToUnits.equals("cfs")) {
+            // Convert taf to cfs
+            int i = 0;
+            for (double dataEntry : values) {
+                if (dataEntry == -901.0) {
+                    dataArray.add(-901.0);
+                } else if (dataEntry == -902.0) {
+                    dataArray.add(-902.0);
+                } else {
+                    ParallelVars prvs = TimeOperations.findTime(timeStep, i, tsStartYear, tsStartMonth, tsStartDay);
+                    double dataEntryValue = dataEntry * MiscUtilities.tafcfs("taf_cfs", timeStep, prvs);
+                    dataArray.add(dataEntryValue);
+                }
+                i = i + 1;
+            }
+        } else if (this.units.equals("cfs") && this.convertToUnits.equals("taf")) {
+            // Convert cfs to taf
+            int i = 0;
+            for (double dataEntry : values) {
+                if (dataEntry == -901.0) {
+                    dataArray.add(-901.0);
+                } else if (dataEntry == -902.0) {
+                    dataArray.add(-902.0);
+                } else {
+                    ParallelVars prvs = TimeOperations.findTime(timeStep, i, tsStartYear, tsStartMonth, tsStartDay);
+                    double dataEntryValue = dataEntry * MiscUtilities.tafcfs("cfs_taf", timeStep, prvs);
+                    dataArray.add(dataEntryValue);
+                }
+                i = i + 1;
+            }
+        } else {
+            // No unit conversion
+            for (double dataEntry :  values){
+                dataArray.add(dataEntry);
+            }
         }
 
-        @Override
-        protected Integer compute() {
-            if (this.end - this.start < this.threshold) {
-                return computeDirectly();
-            } else {
-                List<ProcessTimeseries> subTasks=new ArrayList<>(this.nThreads);
+        // Store data in timeseries
+        this.timeStep = timeStep;
+        this.data = dataArray;
+        this.startTime = new Date(tsStartYear-1900, tsStartMonth-1, tsStartDay);
+        this.generateStudyStartIndex(studyStartYear, studyStartMonth, studyStartDay);
 
-                for (int i=0; i<this.nThreads; i++){
-                    int subStart, subEnd;
-                    subStart=i*this.threshold;
-                    if (i==this.nThreads-1){
-                        subEnd=this.end;
-                    }else{
-                        subEnd=Math.min(this.end, (i+1)*this.threshold-1);
+        // If made it to this point, successful read
+        return true;
+    }
+
+    // Read timeseries data from HDF5 file
+    public boolean readTimeseries(String timeStep, int studyStartYear, int studyStartMonth, int studyStartDay) {
+        // Read data
+        double[] values;
+        Date tsStartDate = new Date(21, 9, 31, 24, 0);
+        values = HDF5Reader.readTimeSeriesData(this.dssBPart, this.kind, this.units, timeStep, tsStartDate);
+        if (values == null) {return false; }
+
+        // Data time related info
+        int tsStartYear = tsStartDate.getYear();
+        int tsStartMonth = tsStartDate.getMonth();
+        int tsStartDay = tsStartDate.getDay();
+
+        // Data that is read
+        List<Double> dataArray = new ArrayList<>();
+        if (this.units.equals("taf") && this.convertToUnits.equals("cfs")) {
+            // Convert taf to cfs
+            int i = 0;
+            for (double dataEntry : values) {
+                if (dataEntry == -901.0) {
+                    dataArray.add(-901.0);
+                } else if (dataEntry == -902.0) {
+                    dataArray.add(-902.0);
+                } else {
+                    ParallelVars prvs = TimeOperations.findTime(timeStep, i, tsStartYear+1900, tsStartMonth, tsStartDay);
+                    double dataEntryValue = dataEntry * MiscUtilities.tafcfs("taf_cfs", timeStep, prvs);
+                    dataArray.add(dataEntryValue);
+                }
+                i = i + 1;
+            }
+        } else if (this.units.equals("cfs") && this.convertToUnits.equals("taf")) {
+            // Convert cfs to taf
+            int i = 0;
+            for (double dataEntry : values) {
+                if (dataEntry == -901.0) {
+                    dataArray.add(-901.0);
+                } else if (dataEntry == -902.0) {
+                    dataArray.add(-902.0);
+                } else {
+                    ParallelVars prvs = TimeOperations.findTime(timeStep, i, tsStartYear+1900, tsStartMonth, tsStartDay);
+                    double dataEntryValue = dataEntry * MiscUtilities.tafcfs("cfs_taf", timeStep, prvs);
+                    dataArray.add(dataEntryValue);
+                }
+                i = i + 1;
+            }
+        } else {
+            // No unit conversion
+            for (double dataEntry :  values){
+                dataArray.add(dataEntry);
+            }
+        }
+
+        // Store data in timeseries
+        this.timeStep = timeStep;
+        this.data = dataArray;
+        this.startTime = tsStartDate;
+        this.generateStudyStartIndex(studyStartYear, studyStartMonth, studyStartDay);
+
+        // If made it to this point, successful read
+        return true;
+    }
+
+    // Retrieve data for a time
+    public Double retrieveDataForTime(ParallelVars prvs, boolean isInit) {
+        int index = timeSeriesIndex(prvs);
+        if (index >= 0) {
+            if (index < this.data.size()) {
+                Double value = null;
+                if (isInit) {
+                    value = this.data.get(index);
+                } else {
+                    if (index > this.studyStartIndex) {
+                        value = this.data.get(index);
                     }
-                    subTasks.add(new ProcessTimeseries(this.tList,
-                                                       this.tMap,
-                                                       subStart,
-                                                       subEnd,
-                                                       this.nThreads,
-                                                       this.showRunTimeMessage,
-                                                       this.timeStep,
-                                                       this.currYear,
-                                                       this.currMonth,
-                                                       this.currDay));
                 }
-
-                for(ProcessTimeseries subtask : subTasks){
-                    subtask.fork();
+                if (value == null) { return null; }
+                if (value.doubleValue() != -901.0) {
+                    if (value.doubleValue() != -902.0) {
+                        return value;
+                    }
                 }
-
-                int sum=0;
-                for (int i=0; i<this.nThreads; i++){
-                    sum=sum+subTasks.get(i).join();
-                }
-                return sum;
             }
         }
 
-        protected int computeDirectly() {
-            for (int ii=this.start; ii<=this.end; ii++){
-                String tsName=this.tList.get(ii);
-                if (this.showRunTimeMessage) System.out.println("Processing timeseries "+tsName);
-                Timeseries ts=tMap.get(tsName);
-                ParallelVars prvs = TimeOperations.findTime(this.timeStep, 0, this.currYear, this.currMonth, this.currDay);
-                ts.data = new IntDouble(svarTimeSeries(tsName, 0, prvs),false);
-            }
-            return 1;
-        }
+        // If made it this, the time index within the timeseries data was not found; return null
+        return null;
+    }
 
-        private double svarTimeSeries(String ident, int idValue, ParallelVars prvs){
-    //        int index;
-    //        String entryNameTS=DssOperation.entryNameTS(ident, this.timeStep);
-    //        if (DataTimeSeries.svTS.containsKey(entryNameTS)){
-    //            DssDataSet dds=DataTimeSeries.svTS.get(entryNameTS);
-    //            index =timeSeriesIndex(dds, prvs);
-    //            ArrayList<Double> data=dds.getData();
-    //            if (index>=0 && index<data.size() && index>=dds.getStudyStartIndex()){
-    //                double value=data.get(index);
-    //                if (dds.fromDssFile()){
-    //                    if (value != -901.0 && value != -902.0){
-    //                        return value;
-    //                    }
-    //                }else{
-    //                    return value;
-    //                }
-    //            }
-    //        }
-    //        if (DataTimeSeries.svInit.containsKey(entryNameTS)){
-    //            DssDataSet dds=DataTimeSeries.svInit.get(entryNameTS);
-    //            index =timeSeriesIndex(dds, prvs);
-    //            ArrayList<Double> data=dds.getData();
-    //            if (index>=0 && index<data.size()){
-    //                double value=data.get(index);
-    //                if (value !=-901.0){
-    //                    return value;
-    //                }
-    //            }
-    //        }else{
-    //            DataTimeSeries.lookInitDss.add(entryNameTS);
-    //            if (getSVInitTimeseries(ident)){
-    //                DssDataSet dds=DataTimeSeries.svInit.get(entryNameTS);
-    //                prvs=TimeOperation.findTime(idValue);
-    //                index =timeSeriesIndex(dds, prvs);
-    //                ArrayList<Double> data=dds.getData();
-    //                if (index>=0 && index<data.size()){
-    //                    double value=data.get(index);
-    //                    if (value !=-901.0){
-    //                        return value;
-    //                    }
-    //                }
-    //            }
-    //        }
-    //        if (ControlData.allowSvTsInit && DataTimeSeries.svTS.containsKey(entryNameTS)){
-    //            DssDataSet dds=DataTimeSeries.svTS.get(entryNameTS);
-    //            index =timeSeriesIndex(dds, prvs);
-    //            ArrayList<Double> data=dds.getData();
-    //            if (index>=0 && index<data.size() && index<dds.getStudyStartIndex()){
-    //                double value=data.get(index);
-    //                if (dds.fromDssFile()){
-    //                    if (value != -901.0 && value != -902.0){
-    //                        return value;
-    //                    }
-    //                }else{
-    //                    return value;
-    //                }
-    //            }
-    //        }
-    //        Error.addEvaluationError("The data requested for timeseries "+ident+" does not match the entries in the dss file. Please check the name, kind, unit, and requested time period.");
-            return 1.0;
+    // Generate study start index
+    private void generateStudyStartIndex(int studyStartYear, int studyStartMonth, int studyStartDay) {
+        Date st = this.startTime;
+        int sYear = st.getYear() + 1900;
+        int sMonth = st.getMonth() + 1; //Originally it should be getMonth()-1. However, dss data store at 24:00 Jan31, 1921 is considered to store at 0:00 Feb 1, 1921
+        Date studyStart = new Date(studyStartYear-1900, studyStartMonth-1, studyStartDay);
+        if (TimeOperations.isMonthlyInterval(this.timeStep)) {
+            this.studyStartIndex = studyStartYear*12 + studyStartMonth-(sYear*12+sMonth);
+        } else {
+            Calendar c1 = Calendar.getInstance();
+            c1.setTime(st);
+            Calendar c2 = Calendar.getInstance();
+            c2.setTime(studyStart);
+            long indexValue = Duration.between(c1.toInstant(), c2.toInstant()).toDays();
+            this.studyStartIndex = (int)indexValue + 1;
         }
     }
 
+    private int timeSeriesIndex(ParallelVars prvs) {
+        Date st = this.startTime;
+        int sYear = st.getYear() + 1900;
+        int sMonth = st.getMonth() + 1; //HEC DSS7 uses getMonth()+1. However, Vista/HecDSS6 uses getMonth()bbecause dss data store at 24:00 Jan31, 1921 is considered to store at 0:00 Feb 1, 1921
+        Date dataDate = new Date(prvs.dataYear-1900, prvs.dataMonth-1, prvs.dataDay);
+        int index;
+        if (TimeOperations.isMonthlyInterval(this.timeStep)) {
+            index = prvs.dataYear*12+prvs.dataMonth-(sYear*12+sMonth);
+        } else {
+            Calendar c1=Calendar.getInstance();
+            c1.setTime(st);
+            Calendar c2=Calendar.getInstance();
+            c2.setTime(dataDate);
+            long indexValue = Duration.between(c1.toInstant(), c2.toInstant()).toDays();
+            index=(int)indexValue+1;  //HEC DSS7 uses indexValue+1; Vista/Hec DSS6 uses indexValue+2
+        }
 
-
+        return index;
+    }
 }
+

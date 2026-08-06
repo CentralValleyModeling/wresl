@@ -10,7 +10,6 @@ import gov.ca.water.wresl.parsing.Evaluator;
 import gov.ca.water.wresl.parsing.Study;
 import gov.ca.water.wrims.engine.core.config.ConfigUtils;
 import gov.ca.water.wrims.engine.core.evaluator.AssignPastCycleVariable;
-import gov.ca.water.wrims.engine.core.evaluator.CsvOperation;
 import gov.ca.water.wrims.engine.core.evaluator.DssOperation;
 import gov.ca.water.wrims.engine.core.evaluator.WeightEval;
 import gov.ca.water.wrims.engine.core.fromWrims2.StudyUtils;
@@ -529,8 +528,14 @@ public class ControllerBatch {
         } else if (ControlData.outputType==4) {
             sqlServerRWriter.process();
         } else if (ControlData.outputType==5) {
-            CsvOperation co = new CsvOperation();
-            co.ouputCSV(FilePaths.fullCsvPath, 0);
+            sds.outputCSV(FilePaths.fullCsvPath,
+                       0,
+                          ControlData.ovOption,
+                          ControlData.ovFile,
+                          ControlData.isSimOutput,
+                          ControlData.writeInitToDVOutput,
+                          ControlData.partA,
+                          ControlData.svDvPartF);
         }
 
         // write complete or fail

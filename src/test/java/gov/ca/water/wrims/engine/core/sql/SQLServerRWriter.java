@@ -10,9 +10,10 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import gov.ca.water.wresl.domain.StudyDataSet;
 import gov.ca.water.wrims.engine.core.components.ControlData;
 import gov.ca.water.wrims.engine.core.components.FilePaths;
-import gov.ca.water.wrims.engine.core.evaluator.CsvOperation;
+import gov.ca.water.wrims.engine.core.fromWrims2.CsvOperation;
 import gov.ca.water.wrims.engine.core.sql.socket.Client;
 
 public class SQLServerRWriter{
@@ -183,7 +184,7 @@ public class SQLServerRWriter{
 		int index = FilePaths.fullDvarDssPath.lastIndexOf(".");
 		csvLocalPath = FilePaths.fullDvarDssPath.substring(0, index)+".csv";
 		csvRemotePath = "G:\\tempCSV\\"+csvLocalPath.substring(csvLocalPath.lastIndexOf("\\") + 1, csvLocalPath.length());;
-		
+
 		CsvOperation co = new CsvOperation();
 		co.ouputCSV(csvLocalPath, scenarioIndex);
 	}

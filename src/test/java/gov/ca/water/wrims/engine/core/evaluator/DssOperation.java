@@ -1,5 +1,6 @@
 package gov.ca.water.wrims.engine.core.evaluator;
 
+import gov.ca.water.io.DSS.DssOperations;
 import gov.ca.water.wresl.domain.Alias;
 import gov.ca.water.wresl.domain.Dvar;
 import gov.ca.water.wresl.domain.Timeseries;
@@ -33,91 +34,6 @@ public class DssOperation {
 	private static int savedEndDailyTimestep;
 	private static int totalSavedDailyTimestep;
 
-	public static boolean getSVTimeseries(String name, String file, String timeStep, int svFileIndex){
-		ControlData.timeStep=timeStep;
-		ControlData.partE=timeStep;
-		Timeseries ts=ControlData.allTsMap.get(name);
-		String partC=ts.kind;
-		TimeSeriesContainer tsc;
-
-		String path=createPath(ControlData.partA.toUpperCase(),ts.dssBPart.toUpperCase(),partC.toUpperCase(),"",timeStep.toUpperCase(), ControlData.svDvPartF.toUpperCase());
-		if (svFileIndex==1){
-			tsc = ControlData.cacheSvar.readFullRecord(path);
-		}else{
-			tsc = ControlData.cacheSvar2.readFullRecord(path);
-		}
-
-		if (tsc==null){
-			if (TimeOperations.isMonthlyInterval(timeStep)) {
-				path=createPath(ControlData.partA.toUpperCase(),ts.dssBPart.toUpperCase(),partC.toUpperCase(),"","1Month", ControlData.svDvPartF.toUpperCase());
-				if (svFileIndex==1){
-					tsc = ControlData.cacheSvar.readFullRecord(path);
-				}else{
-					tsc = ControlData.cacheSvar2.readFullRecord(path);
-				}
-			}
-			if (tsc==null) {
-				return false;
-			}
-		}
-		if (!tsc.getUnits().toUpperCase().equals(ts.units.toUpperCase())){
-			return false;
-		}
-
-		DssDataSet dds= new DssDataSet();
-		ArrayList<Double> dataArray= new ArrayList<Double>();
-		HecTime startTime=tsc.getStartTime();
-		int year=startTime.year();
-		int month=startTime.month();
-		int day = startTime.day();
-		double[] values = tsc.values;
-		if (ts.units.equals("taf") && ts.convertToUnits.equals("cfs")){
-			int i=0;
-			for (double dataEntry :  values){
-				if (dataEntry==-901.0){
-					dataArray.add(-901.0);
-				}else if (dataEntry==-902.0){
-					dataArray.add(-902.0);
-				}else{
-					ParallelVars prvs = TimeOperations.findTime(ControlData.timeStep, i, year, month, day);
-					double dataEntryValue=dataEntry * MiscUtilities.tafcfs( "taf_cfs", ControlData.timeStep, prvs);
-					dataArray.add(dataEntryValue);
-				}
-				i=i+1;
-			}
-		}else if (ts.units.equals("cfs") && ts.convertToUnits.equals("taf")){
-			int i=0;
-			for (double dataEntry :  values){
-				if (dataEntry==-901.0){
-					dataArray.add(-901.0);
-				}else if (dataEntry==-902.0){
-					dataArray.add(-902.0);
-				}else{
-					ParallelVars prvs = TimeOperations.findTime(ControlData.timeStep, i, year, month, day);
-					double dataEntryValue=dataEntry* MiscUtilities.tafcfs("cfs_taf", ControlData.timeStep, prvs);
-					dataArray.add(dataEntryValue);
-				}
-				i=i+1;
-			}
-		}else{
-			for (double dataEntry :  values){
-				dataArray.add(dataEntry);
-			}
-		}
-		dds.setUnits(ts.units);
-		dds.setConvertToUnits(ts.convertToUnits);
-		dds.setKind(partC);
-		dds.setData(dataArray);
-		dds.setTimeStep(timeStep);
-		Date startDate=new Date(year-1900, month-1, day);
-		dds.setStartTime(startDate);
-		dds.setFromDssFile(true);
-		dds.generateStudyStartIndex();
-		String entryNameTS=DssOperation.entryNameTS(name, timeStep);
-		DataTimeSeries.svTS.put(entryNameTS, dds);
-		return true;
-	}
-
 	public static boolean getSVInitTimeseries(String name){
 
 		Timeseries ts=ControlData.currTsMap.get(name);
@@ -127,13 +43,13 @@ public class DssOperation {
 		String partC=ts.kind;
 		TimeSeriesContainer tsc;
 
-		String path=createPath(ControlData.partA.toUpperCase(),ts.dssBPart.toUpperCase(),partC.toUpperCase(),"",ControlData.partE.toUpperCase(), ControlData.initPartF.toUpperCase());
+		String path = DssOperations.createPath(ControlData.partA.toUpperCase(),ts.dssBPart.toUpperCase(),partC.toUpperCase(),"",ControlData.partE.toUpperCase(), ControlData.initPartF.toUpperCase());
 		tsc = ControlData.cacheInit.readFullRecord(path);
 
 		if (tsc==null){
 			if (tsc==null){
 				if (TimeOperations.isMonthlyInterval(ControlData.partE)) {
-					path=createPath(ControlData.partA.toUpperCase(),ts.dssBPart.toUpperCase(),partC.toUpperCase(),"","1Month", ControlData.initPartF.toUpperCase());
+					path = DssOperations.createPath(ControlData.partA.toUpperCase(),ts.dssBPart.toUpperCase(),partC.toUpperCase(),"","1Month", ControlData.initPartF.toUpperCase());
 					tsc = ControlData.cacheInit.readFullRecord(path);
 				}
 				if (tsc==null) {
@@ -198,13 +114,9 @@ public class DssOperation {
 		dds.setData(dataArray);
 		dds.setTimeStep(ControlData.partE.toUpperCase());
 		dds.setStartTime(startDate);
-		String entryNameTS=DssOperation.entryNameTS(name, ControlData.timeStep);
+		String entryNameTS=DssOperations.entryNameTS(name, ControlData.timeStep);
 		DataTimeSeries.svInit.put(entryNameTS, dds);
 		return true;
-	}
-
-	public static String regularExp(String part){
-		return "^"+part+"$";
 	}
 
 	public static boolean getDVAliasInitTimeseries(String name){
@@ -221,13 +133,13 @@ public class DssOperation {
 		}
 
 		TimeSeriesContainer tsc;
-		String path=createPath(ControlData.partA.toUpperCase(),name.toUpperCase(),partC.toUpperCase(),"",ControlData.partE.toUpperCase(), ControlData.initPartF.toUpperCase());
+		String path = DssOperations.createPath(ControlData.partA.toUpperCase(),name.toUpperCase(),partC.toUpperCase(),"",ControlData.partE.toUpperCase(), ControlData.initPartF.toUpperCase());
 		tsc = ControlData.cacheInit.readFullRecord(path);
 
 		if (tsc==null){
 			if (tsc==null){
 				if (TimeOperations.isMonthlyInterval(ControlData.partE)) {
-					path=createPath(ControlData.partA.toUpperCase(),name.toUpperCase(),partC.toUpperCase(),"","1Month", ControlData.initPartF.toUpperCase());
+					path = DssOperations.createPath(ControlData.partA.toUpperCase(),name.toUpperCase(),partC.toUpperCase(),"","1Month", ControlData.initPartF.toUpperCase());
 					tsc = ControlData.cacheInit.readFullRecord(path);
 				}
 				if (tsc==null) {
@@ -256,7 +168,7 @@ public class DssOperation {
 		int day = startTime.day();
 		Date startDate=new Date(year-1900, month-1, day);
 		dds.setStartTime(startDate);
-		String entryNameTS=DssOperation.entryNameTS(name, timeStep);
+		String entryNameTS=DssOperations.entryNameTS(name, timeStep);
 		DataTimeSeries.dvAliasInit.put(entryNameTS, dds);
 		return true;
 	}
@@ -268,11 +180,6 @@ public class DssOperation {
         return ref.getData();
     }
     */
-
-	public static String createPath(String apart, String bpart, String cpart, String dpart, String epart, String fpart){
-		String path="/"+apart+"/"+bpart+"/"+cpart+"/"+dpart+"/"+epart+"/"+fpart+"/";
-		return path;
-	}
 
 	public static synchronized HecTimeSeries getDataForSvar(String apart, String bpart, String cpart, String dpart, String epart, String fpart, int svFileIndex, String filename){
 		//DataReference[] refs;
@@ -331,7 +238,7 @@ public class DssOperation {
 		while(iterator.hasNext()){
 			String initName=(String)iterator.next();
 			DssDataSet dds=DataTimeSeries.dvAliasInit.get(initName);
-			if (ControlData.outputType !=0 || (ControlData.outputType ==0 && ControlData.ovOption ==0) || (ControlData.ovOption !=0 && isToWrite(getTSName(initName), dds.getKind()))){
+			if (ControlData.outputType !=0 || (ControlData.outputType ==0 && ControlData.ovOption ==0) || (ControlData.ovOption !=0 && isToWrite(DssOperations.getTSName(initName), dds.getKind()))){
 				ArrayList<Double> data=dds.getData();
 				int size=data.size();
 				String timeStep=dds.getTimeStep();
@@ -351,7 +258,7 @@ public class DssOperation {
 				}
 				dc.units=dds.getUnits().toUpperCase();
 				dc.values = values;
-				dc.setName("/"+ControlData.partA+"/"+DssOperation.getTSName(initName)+"/"+dds.getKind()+"//"+timeStep+"/"+ControlData.svDvPartF+"/");
+				dc.setName("/"+ControlData.partA+"/"+DssOperations.getTSName(initName)+"/"+dds.getKind()+"//"+timeStep+"/"+ControlData.svDvPartF+"/");
 				dc.setStoreAsDoubles(true);
 				try {
 					ControlData.dvDss.put(dc);
@@ -373,7 +280,7 @@ public class DssOperation {
 		while(iterator.hasNext()){
 			String dvAliasName=(String)iterator.next();
 			DssDataSetFixLength ddsfl=DataTimeSeries.dvAliasTS.get(dvAliasName);
-			if (ControlData.outputType !=0 || (ControlData.outputType ==0 && ControlData.ovOption ==0) || (ControlData.ovOption !=0 && isToWrite(getTSName(dvAliasName), ddsfl.getKind()))){
+			if (ControlData.outputType !=0 || (ControlData.outputType ==0 && ControlData.ovOption ==0) || (ControlData.ovOption !=0 && isToWrite(DssOperations.getTSName(dvAliasName), ddsfl.getKind()))){
 				double[] values=ddsfl.getData();
 				String timestep=ddsfl.getTimeStep();
 				int size = values.length;
@@ -397,7 +304,7 @@ public class DssOperation {
 				dc.units=ddsfl.getUnits().toUpperCase();
 				dc.values = values1;
 				//boolean storeFlags = false;
-				dc.setName("/"+ControlData.partA+"/"+DssOperation.getTSName(dvAliasName)+"/"+ddsfl.getKind()+"//"+ddsfl.getTimeStep()+"/"+ControlData.svDvPartF+"/");
+				dc.setName("/"+ControlData.partA+"/"+DssOperations.getTSName(dvAliasName)+"/"+ddsfl.getKind()+"//"+ddsfl.getTimeStep()+"/"+ControlData.svDvPartF+"/");
 				Calendar startCalendar=Calendar.getInstance();
 				Date startDate1 = new Date(startDate.getYear(), startDate.getMonth(), startDate.getDate(), 24, 0);
 				startCalendar.setTime(startDate1);
@@ -438,7 +345,7 @@ public class DssOperation {
 				while(iterator.hasNext()){
 					String dvAliasName=(String)iterator.next();
 					DssDataSetFixLength ddsfl=dvAliasTSCycle.get(dvAliasName);
-					if (ControlData.outputType !=0 || (ControlData.outputType ==0 && ControlData.ovOption ==0) || (ControlData.ovOption !=0 && isToWrite(getTSName(dvAliasName), ddsfl.getKind()))){
+					if (ControlData.outputType !=0 || (ControlData.outputType ==0 && ControlData.ovOption ==0) || (ControlData.ovOption !=0 && isToWrite(DssOperations.getTSName(dvAliasName), ddsfl.getKind()))){
 						double[] values=ddsfl.getData();
 						String timestep=ddsfl.getTimeStep();
 						int size = values.length;
@@ -462,7 +369,7 @@ public class DssOperation {
 						dc.units=ddsfl.getUnits().toUpperCase();
 						dc.values = values1;
 						//boolean storeFlags = false;
-						dc.setName("/"+ControlData.partA+"_Cycle"+cycleI+"/"+DssOperation.getTSName(dvAliasName)+"/"+ddsfl.getKind()+"//"+ddsfl.getTimeStep()+"/"+ControlData.svDvPartF+"/");
+						dc.setName("/"+ControlData.partA+"_Cycle"+cycleI+"/"+DssOperations.getTSName(dvAliasName)+"/"+ddsfl.getKind()+"//"+ddsfl.getTimeStep()+"/"+ControlData.svDvPartF+"/");
 						Calendar startCalendar=Calendar.getInstance();
 						Date startDate1 = new Date(startDate.getYear(), startDate.getMonth(), startDate.getDate(), 24, 0);
 						startCalendar.setTime(startDate1);
@@ -485,15 +392,6 @@ public class DssOperation {
 			}
 		}
 		System.gc();
-	}
-
-	public static String entryNameTS(String name, String timeStep){
-		return name+"@"+timeStep;
-	}
-
-	public static String getTSName(String entryNameTS){
-		String[] entry=entryNameTS.split("@");
-		return entry[0];
 	}
 
 	public static void saveInitialData(HecDss dss, String fileName){
@@ -521,7 +419,7 @@ public class DssOperation {
 			dc.units=dds.getUnits().toUpperCase();
 			dc.values = values;
 			//boolean storeFlags = false;
-			dc.setName("/"+ControlData.partA+"/"+DssOperation.getTSName(initName)+"/"+dds.getKind()+"//"+timeStep+"/"+ControlData.svDvPartF+"/");
+			dc.setName("/"+ControlData.partA+"/"+DssOperations.getTSName(initName)+"/"+dds.getKind()+"//"+timeStep+"/"+ControlData.svDvPartF+"/");
 			Calendar startCalendar=Calendar.getInstance();
 			Date startDate1 = new Date(startDate.getYear(), startDate.getMonth(), startDate.getDate(), 24, 0);
 			startCalendar.setTime(startDate1);
@@ -561,7 +459,7 @@ public class DssOperation {
 			dc.units=dds.getUnits().toUpperCase();
 			dc.values = values;
 			//boolean storeFlags = false;
-			dc.setName("/"+ControlData.partA+"/"+DssOperation.getTSName(initName)+"/"+dds.getKind()+"//"+timeStep+"/"+ControlData.initPartF+"/");
+			dc.setName("/"+ControlData.partA+"/"+DssOperations.getTSName(initName)+"/"+dds.getKind()+"//"+timeStep+"/"+ControlData.initPartF+"/");
 			Calendar startCalendar=Calendar.getInstance();
 			Date startDate1 = new Date(startDate.getYear(), startDate.getMonth(), startDate.getDate(), 24, 0);
 			startCalendar.setTime(startDate1);
@@ -671,7 +569,7 @@ public class DssOperation {
 		while(iterator.hasNext()){
 			String dvAliasName=(String)iterator.next();
 			DssDataSetFixLength ddsfl=DataTimeSeries.dvAliasTS.get(dvAliasName);
-			if (ControlData.outputType !=0 || (ControlData.outputType ==0 && ControlData.ovOption ==0) || (ControlData.ovOption !=0 && isToWrite(getTSName(dvAliasName), ddsfl.getKind()))){
+			if (ControlData.outputType !=0 || (ControlData.outputType ==0 && ControlData.ovOption ==0) || (ControlData.ovOption !=0 && isToWrite(DssOperations.getTSName(dvAliasName), ddsfl.getKind()))){
 				String timestep = ddsfl.getTimeStep();
 				double[] values=ddsfl.getData();
 				double[] values1;
@@ -704,7 +602,7 @@ public class DssOperation {
 				dc.units=ddsfl.getUnits().toUpperCase();
 				dc.values = values1;
 				//boolean storeFlags = false;
-				dc.setName("/"+ControlData.partA+"/"+DssOperation.getTSName(dvAliasName)+"/"+ddsfl.getKind()+"//"+timestep+"/"+ControlData.svDvPartF+"/");
+				dc.setName("/"+ControlData.partA+"/"+DssOperations.getTSName(dvAliasName)+"/"+ddsfl.getKind()+"//"+timestep+"/"+ControlData.svDvPartF+"/");
 				Calendar startCalendar=Calendar.getInstance();
 				Date startDate1 = new Date(startDate.getYear(), startDate.getMonth(), startDate.getDate(), 24, 0);
 				startCalendar.setTime(startDate1);
@@ -748,7 +646,7 @@ public class DssOperation {
 				while(iterator.hasNext()){
 					String dvAliasName=(String)iterator.next();
 					DssDataSetFixLength ddsfl=dvAliasTSCycle.get(dvAliasName);
-					if (ControlData.outputType !=0 || (ControlData.outputType ==0 && ControlData.ovOption ==0) || (ControlData.ovOption !=0 && isToWrite(getTSName(dvAliasName), ddsfl.getKind()))){
+					if (ControlData.outputType !=0 || (ControlData.outputType ==0 && ControlData.ovOption ==0) || (ControlData.ovOption !=0 && isToWrite(DssOperations.getTSName(dvAliasName), ddsfl.getKind()))){
 						String timestep=ddsfl.getTimeStep();
 						double[] values=ddsfl.getData();
 						double[] modValues;
@@ -770,7 +668,7 @@ public class DssOperation {
 						dc.units=ddsfl.getUnits().toUpperCase();
 						dc.values = modValues;
 						//boolean storeFlags = false;
-						dc.setName("/"+ControlData.partA+"_Cycle"+cycleI+"/"+DssOperation.getTSName(dvAliasName)+"/"+ddsfl.getKind()+"//"+timestep+"/"+ControlData.svDvPartF+"/");
+						dc.setName("/"+ControlData.partA+"_Cycle"+cycleI+"/"+DssOperations.getTSName(dvAliasName)+"/"+ddsfl.getKind()+"//"+timestep+"/"+ControlData.svDvPartF+"/");
 						//Date startDate=ddsfl.getStartTime();
 						Date startDate=new Date(ControlData.memStartYear-1900, ControlData.memStartMonth-1, ControlData.memStartDay, 24, 0);
 						Calendar startCalendar=Calendar.getInstance();
@@ -792,89 +690,6 @@ public class DssOperation {
 			}
 		}
 		System.gc();
-	}
-
-	public static void saveSvarTSData(HecDss dss, String fileName){
-		System.out.println("write svar timeseries to "+fileName);
-		Set svTsSet=DataTimeSeries.svTS.keySet();
-		Iterator iterator = svTsSet.iterator();
-		Map<String, Timeseries> allTsMap = ControlData.allTsMap;
-		while(iterator.hasNext()){
-			String svTsName=(String)iterator.next();
-			String svName=getTSName(svTsName);
-			String ctu = "none";
-			String units="none";
-			if (allTsMap.containsKey(svName)){
-				Timeseries ts=allTsMap.get(svName);
-				units = ts.units;
-				ctu=ts.convertToUnits;
-			}
-			DssDataSet dds=DataTimeSeries.svTS.get(svTsName);
-			ArrayList<Double> values=dds.getData();
-			//DSSData dd = new DSSData();
-			//dd._dataType=DSSUtil.REGULAR_TIME_SERIES;
-			TimeSeriesContainer dc = new TimeSeriesContainer();
-			dc.type="PER-AVER";
-			int size=values.size();
-			dc.numberValues=size;
-			dc.units=dds.getUnits().toUpperCase();
-			dc.values=new double[size];
-			Date startDate=dds.getStartTime();
-			Calendar startCalendar=Calendar.getInstance();
-			Date startDate1 = new Date(startDate.getYear(), startDate.getMonth(), startDate.getDate(), 24, 0);
-			startCalendar.setTime(startDate1);
-			dc.setStartTime(new HecTime(startCalendar));
-			//startDate.setTime(startDate.getTime()-1*24*60*60);
-			int year=startDate.getYear()+1900;
-			int month=startDate.getMonth()+1;
-			int day=startDate.getDate();
-			//String startDateStr=TimeOperation.dssTimeEndDay(year, month, day);
-			//long startJulmin = TimeFactory.getInstance().createTime(startDateStr).getTimeInMinutes();
-			if (units.equals("taf") && ctu.equals("cfs")){
-				for (int i=0; i<size; i++){
-					Double value=values.get(i);
-					if (value == null){
-						dc.values[i]=-901.0;
-					}else{
-						if (value == -901.0 || value == -902.0){
-							dc.values[i]=value;
-						}else{
-							ParallelVars prvs=TimeOperations.findTime(ControlData.timeStep, i, year, month, day);
-							dc.values[i]=value/ MiscUtilities.tafcfs("taf_cfs", ControlData.timeStep, prvs);
-						}
-					}
-				}
-			}else if (units.equals("cfs") && ctu.equals("taf")){
-				for (int i=0; i<size; i++){
-					Double value=values.get(i);
-					if (value == null){
-						dc.values[i]=-901.0;
-					}else{
-						if (value == -901.0 || value == -902.0){
-							dc.values[i]=value;
-						}else{
-							ParallelVars prvs=TimeOperations.findTime(ControlData.timeStep, i, year, month, day);
-							dc.values[i]=value/ MiscUtilities.tafcfs("cfs_taf", ControlData.timeStep, prvs);
-						}
-					}
-				}
-			}else{
-				for (int i=0; i<size; i++){
-					Double value=values.get(i);
-					dc.values[i]=value;
-				}
-			}
-			//boolean storeFlags = false;
-			dc.setName("/"+ControlData.partA+"/"+svName+"/"+dds.getKind()+"//"+dds.getTimeStep()+"/"+ControlData.svDvPartF+"/");
-			dc.setStoreAsDoubles(true);
-			try {
-				dss.put(dc);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-			//writer.storeTimeSeriesData(pathName, startJulmin, dd, storeFlags);
-		}
-		System.out.println("Svar file saved.");
 	}
 
 	public static int savedTimeStep(String timeStep, int year, int month, int day){

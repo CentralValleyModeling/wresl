@@ -2,7 +2,7 @@ package gov.ca.water.wrims.engine.core.components;
 
 import gov.ca.water.utilities.TimeOperations;
 import gov.ca.water.wresl.domain.*;
-import gov.ca.water.wrims.engine.core.evaluator.CondensedReferenceCacheAndRead.CondensedReferenceCache;
+import gov.ca.water.io.DSS.CondensedReferenceCacheAndRead.CondensedReferenceCache;
 import gov.ca.water.wrims.engine.core.external.ExternalFunction;
 import gov.ca.water.wrims.engine.core.solver.ortools.OrToolsSolver;
 import hec.heclib.dss.HecDss;
@@ -17,8 +17,6 @@ import java.util.Locale;
 import java.util.Map;
 
 import com.sunsetsoft.xa.Optimizer;
-
-import static gov.ca.water.utilities.TimeOperations.*;
 
 public class ControlData {
 	public static ArrayList<Integer> currTimeStep;

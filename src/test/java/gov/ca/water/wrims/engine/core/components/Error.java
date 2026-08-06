@@ -180,18 +180,6 @@ public class Error {
                 sourceLocation="("+ex.fromWresl+":"+ex.line+")";
             }
             error_evaluation.add(getCurrentDateCycleModel()+", "+ControlData.currEvalName+" in external function definition: "+error);
-        }else if (ControlData.currEvalTypeIndex == 5){
-            if (mds.tsMap.containsKey(ControlData.currEvalName)){
-                Timeseries ts=mds.tsMap.get(ControlData.currEvalName);
-                sourceLocation="("+ts.fromWresl+":"+ts.line+")";
-            }
-            error_evaluation.add(getCurrentDateCycleModel()+", "+ControlData.currEvalName+" in timeseries definition: "+error);
-        }else if (ControlData.currEvalTypeIndex==6){
-            if (mds.tsMap.containsKey(ControlData.currEvalName)){
-                Timeseries ts=mds.tsMap.get(ControlData.currEvalName);
-                sourceLocation="("+ts.fromWresl+":"+ts.line+")";
-            }
-            error_evaluation.add(ControlData.currEvalName+" in timeseries reading: "+error);
         }else if (ControlData.currEvalTypeIndex==7){
             if (mds.wtMap.containsKey(ControlData.currEvalName)){
                 WeightElement wt=mds.wtMap.get(ControlData.currEvalName);

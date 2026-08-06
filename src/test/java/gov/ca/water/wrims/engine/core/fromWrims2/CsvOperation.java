@@ -1,22 +1,15 @@
-package gov.ca.water.wrims.engine.core.evaluator;
+package gov.ca.water.wrims.engine.core.fromWrims2;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-
+import gov.ca.water.io.DSS.DssOperations;
 import gov.ca.water.utilities.TimeOperations;
 import gov.ca.water.wrims.engine.core.components.ControlData;
+import gov.ca.water.wrims.engine.core.evaluator.DataTimeSeries;
+import gov.ca.water.wrims.engine.core.evaluator.DssDataSet;
+import gov.ca.water.wrims.engine.core.evaluator.DssDataSetFixLength;
+import gov.ca.water.wrims.engine.core.evaluator.DssOperation;
+
+import java.io.*;
+import java.util.*;
 
 public class CsvOperation {
 	
@@ -42,7 +35,7 @@ public class CsvOperation {
 			Iterator<String> it = keys.iterator();
 			while (it.hasNext()){
 				String name=it.next();
-				String nameUp=DssOperation.getTSName(name).toUpperCase();
+				String nameUp= DssOperations.getTSName(name).toUpperCase();
 				DssDataSetFixLength dds = DataTimeSeries.dvAliasTS.get(name);
 				String origKindName=dds.getKind();
 				boolean isWritten=false;
@@ -75,10 +68,10 @@ public class CsvOperation {
 									bw.write(line);
 								}
 							}
-							date= TimeOperations.addOneDay(date);
+							date=TimeOperations.addOneDay(date);
 						}
 					}else{
-						if (!ControlData.isSimOutput) date= TimeOperations.backOneMonth(date);
+						if (!ControlData.isSimOutput) date=TimeOperations.backOneMonth(date);
 						for (int i=0; i<data.length; i++){
 							double value = data[i];
 							if (value != -901.0 && value !=-902.0){
@@ -90,7 +83,7 @@ public class CsvOperation {
 									bw.write(line);
 								}
 							}
-							date= TimeOperations.addOneMonth(date);
+							date=TimeOperations.addOneMonth(date);
 						}
 					}
 				}
@@ -99,7 +92,7 @@ public class CsvOperation {
 			it = svKeys.iterator();
 			while (it.hasNext()){
 				String name=it.next();
-				String nameUp=DssOperation.getTSName(name).toUpperCase();
+				String nameUp=DssOperations.getTSName(name).toUpperCase();
 				DssDataSet dds = DataTimeSeries.svTS.get(name);
 				String origKindName = dds.getKind();
 				boolean isWritten=false;
@@ -129,7 +122,7 @@ public class CsvOperation {
 								line = scenarioIndex+","+ControlData.partA+","+ControlData.svDvPartF+",1DAY,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+ convertValue(value, units, convertToUnits, date, timestep) +"\n";
 								bw.write(line);
 							}
-							date= TimeOperations.addOneDay(date);
+							date=TimeOperations.addOneDay(date);
 						}
 					}else{
 						//date=TimeOperation.backOneMonth(date);
@@ -139,7 +132,7 @@ public class CsvOperation {
 								line = scenarioIndex+","+ControlData.partA+","+ControlData.svDvPartF+",1MON,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+convertValue(value, units, convertToUnits, date, timestep)+"\n";
 								bw.write(line);
 							}
-							date= TimeOperations.addOneMonth(date);
+							date=TimeOperations.addOneMonth(date);
 						}
 					}
 				}
@@ -150,7 +143,7 @@ public class CsvOperation {
 				while (it.hasNext()){
 					String name=it.next();
 					if (ControlData.isSimOutput || svKeys.contains(name)){
-						String nameUp=DssOperation.getTSName(name).toUpperCase();
+						String nameUp=DssOperations.getTSName(name).toUpperCase();
 						DssDataSet dds = DataTimeSeries.dvAliasInit.get(name);
 						String origKindName=dds.getKind();
 						boolean isWritten=false;
@@ -173,24 +166,24 @@ public class CsvOperation {
 							String kindName=formKindName(origKindName);
 							ArrayList<Double> data = dds.getData();
 							if (timestep.equals("1DAY")){
-								date= TimeOperations.backOneDay(date);
+								date=TimeOperations.backOneDay(date);
 								for (int i=0; i<data.size(); i++){
 									double value = data.get(i);
 									if (value != -901.0 && value !=-902.0){
 										line = scenarioIndex+","+ControlData.partA+","+ControlData.svDvPartF+",1DAY,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+convertValue(value, units, convertToUnits, date, timestep)+"\n";
 										bw.write(line);
 									}
-									date= TimeOperations.addOneDay(date);
+									date=TimeOperations.addOneDay(date);
 								}
 							}else{
-								date= TimeOperations.backOneMonth(date);
+								date=TimeOperations.backOneMonth(date);
 								for (int i=0; i<data.size(); i++){
 									double value = data.get(i);
 									if (value != -901.0 && value !=-902.0){
 										line = scenarioIndex+","+ControlData.partA+","+ControlData.svDvPartF+",1MON,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+convertValue(value, units, convertToUnits, date, timestep)+"\n";
 										bw.write(line);
 									}
-									date= TimeOperations.addOneMonth(date);
+									date=TimeOperations.addOneMonth(date);
 								}
 							}
 						}
@@ -202,7 +195,7 @@ public class CsvOperation {
 				it = keys.iterator();
 				while (it.hasNext()){
 					String name=it.next();
-					String nameUp=DssOperation.getTSName(name).toUpperCase();
+					String nameUp=DssOperations.getTSName(name).toUpperCase();
 					DssDataSet dds = DataTimeSeries.svInit.get(name);
 					String origKindName=dds.getKind();
 					boolean isWritten=false;
@@ -225,24 +218,24 @@ public class CsvOperation {
 						String kindName=formKindName(origKindName);
 						ArrayList<Double> data = dds.getData();
 						if (timestep.equals("1DAY")){
-							date= TimeOperations.backOneDay(date);
+							date=TimeOperations.backOneDay(date);
 							for (int i=0; i<data.size(); i++){
 								double value = data.get(i);
 								if (value != -901.0 && value !=-902.0){
 									line = scenarioIndex+","+ControlData.partA+","+ControlData.svDvPartF+",1DAY,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+convertValue(value, units, convertToUnits, date, timestep)+"\n";
 									bw.write(line);
 								}
-								date= TimeOperations.addOneDay(date);
+								date=TimeOperations.addOneDay(date);
 							}
 						}else{
-							date= TimeOperations.backOneMonth(date);
+							date=TimeOperations.backOneMonth(date);
 							for (int i=0; i<data.size(); i++){
 								double value = data.get(i);
 								if (value != -901.0 && value !=-902.0){
 									line = scenarioIndex+","+ControlData.partA+","+ControlData.svDvPartF+",1MON,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+convertValue(value, units, convertToUnits, date, timestep)+"\n";
 									bw.write(line);
 								}
-								date= TimeOperations.addOneMonth(date);
+								date=TimeOperations.addOneMonth(date);
 							}
 						}
 					}
@@ -307,7 +300,7 @@ public class CsvOperation {
 		if (TimeOperations.isMonthlyInterval(timestep)){
 			int year=date.getYear()+1900;
 			int month=date.getMonth()+1;
-			int daysInMonth= TimeOperations.numberOfDays(month, year);
+			int daysInMonth=TimeOperations.numberOfDays(month, year);
 			return 504.1666667 / daysInMonth;
 		}else{
 			return 504.1666667;
@@ -318,7 +311,7 @@ public class CsvOperation {
 		if (TimeOperations.isMonthlyInterval(timestep)){
 			int year=date.getYear()+1900;
 			int month=date.getMonth()+1;
-			int daysInMonth= TimeOperations.numberOfDays(month, year);
+			int daysInMonth=TimeOperations.numberOfDays(month, year);
 			return daysInMonth / 504.1666667;
 		}else{
 			return 1 / 504.1666667;
@@ -344,8 +337,6 @@ public class CsvOperation {
 		int year=date.getYear()+1900;
 		int month=date.getMonth()+1;
 		int day = date.getDate();
-		return year+"-"+ TimeOperations.monthNameNumeric(month)+"-"+ TimeOperations.dayName(day)+" 00:00:00";
+		return year+"-"+TimeOperations.monthNameNumeric(month)+"-"+TimeOperations.dayName(day)+" 00:00:00";
 	}
-
-
 }

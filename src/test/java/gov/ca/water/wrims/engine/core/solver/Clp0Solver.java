@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.*;
 
+import gov.ca.water.io.DSS.DssOperations;
 import org.apache.commons.io.FilenameUtils;
 
 import gov.ca.water.wresl.domain.Dvar;
@@ -198,10 +199,10 @@ public class Clp0Solver {
 					varCycleIndexValueMap.put(dvName, cycleValue);
 				}
 			}
-			String entryNameTS=DssOperation.entryNameTS(dvName, ControlData.timeStep);
+			String entryNameTS=DssOperations.entryNameTS(dvName, ControlData.timeStep);
 			DataTimeSeries.saveDataToTimeSeries(dvName, entryNameTS, value, dvar);
 			if (timeArrayDvList.contains(dvName)){
-				entryNameTS=DssOperation.entryNameTS(dvName+"__fut__0", ControlData.timeStep);
+				entryNameTS= DssOperations.entryNameTS(dvName+"__fut__0", ControlData.timeStep);
 				DataTimeSeries.saveDataToTimeSeries(entryNameTS, value, dvar, 0);
 			}
 		}

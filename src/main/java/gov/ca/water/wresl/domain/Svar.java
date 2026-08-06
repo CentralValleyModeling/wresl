@@ -10,12 +10,6 @@ public class Svar extends WRESLComponent implements Serializable {
     private static final long serialVersionUID = 1L;
 
     // These properties are the same for all Svar time array
-    public boolean isTimeseries = false;
-    public String dssBPart = Param.undefined;
-    public String format = Param.undefined;
-    public String kind = Param.undefined;
-    public String units = Param.undefined;
-    public String convertToUnits = Param.undefined;
     public Set<String> dependants = new HashSet<>();
     public Set<String> neededVarInCycleSet = new HashSet<>();
     public boolean needVarFromEarlierCycle = false;
@@ -47,11 +41,6 @@ public class Svar extends WRESLComponent implements Serializable {
     public Svar copyOf() {
         Svar svarCopy = new Svar();
 
-        svarCopy.dssBPart = this.dssBPart;
-        svarCopy.format = this.format;
-        svarCopy.kind = this.kind;
-        svarCopy.units = this.units;
-        svarCopy.convertToUnits = this.convertToUnits;
         svarCopy.dependants = this.dependants;
         svarCopy.neededVarInCycleSet = this.neededVarInCycleSet;
         svarCopy.needVarFromEarlierCycle =this.needVarFromEarlierCycle;

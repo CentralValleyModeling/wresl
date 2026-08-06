@@ -4,7 +4,6 @@ import gov.ca.water.utilities.TimeOperations;
 import gov.ca.water.wresl.domain.External;
 import gov.ca.water.wresl.domain.ModelDataSet;
 import gov.ca.water.wresl.domain.StudyDataSet;
-import gov.ca.water.wresl.domain.Timeseries;
 import gov.ca.water.wrims.engine.core.external.LoadAllDll;
 import gov.ca.water.wrims.engine.core.fromWrims2.StudyUtils;
 import gov.ca.water.wrims.engine.core.hdf5.HDF5Reader;
@@ -26,10 +25,9 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 
-import gov.ca.water.wrims.engine.core.evaluator.CondensedReferenceCacheAndRead;
+import gov.ca.water.io.DSS.CondensedReferenceCacheAndRead;
 import gov.ca.water.wrims.engine.core.evaluator.DataTimeSeries;
 import gov.ca.water.wrims.engine.core.evaluator.DssDataSetFixLength;
-import gov.ca.water.wrims.engine.core.evaluator.DssOperation;
 
 public class PreRunModel {
 	public PreRunModel(StudyDataSet sds){
@@ -79,27 +77,52 @@ public class PreRunModel {
 		}
 		ControlData.allTsMap=sds.getTimeseriesMap();
 
+
 		HecTimeSeries.setMessageLevel(0);
 		long t1 = Calendar.getInstance().getTimeInMillis();
-		if (FilePaths.svarFile.toLowerCase().endsWith(".h5")){
-			HDF5Reader.readTimeseries();
-		}else{
+		if (FilePaths.svarFile.toLowerCase().endsWith(".h5")) {
+			sds.readSVTimeSeriesData(FilePaths.fullSvarFilePath,
+					                 ControlData.partA,
+					                 ControlData.svDvPartF,
+					                 ControlData.startYear,
+					                 ControlData.startMonth,
+					                 ControlData.startDay);
+			System.out.println("Timeseries Reading Done.");
+		} else {
 	        ControlData.cacheSvar = CondensedReferenceCacheAndRead.createCondensedCache(FilePaths.fullSvarFilePath, "*");
-			if (!FilePaths.fullSvarFile2Path.equals("")){
+			if (!FilePaths.fullSvarFile2Path.equals("")) {
 		        ControlData.cacheSvar2 = CondensedReferenceCacheAndRead.createCondensedCache(FilePaths.fullSvarFile2Path, "*");
 			}
-			readTimeseries();
+			sds.readSVTimeSeriesData(ControlData.cacheSvar,
+					                 ControlData.cacheSvar2,
+					                 ControlData.partA,
+					                 ControlData.svDvPartF,
+					                 ControlData.startYear,
+					                 ControlData.startMonth,
+					                 ControlData.startDay);
 		}
+		if (FilePaths.initFile.toLowerCase().endsWith(".h5")) {
+			ControlData.initHDF5 = true;
+			sds.readInitialData(FilePaths.fullInitFilePath,
+					            ControlData.partA,
+					            ControlData.initPartF,
+					            ControlData.startYear,
+					            ControlData.startMonth,
+					            ControlData.startDay);
+		} else {
+			ControlData.initHDF5 = false;
+	        ControlData.cacheInit = CondensedReferenceCacheAndRead.createCondensedCache(FilePaths.fullInitFilePath, "*");
+            sds.readInitialData(ControlData.cacheInit,
+					            ControlData.partA,
+					            ControlData.svDvPartF,
+					            ControlData.startYear,
+					            ControlData.startMonth,
+					            ControlData.startDay);
+		}
+		System.out.println("Timeseries Reading Done.");
 		long t2 = Calendar.getInstance().getTimeInMillis();
 		ControlData.t_readTs=ControlData.t_readTs+(int) (t2-t1);
 
-		if (FilePaths.initFile.toLowerCase().endsWith(".h5")){
-			ControlData.initHDF5=true;
-			HDF5Reader.readInitialData();
-		}else{
-			ControlData.initHDF5=false;
-	        ControlData.cacheInit = CondensedReferenceCacheAndRead.createCondensedCache(FilePaths.fullInitFilePath, "*");
-		}
 		initialDvarAliasTS();
 
 		for (int i=0; i<modelList.size(); i++){
@@ -120,31 +143,6 @@ public class PreRunModel {
 		}
 
 		if (!ControlData.unchangeGWRestart) setGroundwaterInitFile();
-	}
-
-	private void readTimeseries(){
-		Map<String, Timeseries> tsMap=ControlData.currStudyDataSet.getTimeseriesMap();
-		Map<String, List<String>> tsTimeStepMap=ControlData.currStudyDataSet.getTimeseriesTimeStepMap();
-		ControlData.currEvalTypeIndex=6;
-		Set tsKeySet=tsMap.keySet();
-		Iterator iterator=tsKeySet.iterator();
-		while(iterator.hasNext()){
-			String tsName=(String)iterator.next();
-			//System.out.println("Reading svar timeseries "+tsName);
-			//To Do: in the svar class, add flag to see if svTS has been loaded
-			if (!DataTimeSeries.lookSvDss.contains(tsName)){
-				List<String> timeStepList=tsTimeStepMap.get(tsName);
-				for (String timeStep:timeStepList){
-					DssOperation.getSVTimeseries(tsName, FilePaths.fullSvarFilePath, timeStep, 1);
-					if (!FilePaths.fullSvarFile2Path.equals("")){
-						DssOperation.getSVTimeseries(tsName, FilePaths.fullSvarFile2Path, timeStep, 2);
-					}
-					String entryNameTS=DssOperation.entryNameTS(tsName, timeStep);
-					DataTimeSeries.lookSvDss.add(entryNameTS);
-				}
-			}
-		}
-		System.out.println("Timeseries Reading Done.");
 	}
 
 	private void initialDvarAliasTS(){

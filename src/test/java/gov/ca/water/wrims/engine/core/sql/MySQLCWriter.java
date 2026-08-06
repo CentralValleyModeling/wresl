@@ -13,6 +13,7 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeSet;
 
+import gov.ca.water.io.DSS.DssOperations;
 import gov.ca.water.utilities.TimeOperations;
 import gov.ca.water.wrims.engine.core.components.ControlData;
 import gov.ca.water.wrims.engine.core.components.FilePaths;
@@ -280,7 +281,7 @@ public class MySQLCWriter {
 	}
 	
 	public String formPathName(DssDataSetFixLength ts, String name, String timestep){
-		String pathName = DssOperation.getTSName(name).replaceAll("-", "_")+"$"+ts.getKind().replaceAll("-", "_");
+		String pathName = DssOperations.getTSName(name).replaceAll("-", "_")+"$"+ts.getKind().replaceAll("-", "_");
 		//String pathName = DssOperation.getTSName(name);
 		return pathName;
 	}

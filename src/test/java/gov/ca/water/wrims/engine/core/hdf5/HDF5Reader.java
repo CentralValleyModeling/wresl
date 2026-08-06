@@ -2,6 +2,7 @@ package gov.ca.water.wrims.engine.core.hdf5;
 
 import java.util.*;
 
+import gov.ca.water.io.DSS.DssOperations;
 import gov.ca.water.utilities.MiscUtilities;
 import gov.ca.water.utilities.ParallelVars;
 import gov.ca.water.utilities.TimeOperations;
@@ -64,18 +65,7 @@ public class HDF5Reader {
 	private static String[] initLookupKind=new String[0];
 	private static String[] initLookupUnit=new String[0];
 	private static String[] initLookupTimestep=new String[0];
-	
-	public static void readTimeseries(){
-		if (openFileAndGroup(1)>=0){
-			readLookupTable(1);
-			readTimestepList(1);
-			readTimestepData(1);
-			assignTimeseries();
-			closeFileAndGroup(1);
-			System.out.println("Timeseries Reading Done.");
-		}
-	}
-	
+
 	public static void readInitialData(){
 		if (openFileAndGroup(2)>=0){
 			readLookupTable(2);
@@ -650,130 +640,7 @@ public class HDF5Reader {
 			}
 		}
 	}
-	
-	public static void assignTimeseries(){
-		Map<String, Timeseries> tsMap=ControlData.currStudyDataSet.getTimeseriesMap();
-		Map<String, List<String>> tsTimeStepMap=ControlData.currStudyDataSet.getTimeseriesTimeStepMap();
-		ControlData.currEvalTypeIndex=6;
-		Set tsKeySet=tsMap.keySet();
-		Iterator iterator=tsKeySet.iterator();
-		while(iterator.hasNext()){
-			String tsName=(String)iterator.next();
-			if (!DataTimeSeries.lookSvDss.contains(tsName)){ 
-				List<String> timeStepList=tsTimeStepMap.get(tsName);
-				for (String timeStep:timeStepList){
-					getSVTimeseries(tsName, timeStep);
-					String entryNameTS=DssOperation.entryNameTS(tsName, timeStep);
-					DataTimeSeries.lookSvDss.add(entryNameTS);
-				}
-			}
-		}
-		
-		svLookupName=new String[0];
-		svLookupKind=new String[0];
-		svLookupUnit=new String[0];
-		svLookupTimestep=new String[0];
-		svMonthlyData=new double[0][0];
-		svDailyData=new double[0][0];
-		svMonthlyListName= new String[0];
-		svMonthlyListKind= new String[0];
-		svDailyListName= new String[0];
-		svDailyListKind= new String[0];
-	}
-	
-	public static boolean getSVTimeseries(String name, String timeStep){		
-		ControlData.timeStep=timeStep;
-		ControlData.partE=timeStep;
-		String timeStepLow=timeStep.toLowerCase();
-		Timeseries ts=ControlData.allTsMap.get(name);
-		String dssBPart=ts.dssBPart;
-		String partC=ts.kind;
-		boolean found=false;
-		
-		int i=0;
-		while (i<svLookupName.length && !found){
-			if (svLookupName[i].equals(dssBPart) && svLookupTimestep[i].equals(timeStepLow) && svLookupKind[i].equals(partC) && svLookupUnit[i].equals(ts.units)){
-				found=true;
-			}
-			i++;
-		}
-		
-		if (!found) return false;
-		
-		String[] listName=new String[0];
-		String[] listKind=new String[0];
-		double[][] data=new double[0][0];
-		Date startDate=new Date(21, 9, 31, 24, 0);
-		
-		if (TimeOperations.isMonthlyInterval(timeStep)){
-			listName = svMonthlyListName;
-			listKind = svMonthlyListKind;
-			data = svMonthlyData;
-			startDate=svMonthlyStartDate;
-		}else if (timeStep.equals("1DAY")){
-			listName = svDailyListName;
-			listKind = svDailyListKind;
-			data = svDailyData;
-			startDate=svDailyStartDate;
-		}
-		
-		i=0; 
-		int index=-1;
-		while(i<listName.length && index==-1){
-			if (listName[i].equals(dssBPart) && listKind[i].equals(partC)){
-				index=i;
-			}
-			i++;
-		}
-		
-		if (index==-1) return false;
-		
-		DssDataSet dds= new DssDataSet();
-		ArrayList<Double> dataArray= new ArrayList<Double>();
-		
-		if (ts.units.equals("taf") && ts.convertToUnits.equals("cfs")){
-			for (int j=0; j<data.length; j++){
-				double dataEntry = data[j][index];
-				if (dataEntry==-901.0){
-					dataArray.add(-901.0);
-				}else if (dataEntry==-902.0){
-					dataArray.add(-902.0);
-				}else{
-					ParallelVars prvs = TimeOperations.findTime(ControlData.timeStep, j, startDate.getYear()+1900, startDate.getMonth(), startDate.getDate());
-					double dataEntryValue=dataEntry*MiscUtilities.tafcfs("taf_cfs", ControlData.timeStep, prvs);
-					dataArray.add(dataEntryValue);
-				}
-			}
-		}else if (ts.units.equals("cfs") && ts.convertToUnits.equals("taf")){
-			for (int j=0; j<data.length; j++){
-				double dataEntry=data[j][index];
-				if (dataEntry==-901.0){
-					dataArray.add(-901.0);
-				}else if (dataEntry==-902.0){
-					dataArray.add(-902.0);
-				}else{
-					ParallelVars prvs = TimeOperations.findTime(ControlData.timeStep, j, startDate.getYear()+1900, startDate.getMonth(), startDate.getDate());
-					double dataEntryValue=dataEntry*MiscUtilities.tafcfs("cfs_taf", ControlData.timeStep, prvs);
-					dataArray.add(dataEntryValue);
-				}
-			}
-		}else{
-			for (int j=0; j<data.length; j++){
-				dataArray.add(data[j][index]);
-			}
-		}
-		dds.setUnits(ts.units);
-		dds.setKind(partC);
-        dds.setData(dataArray);
-        dds.setTimeStep(timeStep);
-        dds.setStartTime(startDate);
-        dds.setFromDssFile(true);
-        dds.generateStudyStartIndex();
-        String entryNameTS=DssOperation.entryNameTS(name, timeStep);
-        DataTimeSeries.svTS.put(entryNameTS, dds);
-		return true;
-	}
-	
+
 	public static boolean getDVAliasInitTimeseries(String name){	
 		String units;
 		String partC;
@@ -843,7 +710,7 @@ public class HDF5Reader {
         dds.setStartTime(startDate);
         dds.setFromDssFile(true);
         dds.generateStudyStartIndex();
-        String entryNameTS=DssOperation.entryNameTS(name, timeStep);
+        String entryNameTS= DssOperations.entryNameTS(name, timeStep);
         DataTimeSeries.dvAliasInit.put(entryNameTS, dds);
 		return true;
 	}
@@ -936,7 +803,7 @@ public class HDF5Reader {
         dds.setStartTime(startDate);
         dds.setFromDssFile(true);
         dds.generateStudyStartIndex();
-        String entryNameTS=DssOperation.entryNameTS(name, timeStep);
+        String entryNameTS=DssOperations.entryNameTS(name, timeStep);
         DataTimeSeries.svInit.put(entryNameTS, dds);
 		return true;
 	}
