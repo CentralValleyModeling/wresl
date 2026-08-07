@@ -1,11 +1,16 @@
 package gov.ca.water.wresl.domain;
 
+import gov.ca.water.utilities.Param;
+
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ModelDataSet extends WRESLComponent implements Serializable {
     private static final long serialVersionUID = 1L;
+
+    // Timestep
+    public String timeStep = Param.undefined;
 
     // Weight table   // <objName,  <itemName, value>>
     public List<String> wtList = new ArrayList<>();
@@ -20,9 +25,8 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
     public List<String> exList = new ArrayList<>();
     public Map<String, External> exMap = new HashMap<>();
 
-    // Svar timeseries data structure
-    public List<String> tsList = new ArrayList<>();
-    public Map<String, Timeseries> tsMap = new HashMap<>();
+    // Timeseries data structure
+    public Map<String, Timeseries> tsMap_Temp = new HashMap<>();  // This is a temporary Map to be used to build the actual map in StudyDataSet
 
     // Svar data structure
     public Set<String> svSet_unknown = new HashSet<>();
@@ -62,13 +66,28 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
 
 
     // ------------------------------------------------------------
-    // --- METHODS
+    // --- GETTERS
     // ------------------------------------------------------------
-
     public Svar getSvar(String svarName) {
         return this.svMap.get(svarName);
     }
 
+    public String getTimeStep() {
+        return this.timeStep;
+    }
+
+
+    // ------------------------------------------------------------
+    // --- SETTERS
+    // ------------------------------------------------------------
+    public void setTimeStep(String timeStep) {
+        this.timeStep = timeStep;
+    }
+
+
+    // ------------------------------------------------------------
+    // --- MISC. METHODS
+    // ------------------------------------------------------------
     public void clearFutureSvMap() {
         this.svFutMap = new HashMap<String, Svar>();
     }
@@ -94,8 +113,7 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
         this.exList.addAll(mds.exList);
         this.exMap.putAll(mds.exMap);
 
-        this.tsList.addAll(mds.tsList);
-        this.tsMap.putAll(mds.tsMap);
+        this.tsMap_Temp.putAll(mds.tsMap_Temp);
 
         this.svSet_unknown.addAll(mds.svSet_unknown);
         this.svList.addAll(mds.svList);
@@ -131,6 +149,8 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
 
     }
 
-
-
+    // Clear memory that stores temporary Timeseries map
+    public void clearTempTSMap() {
+        this.tsMap_Temp = null;
+    }
 }

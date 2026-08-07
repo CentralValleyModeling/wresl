@@ -10,23 +10,21 @@ import java.util.*;
 
 public class VariableTimeStep {
 	
-	public static void setCycleTimeStep(StudyDataSet sds){
-		String timeStep=sds.getModelTimeStepList().get(ControlData.currCycleIndex);
-		if (timeStep.equals(Param.undefined)){
+	public static void setCycleTimeStep(StudyDataSet sds) {
+		String timeStep = sds.getModelTimeStep(ControlData.currCycleIndex);
+		if (timeStep.equals(Param.undefined)) {
 			ControlData.timeStep=ControlData.defaultTimeStep;
 			ControlData.partE=ControlData.defaultTimeStep;
-		}else{
+		} else {
 			ControlData.timeStep=timeStep;
 			ControlData.partE=timeStep;
 		}
 	}
 	
-	public static void setCycleEndDate(StudyDataSet sds){
-		List<String> timeStepList=sds.getModelTimeStepList();
-		String definedTimeStep;
-		if (ControlData.cycleTimeStepPriority==2.0){
+	public static void setCycleEndDate(StudyDataSet sds) {
+		if (ControlData.cycleTimeStepPriority==2.0) {
 			addOneMonthToCycleEndDate();
-		}else if (ControlData.cycleTimeStepPriority==1.0){
+		} else if (ControlData.cycleTimeStepPriority==1.0) {
 			addOneDayToCycleEndDate();
 		}
 	}
@@ -77,30 +75,27 @@ public class VariableTimeStep {
 		ControlData.cycleEndDay=cycleEndDate.getDate();
 	}
 	
-	public static ArrayList<Integer> getTotalTimeStep(StudyDataSet sds){
+	public static ArrayList<Integer> getTotalTimeStep(StudyDataSet sds) {
 		List<String> timeStepList=sds.getModelTimeStepList();
 		ControlData.totalTimeStep=new ArrayList<Integer>();
-		for (String timeStep: timeStepList){
-			if (TimeOperations.isMonthlyInterval(timeStep)){
-				if (ControlData.yearOutputSection<0){
+		for (String timeStep: timeStepList) {
+			if (TimeOperations.isMonthlyInterval(timeStep)) {
+				if (ControlData.yearOutputSection<0) {
 					ControlData.totalTimeStep.add((ControlData.endYear-ControlData.startYear)*12+(ControlData.endMonth-ControlData.startMonth)+1);
-				}else{
+				} else {
 					ControlData.totalTimeStep.add(ControlData.yearOutputSection*12+ControlData.monMemSection);
 				}
-			}else{
-				if (ControlData.yearOutputSection<0){
+			} else {
+				if (ControlData.yearOutputSection<0) {
 					Date startDate = new Date (ControlData.startYear-1900, ControlData.startMonth-1, ControlData.startDay);
 					Date endDate=new Date (ControlData.endYear-1900, ControlData.endMonth-1, ControlData.endDay);
-					//long startTime=startDate.getTime();
-					//long endTime=endDate.getTime();
-					//double timestep=(endTime-startTime)/(24*60*60*1000l)+1;
 					Calendar c1=Calendar.getInstance();
 					c1.setTime(startDate);
 					Calendar c2=Calendar.getInstance();
 					c2.setTime(endDate);
 					double timestep = Duration.between(c1.toInstant(), c2.toInstant()).toDays()+1;
 					ControlData.totalTimeStep.add((int)timestep);
-				}else{
+				} else {
 					ControlData.totalTimeStep.add(ControlData.yearOutputSection*366+ControlData.monMemSection*31);
 				}
 			}

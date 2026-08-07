@@ -601,10 +601,10 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         }
 
         // This is a timeseries data
-        Timeseries tsVar = INSTANCE.sds.getTimeseries(varName);
+        String tsName = DssOperations.entryNameTS(varName, INSTANCE.currentModelDataSet.getTimeStep());
+        Timeseries tsVar = INSTANCE.sds.getSVTimeseries(tsName);
         if (tsVar != null) {
             // Now retrieve the corresponding SV timeseries data
-            String tsName = DssOperations.entryNameTS(varName, tsVar.timeStep);
             Timeseries svTSVar = INSTANCE.sds.getSVTimeseries(tsName);
 
             // Retrieve timestep offset and make sure it is an integer number
@@ -620,7 +620,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             value = svTSVar.retrieveDataForTime(prvs, false);
             if (value != null) { return new IntDouble(value.doubleValue(), false); }
 
-            // If made it this far, retrieve from initial data
+            // If made it this far, timeseries di not extend back in time; retrieve from initial data
             Timeseries svInit = INSTANCE.sds.getSVInitTimeseries(tsName);
             value = svInit.retrieveDataForTime(prvs, true);
             if (value != null ) { return new IntDouble(value.doubleValue(), false); }

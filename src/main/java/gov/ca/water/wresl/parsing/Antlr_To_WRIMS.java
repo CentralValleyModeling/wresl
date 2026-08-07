@@ -1,5 +1,6 @@
 package gov.ca.water.wresl.parsing;
 
+import gov.ca.water.io.DSS.DssOperations;
 import gov.ca.water.utilities.Param;
 import gov.ca.water.wresl.domain.*;
 import gov.ca.water.wresl.errors.EvaluationErrorException;
@@ -91,7 +92,6 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         List<String> modelList = new ArrayList<>();
         List<String> modelConditionList = new ArrayList<>();
         List<ParseTree> modelConditionParseTreeList = new ArrayList<>();
-        List<String> modelTimeStepList = new ArrayList<>();
         Map<String, ModelDataSet> modelDataSetMap = new HashMap<>();
         for (int i=0; i<this.sequenceData.size(); i++) {
             Sequence sq = this.sequenceData.get(i+1);
@@ -100,37 +100,31 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             if (modelList.contains(modelName)) {
                 throw new EvaluationErrorException("Each SEQUENCE must define a unique model. Model '" + modelName + "' is used in multiple SEQUENCEs!");
             }
+            ModelDataSet mds = this.modelsAndGroups.get(modelName);
+            mds.setTimeStep(sq.timeStep);
             modelList.add(modelName);
-            modelDataSetMap.put(modelName, this.modelsAndGroups.get(modelName));
+            modelDataSetMap.put(modelName, mds);
             modelConditionList.add(sq.condition);
             modelConditionParseTreeList.add(sq.conditionParseTree);
-            modelTimeStepList.add(sq.timeStep);
         }
         this.sds.setModelList(modelList);
         this.sds.setModelConditionList(modelConditionList);
         this.sds.setModelConditionParseTrees(modelConditionParseTreeList);
-        this.sds.setModelTimeStepList(modelTimeStepList);
         this.sds.setModelDataSetMap(modelDataSetMap);
 
         // Loop through models and process data, check for errors
-        Map<String, Timeseries> tsMap = new HashMap<>();
-        Map<String, List<String>> tsTimeStepMap = new HashMap<>();
-        Expression_To_Vars varFinder = new Expression_To_Vars();
-        int indx = -1;
+        Map<String, Timeseries> svTSMap = new HashMap<>();
         for (String modelName : this.sds.getModelList()) {
-            indx = indx + 1;
             ModelDataSet mds = modelDataSetMap.get(modelName);
 
-            // Compile input timeseries data map
-            tsMap.putAll(mds.tsMap);
-
-            // Compile input timeseries timesteps
-            String modelTimeStep = modelTimeStepList.get(indx);
-            for (String tsName:mds.tsMap.keySet()) {
-                if (!tsTimeStepMap.containsKey(tsName)) {
-                    tsTimeStepMap.put(tsName, Arrays.asList(modelTimeStep));
-                }
-            }
+            // Compile SV timeseries map and timseries timesteps
+            String modelTimeStep = mds.getTimeStep();
+            mds.tsMap_Temp.forEach((tsName, ts) -> {
+                ts.setTimeStep(modelTimeStep);
+                String svTSName = DssOperations.entryNameTS(tsName, modelTimeStep);
+                svTSMap.put(svTSName, ts);
+            });
+            mds.clearTempTSMap();  // Clear memory for the temporary Timeseries map that we just utilized and now are done with
 
             // Evaluate weights when possible (i.e. when they don't depend on some dynamic value such a taf-cfs)
             for (String weightName : mds.wtList) {
@@ -147,8 +141,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             // Convert ALIASes referenced in GOALs, and other ALIASes referenced from these ALIASes, to DVARs and GOALs
             mds = convertAliasToGoal(mds);
         }
-        this.sds.setTimeseriesMap(tsMap);
-        this.sds.setTimeseriesTimeStepMap(tsTimeStepMap);
+        this.sds.setSVTimeseriesMap(svTSMap);
 
 
         // Check for duplicate Dvars within each model
@@ -321,11 +314,10 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                     }
                     case Timeseries ts -> {
                         // Make sure ts is not defined more than once
-                        if (mds.tsList.contains(name)) {
+                        if (mds.tsMap_Temp.containsKey(name)) {
                             throw new SyntaxErrorException(ts.fromWresl, ts.line, "Timeseries '"+name+"' is defined more than once in model '"+mds.name+"'!");
                         }
-                        mds.tsList.add(name);
-                        mds.tsMap.put(name, ts);
+                        mds.tsMap_Temp.put(name, ts);
                     }
                     case Goal goal -> {
                         // Make sure goal is not defined more than once
@@ -411,8 +403,11 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         mds.wtMap.put(name, weight);
                     }
                     case Timeseries ts -> {
-                        mds.tsList.add(name);
-                        mds.tsMap.put(name, ts);
+                        // Make sure ts is not defined more than once
+                        if (mds.tsMap_Temp.containsKey(name)) {
+                            throw new SyntaxErrorException(ts.fromWresl, ts.line, "Timeseries '"+name+"' is defined more than once in group '"+mds.name+"'!");
+                        }
+                        mds.tsMap_Temp.put(name, ts);
                     }
                     case Goal goal -> {
                         mds.gList.add(name);

@@ -25,19 +25,15 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
 
     private List<String> modelList = new ArrayList<>();
     private List<String> modelConditionList = new ArrayList<>();
-    private List<String> modelTimeStepList = new ArrayList<>();
     private List<ParseTree> modelConditionParseTrees = new ArrayList<>();
+    private Map<String, ModelDataSet> modelDataSetMap = new HashMap<>();  // <modelName, ModelDataSet>
 
     ///  < timeseries name, timeseries object >
-    private Map<String, Timeseries> svTS = new HashMap<>();                    // Actual Timeseries map that holds the data read from SV file
-    private Map<String, Timeseries> svInit = new HashMap<>();                  // Timeseries that are read from INIT file to initialize timeseries Svars
+    private Map<String, Timeseries> svTimeseriesMap = new HashMap<>();         // Actual Timeseries map that holds the data read from SV file
+    private Map<String, Timeseries> svInitTimeseriesMap = new HashMap<>();     // Timeseries that are read from INIT file to initialize timeseries Svars
     private Map<String, Timeseries> dvAliasTS = new HashMap<>();
     private Map<String, Timeseries> dvAliasInit = new HashMap<>();
-    private Map<String, Timeseries> timeseriesMap = new HashMap<>();           // Temporary Timeseries map used to develop other Timeseries maps
-    private Map<String, List<String>> timeseriesTimeStepMap = new HashMap<>(); // Map that holds timesteps for timeseries data
-
-    ///  < modelName, modelDataSet >
-    private Map<String, ModelDataSet> modelDataSetMap = new HashMap<>();
+ //   private Map<String, List<String>> timeseriesTimeStepMap = new HashMap<>(); // Map that holds timesteps for timeseries data
 
     /// this map contains value of vars needed for WRESL syntax: varName[cycleName]
     /// < VarName, < CycleName, Value >>
@@ -67,24 +63,12 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         return this.parameterMap;
     }
 
-    public Timeseries getTimeseries(String tsName) {
-        return this.timeseriesMap.get(tsName);
-    }
-
-    public Map<String, Timeseries> getTimeseriesMap() {
-        return new HashMap<String, Timeseries>(this.timeseriesMap);
-    }
-
     public Timeseries getSVTimeseries(String tsName) {
-        return this.svTS.get(tsName);
+        return this.svTimeseriesMap.get(tsName);
     }
 
     public Timeseries getSVInitTimeseries(String tsName) {
-        return this.svInit.get(tsName);
-    }
-
-    public Map<String, List<String>> getTimeseriesTimeStepMap() {
-        return new HashMap<String, List<String>>(this.timeseriesTimeStepMap);
+        return this.svInitTimeseriesMap.get(tsName);
     }
 
     public String getAbsMainFilePath() {
@@ -99,8 +83,20 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         return new ArrayList<String>(modelConditionList);
     }
 
+    public String getModelTimeStep(int modelIndex) {
+        String modelName = this.modelList.get(modelIndex);
+        ModelDataSet mds = this.modelDataSetMap.get(modelName);
+        return mds.getTimeStep();
+    }
+
     public List<String> getModelTimeStepList() {
-        return this.modelTimeStepList;
+        List<String> timeStepList = new ArrayList<>();
+
+        for (int i=0; i<this.modelList.size(); i++) {
+            timeStepList.add(this.getModelTimeStep(i));
+        }
+
+        return timeStepList;
     }
 
     public ParseTree getModelConditionParseTree(int modelIndex) {
@@ -152,12 +148,8 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         this.parameterMap = parameterMap;
     }
 
-    public void setTimeseriesMap(Map<String, Timeseries> timeseriesMap) {
-        this.timeseriesMap = timeseriesMap;
-    }
-
-    public void setTimeseriesTimeStepMap(Map<String, List<String>> timeseriesTimeStepMap) {
-        this.timeseriesTimeStepMap = timeseriesTimeStepMap;
+    public void setSVTimeseriesMap(Map<String, Timeseries> svTimeseriesMap) {
+        this.svTimeseriesMap = svTimeseriesMap;
     }
 
     public void setAbsMainFilePath(String absMainFilePath) {
@@ -170,10 +162,6 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
 
     public void setModelConditionList(List<String> modelConditionList) {
         this.modelConditionList = modelConditionList;
-    }
-
-    public void setModelTimeStepList(List<String> modelTimeStepList) {
-        this.modelTimeStepList = modelTimeStepList;
     }
 
     public void setModelConditionParseTrees(List<ParseTree> modelConditionParseTrees) {
@@ -209,101 +197,131 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         this.parameterMap.put(parameter.name, parameter);
     }
 
-    public void clearVarTimeArrayCycleValueMap(){
+    public void clearVarTimeArrayCycleValueMap() {
         this.varTimeArrayCycleValueMap = new HashMap<String, Map<String, IntDouble>>();
     }
 
-    public void clearVarCycleIndexByTimeStep(){
+    public void clearVarCycleIndexByTimeStep() {
         this.varCycleIndexValueMap = new HashMap<String, Map<String, IntDouble>>();
         this.dvarTimeArrayCycleIndexList = new ArrayList<String> ();
     }
 
-    // Read timeseries data from the SV DSS file
-    public void readSVTimeSeriesData(CondensedReferenceCacheAndRead.CondensedReferenceCache cacheTS, CondensedReferenceCacheAndRead.CondensedReferenceCache cacheTS2, String partA, String partF, int studyStartYear, int studyStartMonth, int studyStartDay) {
-      // Loop through models timeseries and read data
-      this.timeseriesMap.forEach((tsName, ts) -> {
-          List<String> timeStepList = this.timeseriesTimeStepMap.get(tsName);
-          boolean success = false;
-          for (String timeStep : timeStepList) {
-              success = ts.readTimeseries(cacheTS, partA, partF, timeStep, studyStartYear, studyStartMonth, studyStartDay);
-              if (cacheTS2 != null) {
-                  success = ts.readTimeseries(cacheTS2, partA, partF, timeStep, studyStartYear, studyStartMonth, studyStartDay);
-              }
+    // Read timeseries data from SV and INIT files
+    public void readTimeSeriesData(CondensedReferenceCacheAndRead.CondensedReferenceCache cacheTS,
+                                   CondensedReferenceCacheAndRead.CondensedReferenceCache cacheTS2,
+                                   CondensedReferenceCacheAndRead.CondensedReferenceCache cacheInitTS,
+                                   String svFileName_HDF,
+                                   String initFileName_HDF,
+                                   String partA,
+                                   String partF_SV,
+                                   String partF_Init,
+                                   int studyStartYear,
+                                   int studyStartMonth,
+                                   int studyStartDay) {
 
-              // Add Timeseries to the list of SV timeseries, if read successfully
-              if (success) {
-                  String svTSName = DssOperations.entryNameTS(ts.name, timeStep);
-                  this.svTS.put(svTSName, ts.copyOf());
-              }
-          }
-      });
-    }
+        // Flags
+        boolean isSVFileDSS = true;
+        boolean isInitFileDSS = true;
+        if (cacheTS == null) { isSVFileDSS = false; }
+        if (cacheInitTS == null) { isInitFileDSS = false; }
 
-    // Read initial data from DSS INIT file
-    public void readInitialData(CondensedReferenceCacheAndRead.CondensedReferenceCache cacheInitTS,String partA, String partF, int studyStartYear, int studyStartMonth, int studyStartDay) {
-        // Loop through models timeseries and read data
-        this.timeseriesMap.forEach((tsName, ts) -> {
-            List<String> timeStepList = this.timeseriesTimeStepMap.get(tsName);
-            boolean success = false;
-            for (String timeStep : timeStepList) {
-                success = ts.readTimeseries(cacheInitTS, partA, partF, timeStep, studyStartYear, studyStartMonth, studyStartDay);
+        // Both SV and INIT files are DSS
+        if (isSVFileDSS && isInitFileDSS) {
+            // Loop through timeseries and read data
+            this.svTimeseriesMap.forEach((tsName, ts) -> {
+                boolean success;
 
-                // Add Timeseries to the list of SV timeseries, if read successfully
-                if (success) {
-                    String svTSName = DssOperations.entryNameTS(ts.name, timeStep);
-                    this.svInit.put(svTSName, ts.copyOf());
+                // Read SV data
+                success = ts.readTimeseries_DSS(cacheTS, partA, partF_SV, studyStartYear, studyStartMonth, studyStartDay);
+                if (cacheTS2 != null) {
+                    success = ts.readTimeseries_DSS(cacheTS2, partA, partF_SV, studyStartYear, studyStartMonth, studyStartDay);
+                }
+
+                // Read initial data and add it to our list if reading is successful
+                Timeseries tsInit = ts.copyOf();
+                success = tsInit.readTimeseries_DSS(cacheInitTS, partA, partF_Init, studyStartYear, studyStartMonth, studyStartDay);
+                if (success) { this.svInitTimeseriesMap.put(tsName, tsInit); }
+            });
+            return;
+        }
+
+        // SV file is DSS, INIT file is HDF
+        if (isSVFileDSS && !isInitFileDSS) {
+            // Loop through SV timeseries and read data
+            boolean success;
+            for (Timeseries ts : this.svTimeseriesMap.values()) {
+                success = ts.readTimeseries_DSS(cacheTS, partA, partF_SV, studyStartYear, studyStartMonth, studyStartDay);
+                if (cacheTS2 != null) {
+                    success = ts.readTimeseries_DSS(cacheTS2, partA, partF_SV, studyStartYear, studyStartMonth, studyStartDay);
                 }
             }
-        });
-    }
 
+            // Read INIT timeseries
+            // First, open file
+            HDF5Reader.openInitFile(initFileName_HDF, partA, partF_Init);
 
-    // Read timeseries data from HDF5 file
-    public void readSVTimeSeriesData(String fileName, String partA, String partF, int studyStartYear, int studyStartMonth, int studyStartDay) {
-        // First, open file
-        HDF5Reader.openSVFile(fileName, partA, partF);
+            // Loop through timeseries and read data
+            this.svTimeseriesMap.forEach((tsName, ts) -> {
+                boolean success1;
+                Timeseries tsInit = ts.copyOf();
+                success1 = tsInit.readTimeseries_HDF(studyStartYear, studyStartMonth, studyStartDay);
 
-        // Loop through models timeseries and read data
-        this.timeseriesMap.forEach((tsName, ts) -> {
-            List<String> timeStepList = this.timeseriesTimeStepMap.get(tsName);
-            boolean success = false;
-            for (String timeStep : timeStepList) {
-                success = ts.readTimeseries(timeStep, studyStartYear, studyStartMonth, studyStartDay);
+                // Add Timeseries to the list of initial SV timeseries, if read successfully
+                if (success1) { this.svInitTimeseriesMap.put(tsName, tsInit); }
+            });
 
-                // Add Timeseries to the list of SV timeseries, if read successfully
-                if (success) {
-                    String svTSName = ts.name + "@" + timeStep;
-                    this.svTS.put(svTSName, ts);
-                }
+            // Close HDF5 file
+            HDF5Reader.closeInitFile();
+
+            return;
+        }
+
+        // SV file is HDF, INIT file is DSS
+        if (!isSVFileDSS && isInitFileDSS) {
+            // First read the SV timeseries data
+            // First, open file
+            HDF5Reader.openSVFile(svFileName_HDF, partA, partF_SV);
+
+            // Loop through timeseries and read data
+            boolean success;
+            for (Timeseries ts : this.svTimeseriesMap.values()) {
+                success = ts.readTimeseries_HDF(studyStartYear, studyStartMonth, studyStartDay);
             }
+
+            // Close HDF5 file
+            HDF5Reader.closeSVFile();
+
+            // Next, read the INIT data
+            this.svTimeseriesMap.forEach((tsName, ts) -> {
+                boolean success1;
+                Timeseries tsInit = ts.copyOf();
+                success1 = tsInit.readTimeseries_DSS(cacheInitTS, partA, partF_Init, studyStartYear, studyStartMonth, studyStartDay);
+
+                // Add Timeseries to the list of initial SV timeseries, if read successfully
+                if (success1) { this.svInitTimeseriesMap.put(tsName, tsInit); }
+            });
+            return;
+        }
+
+        // If, made it this far, both SV and INIT files are HDF
+        // First, open files
+        HDF5Reader.openSVFile(svFileName_HDF, partA, partF_SV);
+        HDF5Reader.openInitFile(initFileName_HDF, partA, partF_Init);
+
+        // Loop through timeseries and read data
+        this.svTimeseriesMap.forEach((tsName, ts) -> {
+            boolean success;
+            // read SV data
+            success = ts.readTimeseries_HDF(studyStartYear, studyStartMonth, studyStartDay);
+
+            // Read INIT data, and if succesful, add it to our list
+            Timeseries tsInit = ts.copyOf();
+            success = tsInit.readTimeseries_HDF(studyStartYear, studyStartMonth, studyStartDay);
+            if (success) { this.svInitTimeseriesMap.put(tsName, tsInit); }
         });
 
-        // Close HDF5 file
+        // Close HDF5 files
         HDF5Reader.closeSVFile();
-    }
-
-
-    // Read initial data from HDF5 file
-    public void readInitialData(String fileName, String partA, String partF, int studyStartYear, int studyStartMonth, int studyStartDay) {
-        // First, open file
-        HDF5Reader.openInitFile(fileName, partA, partF);
-
-        // Loop through models timeseries and read data
-        this.timeseriesMap.forEach((tsName, ts) -> {
-            List<String> timeStepList = this.timeseriesTimeStepMap.get(tsName);
-            boolean success = false;
-            for (String timeStep : timeStepList) {
-                success = ts.readTimeseries(timeStep, studyStartYear, studyStartMonth, studyStartDay);
-
-                // Add Timeseries to the list of SV timeseries, if read successfully
-                if (success) {
-                    String svTSName = ts.name + "@" + timeStep;
-                    this.svInit.put(svTSName, ts);
-                }
-            }
-        });
-
-        // Close HDF5 file
         HDF5Reader.closeInitFile();
     }
 
@@ -313,10 +331,10 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     // ------------------------------------------------------------
 
     public void saveSvarTSData(HecDss dss, String fileName, String timeStep, String partA, String partF) {
-        System.out.println("write svar timeseries to "+fileName);
-        Set svTsSet = this.svTS.keySet();
+        System.out.println("Write svar timeseries to "+fileName);
+        Set svTsSet = this.svTimeseriesMap.keySet();
         Iterator iterator = svTsSet.iterator();
-        Map<String, Timeseries> allTsMap = this.svTS;
+        Map<String, Timeseries> allTsMap = this.svTimeseriesMap;
         while(iterator.hasNext()){
             String svTsName=(String)iterator.next();
             String svName=DssOperations.getTSName(svTsName);
@@ -327,7 +345,7 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
                 units = ts.units;
                 ctu=ts.convertToUnits;
             }
-            Timeseries dds=this.svTS.get(svTsName);
+            Timeseries dds=this.svTimeseriesMap.get(svTsName);
             List<Double> values=dds.getData();
             TimeSeriesContainer dc = new TimeSeriesContainer();
             dc.type="PER-AVER";
@@ -481,12 +499,12 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
                     }
                 }
             }
-            Set<String> svKeys = this.svTS.keySet();
+            Set<String> svKeys = this.svTimeseriesMap.keySet();
             it = svKeys.iterator();
             while (it.hasNext()){
                 String name=it.next();
                 String nameUp=DssOperations.getTSName(name).toUpperCase();
-                Timeseries dds = this.svTS.get(name);
+                Timeseries dds = this.svTimeseriesMap.get(name);
                 String origKindName = dds.getKind();
                 boolean isWritten=false;
                 if (ovOption==0){
@@ -584,12 +602,12 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
                 }
             }
             if (isSimOutput && writeInitToDVOutput){
-                keys = this.svInit.keySet();
+                keys = this.svInitTimeseriesMap.keySet();
                 it = keys.iterator();
                 while (it.hasNext()){
                     String name=it.next();
                     String nameUp=DssOperations.getTSName(name).toUpperCase();
-                    Timeseries dds = this.svInit.get(name);
+                    Timeseries dds = this.svInitTimeseriesMap.get(name);
                     String origKindName=dds.getKind();
                     boolean isWritten=false;
                     if (ovOption==0){

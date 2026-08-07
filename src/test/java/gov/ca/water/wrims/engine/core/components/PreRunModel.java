@@ -45,17 +45,6 @@ public class PreRunModel {
 		ControlData.monthlyStartTime=new Date(ControlData.startYear-1900, ControlData.startMonth-1, TimeOperations.numberOfDays(ControlData.startMonth, ControlData.startYear));
 		ControlData.dailyStartTime=new Date(ControlData.startYear-1900, ControlData.startMonth-1, ControlData.startDay);
 
-		/*
-		ControlData.writer = new DSSDataWriter(FilePaths.fullDvarDssPath);
-		try {
-			ControlData.writer.openDSSFile();
-		} catch (Exception e) {
-			ControlData.writer.closeDSSFile();
-			Error.addEngineError("Could not open dv file. "+e);
-			return;
-		}
-		*/
-
 		try {
 			Heclib.zset("ALLV", "", ControlData.vHecLib);
 			ControlData.dvDss = HecDss.open(FilePaths.fullDvarDssPath);
@@ -75,50 +64,32 @@ public class PreRunModel {
 			System.out.println("=======Run Complete Unsuccessfully=======");
 			System.exit(1);
 		}
-		ControlData.allTsMap=sds.getTimeseriesMap();
-
 
 		HecTimeSeries.setMessageLevel(0);
 		long t1 = Calendar.getInstance().getTimeInMillis();
-		if (FilePaths.svarFile.toLowerCase().endsWith(".h5")) {
-			sds.readSVTimeSeriesData(FilePaths.fullSvarFilePath,
-					                 ControlData.partA,
-					                 ControlData.svDvPartF,
-					                 ControlData.startYear,
-					                 ControlData.startMonth,
-					                 ControlData.startDay);
-			System.out.println("Timeseries Reading Done.");
-		} else {
-	        ControlData.cacheSvar = CondensedReferenceCacheAndRead.createCondensedCache(FilePaths.fullSvarFilePath, "*");
+		if (!FilePaths.svarFile.toLowerCase().endsWith(".h5")) {
+			ControlData.cacheSvar = CondensedReferenceCacheAndRead.createCondensedCache(FilePaths.fullSvarFilePath, "*");
 			if (!FilePaths.fullSvarFile2Path.equals("")) {
-		        ControlData.cacheSvar2 = CondensedReferenceCacheAndRead.createCondensedCache(FilePaths.fullSvarFile2Path, "*");
+				ControlData.cacheSvar2 = CondensedReferenceCacheAndRead.createCondensedCache(FilePaths.fullSvarFile2Path, "*");
 			}
-			sds.readSVTimeSeriesData(ControlData.cacheSvar,
-					                 ControlData.cacheSvar2,
-					                 ControlData.partA,
-					                 ControlData.svDvPartF,
-					                 ControlData.startYear,
-					                 ControlData.startMonth,
-					                 ControlData.startDay);
 		}
-		if (FilePaths.initFile.toLowerCase().endsWith(".h5")) {
-			ControlData.initHDF5 = true;
-			sds.readInitialData(FilePaths.fullInitFilePath,
-					            ControlData.partA,
-					            ControlData.initPartF,
-					            ControlData.startYear,
-					            ControlData.startMonth,
-					            ControlData.startDay);
-		} else {
+		if (!FilePaths.initFile.toLowerCase().endsWith(".h5")) {
 			ControlData.initHDF5 = false;
-	        ControlData.cacheInit = CondensedReferenceCacheAndRead.createCondensedCache(FilePaths.fullInitFilePath, "*");
-            sds.readInitialData(ControlData.cacheInit,
-					            ControlData.partA,
-					            ControlData.svDvPartF,
-					            ControlData.startYear,
-					            ControlData.startMonth,
-					            ControlData.startDay);
+			ControlData.cacheInit = CondensedReferenceCacheAndRead.createCondensedCache(FilePaths.fullInitFilePath, "*");
+		} else {
+			ControlData.initHDF5 = true;
 		}
+		sds.readTimeSeriesData(ControlData.cacheSvar,
+				               ControlData.cacheSvar2,
+				               ControlData.cacheInit,
+				               FilePaths.svarFile,
+				               FilePaths.fullInitFilePath,
+				               ControlData.partA,
+				               ControlData.svDvPartF,
+				               ControlData.initPartF,
+				               ControlData.startYear,
+				               ControlData.startMonth,
+				               ControlData.startDay);
 		System.out.println("Timeseries Reading Done.");
 		long t2 = Calendar.getInstance().getTimeInMillis();
 		ControlData.t_readTs=ControlData.t_readTs+(int) (t2-t1);

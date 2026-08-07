@@ -42,6 +42,8 @@ public class Timeseries extends WRESLComponent implements Serializable {
 
     public void setConvertToUnits(String convertToUnits) { this.convertToUnits = convertToUnits; }
 
+    public void setTimeStep(String timeStep) { this.timeStep = timeStep;}
+
 
     // --------------------
     // --- GETTERS
@@ -92,10 +94,10 @@ public class Timeseries extends WRESLComponent implements Serializable {
     }
 
     // Read timeseries data from DSS file
-    public boolean readTimeseries(CondensedReferenceCacheAndRead.CondensedReferenceCache cacheTS, String partA, String partF, String timeStep, int studyStartYear, int studyStartMonth, int studyStartDay) {
+    public boolean readTimeseries_DSS(CondensedReferenceCacheAndRead.CondensedReferenceCache cacheTS, String partA, String partF, int studyStartYear, int studyStartMonth, int studyStartDay) {
         // Read data
         TimeSeriesContainer tsc;
-        tsc = DssOperations.readTimeSeriesData(cacheTS, this.units, timeStep, partA, this.dssBPart, this.kind, "", partF);
+        tsc = DssOperations.readTimeSeriesData(cacheTS, this.units, this.timeStep, partA, this.dssBPart, this.kind, "", partF);
 
         // Return "false" if data was not read
         if (tsc == null) {return false;}
@@ -118,8 +120,8 @@ public class Timeseries extends WRESLComponent implements Serializable {
                 } else if (dataEntry == -902.0) {
                     dataArray.add(-902.0);
                 } else {
-                    ParallelVars prvs = TimeOperations.findTime(timeStep, i, tsStartYear, tsStartMonth, tsStartDay);
-                    double dataEntryValue = dataEntry * MiscUtilities.tafcfs("taf_cfs", timeStep, prvs);
+                    ParallelVars prvs = TimeOperations.findTime(this.timeStep, i, tsStartYear, tsStartMonth, tsStartDay);
+                    double dataEntryValue = dataEntry * MiscUtilities.tafcfs("taf_cfs", this.timeStep, prvs);
                     dataArray.add(dataEntryValue);
                 }
                 i = i + 1;
@@ -147,7 +149,6 @@ public class Timeseries extends WRESLComponent implements Serializable {
         }
 
         // Store data in timeseries
-        this.timeStep = timeStep;
         this.data = dataArray;
         this.startTime = new Date(tsStartYear-1900, tsStartMonth-1, tsStartDay);
         this.generateStudyStartIndex(studyStartYear, studyStartMonth, studyStartDay);
@@ -157,11 +158,11 @@ public class Timeseries extends WRESLComponent implements Serializable {
     }
 
     // Read timeseries data from HDF5 file
-    public boolean readTimeseries(String timeStep, int studyStartYear, int studyStartMonth, int studyStartDay) {
+    public boolean readTimeseries_HDF(int studyStartYear, int studyStartMonth, int studyStartDay) {
         // Read data
         double[] values;
         Date tsStartDate = new Date(21, 9, 31, 24, 0);
-        values = HDF5Reader.readTimeSeriesData(this.dssBPart, this.kind, this.units, timeStep, tsStartDate);
+        values = HDF5Reader.readTimeSeriesData(this.dssBPart, this.kind, this.units, this.timeStep, tsStartDate);
         if (values == null) {return false; }
 
         // Data time related info
@@ -180,8 +181,8 @@ public class Timeseries extends WRESLComponent implements Serializable {
                 } else if (dataEntry == -902.0) {
                     dataArray.add(-902.0);
                 } else {
-                    ParallelVars prvs = TimeOperations.findTime(timeStep, i, tsStartYear+1900, tsStartMonth, tsStartDay);
-                    double dataEntryValue = dataEntry * MiscUtilities.tafcfs("taf_cfs", timeStep, prvs);
+                    ParallelVars prvs = TimeOperations.findTime(this.timeStep, i, tsStartYear+1900, tsStartMonth, tsStartDay);
+                    double dataEntryValue = dataEntry * MiscUtilities.tafcfs("taf_cfs", this.timeStep, prvs);
                     dataArray.add(dataEntryValue);
                 }
                 i = i + 1;
@@ -195,8 +196,8 @@ public class Timeseries extends WRESLComponent implements Serializable {
                 } else if (dataEntry == -902.0) {
                     dataArray.add(-902.0);
                 } else {
-                    ParallelVars prvs = TimeOperations.findTime(timeStep, i, tsStartYear+1900, tsStartMonth, tsStartDay);
-                    double dataEntryValue = dataEntry * MiscUtilities.tafcfs("cfs_taf", timeStep, prvs);
+                    ParallelVars prvs = TimeOperations.findTime(this.timeStep, i, tsStartYear+1900, tsStartMonth, tsStartDay);
+                    double dataEntryValue = dataEntry * MiscUtilities.tafcfs("cfs_taf", this.timeStep, prvs);
                     dataArray.add(dataEntryValue);
                 }
                 i = i + 1;
@@ -209,7 +210,6 @@ public class Timeseries extends WRESLComponent implements Serializable {
         }
 
         // Store data in timeseries
-        this.timeStep = timeStep;
         this.data = dataArray;
         this.startTime = tsStartDate;
         this.generateStudyStartIndex(studyStartYear, studyStartMonth, studyStartDay);
