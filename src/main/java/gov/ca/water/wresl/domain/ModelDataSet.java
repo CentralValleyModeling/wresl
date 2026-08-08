@@ -76,13 +76,28 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
         return this.timeStep;
     }
 
+    public List<String> getDvList() { return this.dvList; }
+
+    public List<Dvar> getDvars() {
+        List<Dvar> dvars = new ArrayList<>(this.dvMap.values());
+        return dvars;
+    }
+
+    public Dvar getDvar(String dvarName) { return this.dvMap.get(dvarName); }
+
+    public List<String> getTimeArrayDvList() { return this.timeArrayDvList; }
+
+    public List<String> getDvTimeArrayList() { return this.dvTimeArrayList; }
+
 
     // ------------------------------------------------------------
     // --- SETTERS
     // ------------------------------------------------------------
-    public void setTimeStep(String timeStep) {
-        this.timeStep = timeStep;
-    }
+    public void setTimeStep(String timeStep) { this.timeStep = timeStep; }
+
+    public void setTimeArrayDvList(List<String> timeArrayDvList) { this.timeArrayDvList = timeArrayDvList; }
+
+    public void setDvTimeArrayList(List<String> dvTimeArrayList) { this.dvTimeArrayList = dvTimeArrayList; }
 
 
     // ------------------------------------------------------------

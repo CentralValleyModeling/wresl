@@ -302,7 +302,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                     }
                     case Dvar dvar -> {
                         // Make sure dvar is not defined more than once
-                        if (mds.dvList.contains(name)) {
+                        if (mds.dvMap.containsKey(name)) {
                             throw new SyntaxErrorException(dvar.fromWresl, dvar.line, "Dvar '"+name+"' is defined more than once in model '"+mds.name+"'!");
                         }
                         mds.dvList.add(name);

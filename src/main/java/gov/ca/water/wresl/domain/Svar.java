@@ -96,7 +96,4 @@ public class Svar extends WRESLComponent implements Serializable {
         return this.data;
     }
 
-
-
-
 }

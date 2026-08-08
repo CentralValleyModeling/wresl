@@ -11,6 +11,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ForkJoinPool;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -64,6 +65,99 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
 
     // ------------------------------------------------------------
+    // --- PROCESS A MODEL
+    // ------------------------------------------------------------
+    // Gateway method to process a model stored in a ModelDataSet object
+    public static boolean processModel(StudyDataSet sds, int modelIndex, int currentDay, int currentMonth, int currentYear, int nThreads, boolean showRunTimeMessage) {
+        // Set simulation time related parameters
+        INSTANCE.currentDay = currentDay;
+        INSTANCE.currentMonth = currentMonth;
+        INSTANCE.currentYear = currentYear;
+
+        // Store StudyDataSet in common memory to be used by visitor methods
+        INSTANCE.sds = sds;
+
+        // Check if condition to process model holds true
+        ParseTree modelConditionParseTree = sds.getModelConditionParseTree(modelIndex);
+        boolean toBeProcessed = Evaluator.evaluateCondition(null, modelConditionParseTree);
+        if (!toBeProcessed) { return false; }
+
+        // Retrieve ModelDataSet
+        INSTANCE.currentModelDataSet = sds.getModelDataSet(modelIndex);
+
+        // Clear future arrays
+        INSTANCE.currentModelDataSet.clearFutureSvMap();
+        INSTANCE.currentModelDataSet.clearFutureAsMap();
+
+        // Process Svars
+        INSTANCE.processSvars(null, INSTANCE.currentModelDataSet.svList, INSTANCE.currentModelDataSet.svMap, showRunTimeMessage);
+        if (showRunTimeMessage) System.out.println("Completed Svar processing.");
+
+        // Process Dvars
+        INSTANCE.processDvars(nThreads);
+        if (showRunTimeMessage) System.out.println("Completed Dvar processing.");
+
+        return true;
+    }
+
+    // Process Svars
+    public static void processSvars(StudyDataSet sds, List<String> svList, Map<String, Svar> svMap, boolean showRunTimeMessage) {
+        // Store sds in common data space so it can be used by all visitor methods
+        if (sds != null) INSTANCE.sds = sds;
+
+        for (String svName: svList) {
+            if (showRunTimeMessage) System.out.println("Processing svar "+svName);
+            Svar svar = svMap.get(svName);
+
+            System.out.println("SVAR: " + svName);
+
+            // Process svar
+            INSTANCE.futureArrayIndex = 0;
+            INSTANCE.processSvar(svar);
+
+            // If svar utilizes future arrays, process those arrays
+            if (svar.timeArraySizeParseTree != null) {
+                IntDouble futureArraySize = INSTANCE.visit(svar.timeArraySizeParseTree);
+                for (int indx=1; indx<=futureArraySize.getValue().intValue(); indx++) {
+                    Svar futureSvar = svar.copyOf();
+                    String futureSvName = svName + "__fut__" + indx;
+                    futureSvar.setName(futureSvName);
+                    INSTANCE.futureArrayIndex = indx;
+                    INSTANCE.processSvar(futureSvar);
+                    INSTANCE.currentModelDataSet.addFutureSvar(futureSvar);
+                }
+            }
+        }
+    }
+
+
+    // Process Dvars
+    private void processDvars(int nThreads) {
+
+        // Initialize
+        List<String> timeArrayDvList = new ArrayList<>();
+        List<String> dvTimeArrayList = new ArrayList<>();
+        List<Dvar> dvList = INSTANCE.currentModelDataSet.getDvars();
+        int threshold = (int) Math.ceil(dvList.size()/nThreads);
+        ForkJoinPool pool = new ForkJoinPool(nThreads);
+
+        // Instantiate parallel work
+        ParallelAction<Dvar> task = new ParallelAction<>(
+                dvList,
+                0,
+                dvList.size(),
+                threshold,
+                item -> processDvar(item, timeArrayDvList, dvTimeArrayList)
+        );
+        pool.invoke(task);
+
+        // Store time array related data
+        INSTANCE.currentModelDataSet.setTimeArrayDvList(timeArrayDvList);
+        INSTANCE.currentModelDataSet.setDvTimeArrayList(dvTimeArrayList);
+    }
+
+
+    // ------------------------------------------------------------
     // --- EVALUATE AN EXPRESSION PROVIDED AS A PARSE TREE
     // ------------------------------------------------------------
     public static IntDouble evaluateExpression(int currentDay, int currentMonth, int currentYear, ParseTree expression) {
@@ -95,9 +189,9 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
 
     // ------------------------------------------------------------
-    // --- EVALUATE AN SVAR
+    // --- PROCESS AN SVAR
     // ------------------------------------------------------------
-    private static IntDouble evaluateSvar(Svar svar) throws EvaluationErrorException {
+    private static void processSvar(Svar svar) throws EvaluationErrorException {
         int index = -1;
         // Process case conditions and figure out which case expression to use
         if (svar.caseConditionParseTree == null) {
@@ -121,79 +215,65 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             throw new EvaluationErrorException(svar.fromWresl, svar.line, "A viable condition cannot be found for Svar " + svar.name + " defined in file " + svar.fromWresl + " at line " + svar.line + "!");
         }
         // We know which expression to evaluate; evaluate caseExpression
-        return INSTANCE.visit(svar.caseExpressionParseTree.get(index));
+        IntDouble data = INSTANCE.visit(svar.caseExpressionParseTree.get(index));
+        svar.setData(data);
     }
 
 
     // ------------------------------------------------------------
-    // --- PROCESS A MODEL
+    // --- PROCESS A DVAR
     // ------------------------------------------------------------
-    // Gateway method to process a model stored in a ModelDataSet object
-    public static boolean processModel(StudyDataSet sds, int modelIndex, int currentDay, int currentMonth, int currentYear, int nThreads, boolean showRunTimeMessage) {
-        // Set simulation time related parameters
-        INSTANCE.currentDay = currentDay;
-        INSTANCE.currentMonth = currentMonth;
-        INSTANCE.currentYear = currentYear;
+    private void processDvar(Dvar dvar, List<String> timeArrayDvList, List<String> dvTimeArrayList) {
+        System.out.println("DVAR: " + dvar.name);
 
-        // Store StudyDataSet in common memory to be used by visitor methods
-        INSTANCE.sds = sds;
+        // Process lower bound
+        if (dvar.lowerBoundExpressionParseTree != null) {
+            dvar.lowerBoundValue = visit(dvar.lowerBoundExpressionParseTree).getValue().doubleValue();
+            if (dvar.lowerBoundValue == null) {
+                throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Error in evaluating the lower bound of DVAR " + dvar.name + "!");
+            }
+        }
 
-        // Check if condition to process model holds true
-        ParseTree modelConditionParseTree = sds.getModelConditionParseTree(modelIndex);
-        boolean toBeProcessed = Evaluator.evaluateCondition(null, modelConditionParseTree);
-        if (!toBeProcessed) { return false; }
+        // Process upper bound
+        if (dvar.upperBoundExpressionParseTree != null) {
+            dvar.upperBoundValue = visit(dvar.upperBoundExpressionParseTree).getValue().doubleValue();
+            if (dvar.upperBoundValue == null) {
+                throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Error in evaluating the upper bound of DVAR " + dvar.name + "!");
+            }
+        }
 
-        // Retrieve ModelDataSet
-        INSTANCE.currentModelDataSet = sds.getModelDataSet(modelIndex);
+        // Return if there is no timearray
+        if (dvar.timeArraySizeExpressionParseTree == null) { return; }
 
-        // Clear future arrays
-        INSTANCE.currentModelDataSet.clearFutureSvMap();
-        INSTANCE.currentModelDataSet.clearFutureAsMap();
+        // Otherwise, process time array size
+        String dvName = dvar.name;
+        int timeArraySize = visit(dvar.timeArraySizeExpressionParseTree).getValue().intValue();
+        if (timeArraySize != 0) {
+            if (timeArrayDvList.contains(dvName)) {
+                timeArrayDvList.add(dvName);
 
-        // Process Timeseries data
-        processTimeseries();
-        if (showRunTimeMessage) System.out.println("Completed Timeseries processing");
+                for (int timeIndex=1; timeIndex<=timeArraySize; timeIndex++) {
+                    Dvar newDvar=new Dvar();
+                    String newDvarName = dvName + "__fut__" + timeIndex;
+                    newDvar.kind=dvar.kind;
+                    newDvar.units=dvar.units;
+                    newDvar.integer=dvar.integer;
 
-        // Process Svars
-        processSvars(null, INSTANCE.currentModelDataSet.svList, INSTANCE.currentModelDataSet.svMap, showRunTimeMessage);
-        if (showRunTimeMessage) System.out.println("Completed Svar processing.");
+                    newDvar.lowerBoundValue = visit(dvar.lowerBoundExpressionParseTree).getValue().doubleValue();
+                    if (newDvar.lowerBoundValue == null) {
+                        throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Error in evaluating the lower bound of time array DVAR " + dvar.name + "!");
+                    }
 
-        return true;
-    }
+                    newDvar.upperBoundValue = visit(dvar.upperBoundExpressionParseTree).getValue().doubleValue();
+                    if (newDvar.upperBoundValue == null) {
+                        throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Error in evaluating the upper bound of time array DVAR " + dvar.name + "!");
+                    }
 
-    // Process timeseries
-    private static void processTimeseries() {
-    }
-
-    // Process Svars
-    public static void processSvars(StudyDataSet sds, List<String> svList, Map<String, Svar> svMap, boolean showRunTimeMessage) {
-        // Store sds in common data space so it can be used by all visitor methods
-        if (sds != null) INSTANCE.sds = sds;
-
-        for (String svName: svList) {
-            if (showRunTimeMessage) System.out.println("Processing svar "+svName);
-            Svar svar = svMap.get(svName);
-
-            System.out.println(svName);
-
-            // Process svar
-            INSTANCE.futureArrayIndex = 0;
-            IntDouble data = INSTANCE.evaluateSvar(svar);
-            svar.setData(data);
-
-            // If svar utilizes future arrays, process those arrays
-            if (svar.timeArraySizeParseTree != null) {
-                IntDouble futureArraySize = INSTANCE.visit(svar.timeArraySizeParseTree);
-                for (int indx=1; indx<=futureArraySize.getValue().intValue(); indx++) {
-                    Svar futureSvar = svar.copyOf();
-                    String futureSvName = svName + "__fut__" + indx;
-                    futureSvar.setName(futureSvName);
-                    INSTANCE.futureArrayIndex = indx;
-                    futureSvar.setData(INSTANCE.evaluateSvar(futureSvar));
-                    INSTANCE.currentModelDataSet.addFutureSvar(futureSvar);
+                    dvTimeArrayList.add(newDvarName);
                 }
             }
         }
+
     }
 
 
