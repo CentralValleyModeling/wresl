@@ -16,7 +16,6 @@ import gov.ca.water.wrims.engine.core.components.ControlData;
 import gov.ca.water.wrims.engine.core.components.FilePaths;
 import gov.ca.water.wrims.engine.core.evaluator.DataTimeSeries;
 import gov.ca.water.wrims.engine.core.evaluator.DssDataSet;
-import gov.ca.water.wrims.engine.core.evaluator.DssOperation;
 
 public class HDF5Reader {
 	

@@ -12,11 +12,9 @@ import org.apache.commons.io.FilenameUtils;
 import gov.ca.water.wresl.domain.Dvar;
 import gov.ca.water.wresl.domain.StudyDataSet;
 import gov.ca.water.wresl.domain.IntDouble;
-import gov.ca.water.wrims.engine.core.commondata.solverdata.*;
 import gov.ca.water.wrims.engine.core.components.ControlData;
 import gov.ca.water.wrims.engine.core.components.Error;
 import gov.ca.water.wrims.engine.core.evaluator.DataTimeSeries;
-import gov.ca.water.wrims.engine.core.evaluator.DssOperation;
 import gov.ca.water.wrims.engine.core.ilp.ILP;
 import gov.ca.water.wrims.engine.core.solver.cbc.FilePassingUtils;
 
@@ -198,7 +196,7 @@ public class Cbc0Solver {
 		List<String> dvarTimeArrayCycleIndexList = sds.getDvarTimeArrayCycleIndexList();
 		Map<String, Map<String, IntDouble>> varCycleIndexValueMap = sds.getVarCycleIndexValueMap();
 		
-		Map<String, Dvar> dvarMap = SolverData.getDvarMap();
+		Map<String, Dvar> dvarMap = gov.ca.water.solverdata.SolverData.getDvarMap();
 		Set dvarCollection = dvarMap.keySet();
 		Iterator dvarIterator = dvarCollection.iterator();
 			

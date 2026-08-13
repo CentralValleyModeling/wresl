@@ -6,7 +6,6 @@ import gov.ca.water.wrims.engine.core.components.ControlData;
 import gov.ca.water.wrims.engine.core.evaluator.DataTimeSeries;
 import gov.ca.water.wrims.engine.core.evaluator.DssDataSet;
 import gov.ca.water.wrims.engine.core.evaluator.DssDataSetFixLength;
-import gov.ca.water.wrims.engine.core.evaluator.DssOperation;
 
 import java.io.*;
 import java.util.*;

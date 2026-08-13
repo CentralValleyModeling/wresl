@@ -24,7 +24,6 @@ import gov.ca.water.io.DSS.CondensedReferenceCacheAndRead;
 import gov.ca.water.wrims.engine.core.evaluator.DataTimeSeries;
 import gov.ca.water.wrims.engine.core.evaluator.DssDataSet;
 import gov.ca.water.wrims.engine.core.evaluator.DssDataSetFixLength;
-import gov.ca.water.wrims.engine.core.evaluator.DssOperation;
 import gov.ca.water.io.DSS.CondensedReferenceCacheAndRead.CondensedReferenceCache;
 
 public class DssToSQLDatabase {

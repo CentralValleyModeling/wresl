@@ -31,17 +31,28 @@ public class Dvar extends WRESLComponent implements Serializable {
 
 
 
-    // --------------------
-    // --- METHODS
-    // --------------------
-
-    // Set data
+    // ------------------------------------------------------------
+    // --- SETTERS
+    // ------------------------------------------------------------
     public void setData(IntDouble data) {
         this.data = data;
     }
 
-    // Get data
+    public void setName(String name) { this.name = name; }
+
+    public void setKind(String kind) { this.kind = kind; }
+
+    public void setUnits(String units) { this.units = units; }
+
+    public void setInteger(String integer) { this.integer = integer; }
+
+
+    // ------------------------------------------------------------
+    // --- GETTERS
+    // ------------------------------------------------------------
     public IntDouble getData() {
         return this.data;
     }
+
+    public String getName() { return this.name; }
 }

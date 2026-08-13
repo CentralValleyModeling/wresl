@@ -20,14 +20,14 @@ import java.util.Set;
 
 import gov.ca.water.wresl.domain.Dvar;
 import gov.ca.water.utilities.Param;
+import gov.ca.water.wresl.domain.Goal;
 import gov.ca.water.wresl.domain.Svar;
 import gov.ca.water.wresl.domain.WeightElement;
-import gov.ca.water.wrims.engine.core.commondata.solverdata.SolverData;
+import gov.ca.water.solverdata.SolverData;
 import gov.ca.water.wrims.engine.core.components.BuildProps;
 import gov.ca.water.wrims.engine.core.components.ControlData;
 import gov.ca.water.wrims.engine.core.components.Error;
 import gov.ca.water.wrims.engine.core.components.FilePaths;
-import gov.ca.water.wrims.engine.core.evaluator.EvalConstraint;
 import gov.ca.water.wrims.engine.core.fromWrims2.StudyUtils;
 import gov.ca.water.wrims.engine.core.fromWrims2.Tools;
 import gov.ca.water.wrims.engine.core.solver.CbcSolver;
@@ -680,15 +680,15 @@ public class ILP {
 	
 	private static Set<String> findDvarInConstraint() {
 	
-		Set<String> dvar_inConstraint = new HashSet<String>();
+		Set<String> dvar_inConstraint = new HashSet<>();
 
-		Map<String, EvalConstraint> constraintMap = SolverData.getConstraintDataMap();
+		Map<String, Goal> constraintMap = SolverData.getConstraintDataMap();
 	
 		for (String constraintName : constraintMap.keySet()) {	
 	
-			if (!constraintMap.get(constraintName).getEvalExpression().isNumeric()) {
+			if (!constraintMap.get(constraintName).isEvalExpressionNumeric()) {
 	
-				dvar_inConstraint.addAll(constraintMap.get(constraintName).getEvalExpression().getMultiplier().keySet());
+				dvar_inConstraint.addAll(constraintMap.get(constraintName).getMultiplier().keySet());
 			}	
 		}
 		return dvar_inConstraint;

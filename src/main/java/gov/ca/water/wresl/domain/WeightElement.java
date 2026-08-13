@@ -24,11 +24,20 @@ public class WeightElement extends WRESLComponent implements Serializable  {
     public String maxTC = "";
 
 
+    // ------------------------------------------------------------
+    // --- SETTERS
+    // ------------------------------------------------------------
     public void setValue(double value){
         this.value = value;
     }
 
+
+    // ------------------------------------------------------------
+    // --- GETTERS
+    // ------------------------------------------------------------
     public double getValue(){
         return this.value;
     }
+
+    public String getName() { return this.name; }
 }

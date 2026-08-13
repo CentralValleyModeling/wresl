@@ -3,14 +3,13 @@ package gov.ca.water.wrims.engine.core.solver;
 import java.util.*;
 
 import gov.ca.water.io.DSS.DssOperations;
-import gov.ca.water.wrims.engine.core.commondata.solverdata.SolverData;
+import gov.ca.water.solverdata.SolverData;
 import gov.ca.water.wresl.domain.Dvar;
 import gov.ca.water.wresl.domain.StudyDataSet;
 import gov.ca.water.wresl.domain.IntDouble;
 import gov.ca.water.wrims.engine.core.components.ControlData;
 import gov.ca.water.wrims.engine.core.components.Error;
 import gov.ca.water.wrims.engine.core.evaluator.DataTimeSeries;
-import gov.ca.water.wrims.engine.core.evaluator.DssOperation;
 import lpsolve.*;
 
 public class LPSolveSolver {

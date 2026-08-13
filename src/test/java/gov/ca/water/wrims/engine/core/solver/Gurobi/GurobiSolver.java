@@ -6,17 +6,11 @@ import java.io.File;
 import java.util.*;
 
 import gov.ca.water.io.DSS.DssOperations;
-import gov.ca.water.wresl.domain.Dvar;
-import gov.ca.water.wresl.domain.StudyDataSet;
-import gov.ca.water.wresl.domain.WeightElement;
-import gov.ca.water.wresl.domain.IntDouble;
-import gov.ca.water.wrims.engine.core.commondata.solverdata.*;
+import gov.ca.water.wresl.domain.*;
 import gov.ca.water.wrims.engine.core.components.ControlData;
 import gov.ca.water.wrims.engine.core.components.FilePaths;
 import gov.ca.water.wrims.engine.core.components.Error;
 import gov.ca.water.wrims.engine.core.evaluator.DataTimeSeries;
-import gov.ca.water.wrims.engine.core.evaluator.DssOperation;
-import gov.ca.water.wrims.engine.core.evaluator.EvalConstraint;
 
 
 public class GurobiSolver {
@@ -155,7 +149,7 @@ public class GurobiSolver {
         List<String> dvarTimeArrayCycleIndexList = sds.getDvarTimeArrayCycleIndexList();
         Map<String, Map<String, IntDouble>> varCycleIndexValueMap = sds.getVarCycleIndexValueMap();
 
-        Map<String, Dvar> dvarMap = SolverData.getDvarMap();
+        Map<String, Dvar> dvarMap = gov.ca.water.solverdata.SolverData.getDvarMap();
         Set dvarCollection = dvarMap.keySet();
         Iterator dvarIterator = dvarCollection.iterator();
 
@@ -239,7 +233,7 @@ public class GurobiSolver {
     }
 
     public void setDVars() throws GRBException {
-        Map<String, Dvar> DvarMap = SolverData.getDvarMap();
+        Map<String, Dvar> DvarMap = gov.ca.water.solverdata.SolverData.getDvarMap();
         Set DvarCollection = DvarMap.keySet();
         Iterator dvarIterator = DvarCollection.iterator();
 
@@ -248,7 +242,7 @@ public class GurobiSolver {
             Dvar dvar = DvarMap.get(dvarName);
             double testWeight = 0;
 
-            Map<String, WeightElement> weightMap = SolverData.getWeightMap();
+            Map<String, WeightElement> weightMap = gov.ca.water.solverdata.SolverData.getWeightMap();
             Set weightCollection = weightMap.keySet();
             Iterator weightIterator = weightCollection.iterator();
             String weightName = (String) weightIterator.next();
@@ -271,14 +265,14 @@ public class GurobiSolver {
     }
 
     private void setConstraints() throws GRBException {
-        Map<String, EvalConstraint> constraintMap = SolverData.getConstraintDataMap();
+        Map<String, Goal> constraintMap = gov.ca.water.solverdata.SolverData.getConstraintDataMap();
         Set constraintCollection = constraintMap.keySet();
         Iterator constraintIterator = constraintCollection.iterator();
 
         while (constraintIterator.hasNext()) {
             String constraintName = (String) constraintIterator.next();
-            EvalConstraint ec = constraintMap.get(constraintName);
-            HashMap<String, IntDouble> multMap = ec.getEvalExpression().getMultiplier();
+            Goal goal = constraintMap.get(constraintName);
+            HashMap<String, IntDouble> multMap = goal.getMultiplier();
             Set multCollection = multMap.keySet();
             Iterator multIterator = multCollection.iterator();
             GRBLinExpr expr = new GRBLinExpr();
@@ -293,12 +287,12 @@ public class GurobiSolver {
                 jack[counter] = coef;
                 counter++;
             }
-            if (ec.getSign().equals("=")) {
-                model.addConstr(expr, GRB.EQUAL, -ec.getEvalExpression().getValue().getValue().doubleValue(), constraintName);
-            } else if (ec.getSign().equals("<") || ec.getSign().equals("<=")) {
-                model.addConstr(expr, GRB.LESS_EQUAL, -ec.getEvalExpression().getValue().getValue().doubleValue(), constraintName);
-            } else if (ec.getSign().equals(">") || ec.getSign().equals(">=")) {
-                model.addConstr(expr, GRB.GREATER_EQUAL, -ec.getEvalExpression().getValue().getValue().doubleValue(), constraintName);
+            if (goal.getSign().equals("=")) {
+                model.addConstr(expr, GRB.EQUAL, -goal.getIntDouble().getValue().doubleValue(), constraintName);
+            } else if (goal.getSign().equals("<") || goal.getSign().equals("<=")) {
+                model.addConstr(expr, GRB.LESS_EQUAL, -goal.getIntDouble().getValue().doubleValue(), constraintName);
+            } else if (goal.getSign().equals(">") || goal.getSign().equals(">=")) {
+                model.addConstr(expr, GRB.GREATER_EQUAL, -goal.getIntDouble().getValue().doubleValue(), constraintName);
             }
         }
     }

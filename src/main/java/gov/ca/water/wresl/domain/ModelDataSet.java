@@ -89,6 +89,11 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
 
     public List<String> getDvTimeArrayList() { return this.dvTimeArrayList; }
 
+    public List<Goal> getGoals() {
+        List<Goal> goals = new ArrayList<>(this.gMap.values());
+        return goals;
+    }
+
 
     // ------------------------------------------------------------
     // --- SETTERS

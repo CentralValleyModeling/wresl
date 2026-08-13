@@ -1,18 +1,15 @@
 package gov.ca.water.wrims.engine.core.ilp;
 
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import gov.ca.water.wresl.domain.Dvar;
 import gov.ca.water.utilities.Param;
+import gov.ca.water.wresl.domain.Goal;
 import gov.ca.water.wresl.domain.Svar;
 import gov.ca.water.wresl.domain.WeightElement;
-import gov.ca.water.wrims.engine.core.commondata.solverdata.SolverData;
+import gov.ca.water.solverdata.SolverData;
 import gov.ca.water.wrims.engine.core.components.ControlData;
-import gov.ca.water.wrims.engine.core.evaluator.EvalConstraint;
 
 // for LpSolve select 1.Rows 2.Cols 3.Elimeq2 in Presolve
 
@@ -148,24 +145,23 @@ public class AmplWriter {
 		
 		constraintString = "# constraint \n";
 		
-		Map<String, EvalConstraint> constraintMap = SolverData.getConstraintDataMap();
+		Map<String, Goal> constraintMap = SolverData.getConstraintDataMap();
 
-		ArrayList<String> sortedConstraint = new ArrayList<String>(constraintMap.keySet());
+		List<String> sortedConstraint = new ArrayList<>(constraintMap.keySet());
 		Collections.sort(sortedConstraint);
 
 		for (String constraintName : sortedConstraint) {
 
 			String lhs = "";
 
-			if (!constraintMap.get(constraintName).getEvalExpression().isNumeric()) {
+			if (!constraintMap.get(constraintName).isEvalExpressionNumeric()) {
 
-				ArrayList<String> sortedTerm = new ArrayList<String>(constraintMap.get(constraintName)
-						.getEvalExpression().getMultiplier().keySet());
+				List<String> sortedTerm = new ArrayList<>(constraintMap.get(constraintName).getMultiplier().keySet());
 				Collections.sort(sortedTerm);
 
 				for (String var : sortedTerm) {
 
-					Number coef = constraintMap.get(constraintName).getEvalExpression().getMultiplier().get(var).getValue();
+					Number coef = constraintMap.get(constraintName).getMultiplier().get(var).getValue();
 					double coefDouble = coef.doubleValue();
 					String coefStr = coef.toString();
 					String term;
@@ -192,9 +188,9 @@ public class AmplWriter {
 			}
 
 			// TODO: improve this
-			String sign = constraintMap.get(constraintName).getSign()+"=";
+			String sign = constraintMap.get(constraintName).getSign() + "=";
 			sign= sign.replace("==", "=");
-			double val = constraintMap.get(constraintName).getEvalExpression().getValue().getValue().doubleValue();
+			double val = constraintMap.get(constraintName).getIntDouble().getValue().doubleValue();
 
 			if (val == 0) {
 				lhs = constraintName.toUpperCase() + ": " + lhs + " " + sign + " " + "0";

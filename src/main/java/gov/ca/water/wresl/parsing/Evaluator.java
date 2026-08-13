@@ -1,6 +1,7 @@
 package gov.ca.water.wresl.parsing;
 
 import gov.ca.water.io.DSS.DssOperations;
+import gov.ca.water.solverdata.SolverData;
 import gov.ca.water.utilities.ParallelVars;
 import gov.ca.water.utilities.TimeOperations;
 import gov.ca.water.wresl.domain.*;
@@ -77,6 +78,9 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         // Store StudyDataSet in common memory to be used by visitor methods
         INSTANCE.sds = sds;
 
+        // Clear solverdata
+        SolverData.clearSolverData();
+
         // Check if condition to process model holds true
         ParseTree modelConditionParseTree = sds.getModelConditionParseTree(modelIndex);
         boolean toBeProcessed = Evaluator.evaluateCondition(null, modelConditionParseTree);
@@ -96,6 +100,9 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         // Process Dvars
         INSTANCE.processDvars(nThreads);
         if (showRunTimeMessage) System.out.println("Completed Dvar processing.");
+
+        // Process Goals
+        INSTANCE.processGoals(nThreads, showRunTimeMessage);
 
         return true;
     }
@@ -154,6 +161,23 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         // Store time array related data
         INSTANCE.currentModelDataSet.setTimeArrayDvList(timeArrayDvList);
         INSTANCE.currentModelDataSet.setDvTimeArrayList(dvTimeArrayList);
+    }
+
+    // Process Goals
+    private void processGoals(int nThreads, boolean showRunTimeMessage) {
+        List<Goal> goalList = INSTANCE.currentModelDataSet.getGoals();
+        int threshold = (int) Math.ceil(goalList.size()/nThreads);
+        ForkJoinPool pool = new ForkJoinPool(nThreads);
+
+        // Instantiate parallel work
+        ParallelAction<Goal> task = new ParallelAction<>(
+                goalList,
+                0,
+                goalList.size(),
+                threshold,
+                item -> processGoal(item, showRunTimeMessage)
+        );
+        pool.invoke(task);
     }
 
 
@@ -242,6 +266,9 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             }
         }
 
+        // Add dvar to solver data
+        SolverData.addDvar(dvar);
+
         // Return if there is no timearray
         if (dvar.timeArraySizeExpressionParseTree == null) { return; }
 
@@ -255,9 +282,10 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 for (int timeIndex=1; timeIndex<=timeArraySize; timeIndex++) {
                     Dvar newDvar=new Dvar();
                     String newDvarName = dvName + "__fut__" + timeIndex;
-                    newDvar.kind=dvar.kind;
-                    newDvar.units=dvar.units;
-                    newDvar.integer=dvar.integer;
+                    newDvar.setName(newDvarName);
+                    newDvar.setKind(dvar.kind);
+                    newDvar.setUnits(dvar.units);
+                    newDvar.setInteger(dvar.integer);
 
                     newDvar.lowerBoundValue = visit(dvar.lowerBoundExpressionParseTree).getValue().doubleValue();
                     if (newDvar.lowerBoundValue == null) {
@@ -270,10 +298,45 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                     }
 
                     dvTimeArrayList.add(newDvarName);
+                    SolverData.addDvar(newDvar);
                 }
             }
         }
+    }
 
+
+    // ------------------------------------------------------------
+    // --- PROCESS A GOAL
+    // ------------------------------------------------------------
+    private void processGoal(Goal goal, boolean showRunTimeMessage) {
+        System.out.println("GOAL: " + goal.name);
+
+        if (showRunTimeMessage) System.out.println("Processing constraint "+goal.name);
+
+        // Process time array
+        if (goal.timeArraySizeParseTree != null) {
+            int timeArraySize = visit(goal.timeArraySizeParseTree).getValue().intValue();
+            for (int timeIndex=1; timeIndex<=timeArraySize; timeIndex++)  {
+                Goal newGoal = new Goal();
+                String newGoalName = goal.name + "__fut__" + timeIndex;
+                newGoal.setName(newGoalName);
+
+                // Find the case for which we are going to compute goal
+                boolean lFound = false;
+                for (int caseIndex=0; caseIndex<goal.caseConditionParseTrees.size(); caseIndex++) {
+                    if (INSTANCE.evaluateCondition(null,goal.caseConditionParseTrees.get(caseIndex))) {
+                        lFound = true;
+                        break;
+                    }
+                }
+                if (!lFound) {
+                    throw new EvaluationErrorException(goal.fromWresl, goal.line, "Case conditions for time array GOAL " + goal.name + " did not yield a case!");
+                }
+
+                // Process case expression
+                //goal.caseExpressionParseTrees.get(caseIndex)
+            }
+        }
     }
 
 

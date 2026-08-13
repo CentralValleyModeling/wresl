@@ -5,10 +5,7 @@ import java.util.*;
 
 import gov.ca.water.io.DSS.DssOperations;
 import gov.ca.water.utilities.Param;
-import gov.ca.water.wresl.domain.Dvar;
-import gov.ca.water.wresl.domain.IntDouble;
-import gov.ca.water.wresl.domain.StudyDataSet;
-import gov.ca.water.wresl.domain.WeightElement;
+import gov.ca.water.wresl.domain.*;
 import gov.ca.water.wrims.engine.core.tools.InfeasibilityAnalysis;
 import org.coinor.cbc.SWIGTYPE_p_std__string;
 import org.coinor.cbc.SWIGTYPE_p_CbcModel;
@@ -21,14 +18,10 @@ import org.coinor.cbc.SWIGTYPE_p_int;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import gov.ca.water.wrims.engine.core.commondata.solverdata.*;
 import gov.ca.water.wrims.engine.core.components.ControlData;
 import gov.ca.water.wrims.engine.core.components.Error;
 import gov.ca.water.wrims.engine.core.evaluator.DataTimeSeries;
-import gov.ca.water.wrims.engine.core.evaluator.DssOperation;
-import gov.ca.water.wrims.engine.core.evaluator.EvalConstraint;
 import gov.ca.water.wrims.engine.core.ilp.ILP;
-//import gov.ca.water.wrims.engine.core.tools.InfeasibilityAnalysis;
 import gov.ca.water.wrims.engine.core.fromWrims2.Tools;
 
 import com.google.common.collect.BiMap;
@@ -353,11 +346,11 @@ public class CbcSolver {
 
             logger.atDebug().setMessage("Variable mapping created: total variables={}").addArgument(dvBiMap.size()).log();
 
-            originalDvarKeys = new HashSet<String>(SolverData.getDvarMap().keySet());
+            originalDvarKeys = new HashSet<String>(gov.ca.water.solverdata.SolverData.getDvarMap().keySet());
             logger.atDebug().setMessage("Original variable key set size: {}").addArgument(originalDvarKeys.size()).log();
 
-            dvarMap = SolverData.getDvarMap();
-            wm2 = SolverData.getWeightSlackSurplusMap();
+            dvarMap = gov.ca.water.solverdata.SolverData.getDvarMap();
+            wm2 = gov.ca.water.solverdata.SolverData.getWeightSlackSurplusMap();
 
             modelObject = jCbc.new_jCoinModel();
 
@@ -452,7 +445,7 @@ public class CbcSolver {
                 boolean intErr = false;
                 boolean lowerboundErr = false;
 
-                Map<String, Dvar> dMap = SolverData.getDvarMap();
+                Map<String, Dvar> dMap = gov.ca.water.solverdata.SolverData.getDvarMap();
                 for (String k : dvIntMap.keySet()) {
                     if (varDoubleMap.containsKey(k)) {
                         double v = varDoubleMap.get(k);
@@ -554,8 +547,8 @@ public class CbcSolver {
 			// if one exceed then
 			// increase penalty see if obj value change
 			// if not then logging
-			Map<String, WeightElement> wm1 = SolverData.getWeightMap();
-            Map<String, WeightElement> wm2 = SolverData.getWeightSlackSurplusMap();
+			Map<String, WeightElement> wm1 = gov.ca.water.solverdata.SolverData.getWeightMap();
+            Map<String, WeightElement> wm2 = gov.ca.water.solverdata.SolverData.getWeightSlackSurplusMap();
             Map<String, WeightElement> wm1_ori = new HashMap<String, WeightElement>();
             Map<String, WeightElement> wm2_ori = new HashMap<String, WeightElement>();
             boolean firstWrite = true;
@@ -710,7 +703,7 @@ public class CbcSolver {
 
 
         try {
-            SolverData.getDvarMap().keySet().retainAll(originalDvarKeys);
+            gov.ca.water.solverdata.SolverData.getDvarMap().keySet().retainAll(originalDvarKeys);
             int sizeA = ControlData.currModelDataSet.dvList.size();
             int sizeB = ControlData.currModelDataSet.dvTimeArrayList.size();
 
@@ -754,7 +747,7 @@ public class CbcSolver {
 
  		// restore original state
         try {
-            SolverData.getDvarMap().keySet().retainAll(originalDvarKeys);
+            gov.ca.water.solverdata.SolverData.getDvarMap().keySet().retainAll(originalDvarKeys);
             int sizeA = ControlData.currModelDataSet.dvList.size();
             int sizeB = ControlData.currModelDataSet.dvTimeArrayList.size();
 
@@ -793,7 +786,7 @@ public class CbcSolver {
         try {
             iisSlackMap = new LinkedHashMap<Integer, String>();
             // restore original state
-            SolverData.getDvarMap().keySet().retainAll(originalDvarKeys);
+            gov.ca.water.solverdata.SolverData.getDvarMap().keySet().retainAll(originalDvarKeys);
             int sizeA = ControlData.currModelDataSet.dvList.size();
             int sizeB = ControlData.currModelDataSet.dvTimeArrayList.size();
             dvBiMap.clear();
@@ -909,7 +902,7 @@ public class CbcSolver {
         logger.atDebug().setMessage("CBC Solver: Setting up constraints...").log();
 
         try {
-		    Map<String, EvalConstraint> constraintMap = SolverData.getConstraintDataMap();
+		    Map<String, Goal> constraintMap = gov.ca.water.solverdata.SolverData.getConstraintDataMap();
 		    String c="quicklog version 1.0\n";
 		    int rowCounter=0; // row index
             int equalityCount = 0;
@@ -935,13 +928,13 @@ public class CbcSolver {
 
 
                     String constraintName=(String)constraintIterator.next();
-                    EvalConstraint ec=constraintMap.get(constraintName);
-                    logger.atTrace().setMessage("Processing constraint: name={}, sign={}, RHS={}").addArgument(constraintName).addArgument(ec.getSign())
-                        .addArgument(ec.getEvalExpression().getValue()
+                    Goal goal=constraintMap.get(constraintName);
+                    logger.atTrace().setMessage("Processing constraint: name={}, sign={}, RHS={}").addArgument(constraintName).addArgument(goal.getSign())
+                        .addArgument(goal.getIntDouble()
                         .getValue().doubleValue()).log();
 
-                    if (ec.getSign().equals("=")) {
-                        GT = -ec.getEvalExpression().getValue().getValue().doubleValue();
+                    if (goal.getSign().equals("=")) {
+                        GT = -goal.getIntDouble().getValue().doubleValue();
                         if(Math.abs(GT)<ControlData.zeroTolerance) {
                             GT=0;
                         } else if (Math.abs(GT)>maxValue) {
@@ -949,17 +942,17 @@ public class CbcSolver {
                         }
                         LT = GT;
                         equalityCount++;
-                     } else if (ec.getSign().equals("<") || ec.getSign().equals("<=")){
+                     } else if (goal.getSign().equals("<") || goal.getSign().equals("<=")){
                         GT = -maxValue;
-                        LT = -ec.getEvalExpression().getValue().getValue().doubleValue();
+                        LT = -goal.getIntDouble().getValue().doubleValue();
                         if(Math.abs(LT)<ControlData.zeroTolerance) {
                             LT=0;
                         } else if (Math.abs(LT)>maxValue) {
                             LT=maxValue*Math.signum(LT);
                         }
                         inequalityCount++;
-                    } else if (ec.getSign().equals(">")){
-                        GT = -ec.getEvalExpression().getValue().getValue().doubleValue();
+                    } else if (goal.getSign().equals(">")){
+                        GT = -goal.getIntDouble().getValue().doubleValue();
                         if(Math.abs(GT)<ControlData.zeroTolerance) {
                             GT=0;
                         } else if (Math.abs(GT)>maxValue) {
@@ -970,10 +963,10 @@ public class CbcSolver {
                     }
                     else {
                         // error!!
-                        logger.atError().setMessage("Invalid constraint sign in CbcSolver: {}").addArgument(ec.getSign()).log();
+                        logger.atError().setMessage("Invalid constraint sign in CbcSolver: {}").addArgument(goal.getSign()).log();
                     }
 
-                    LinkedHashMap<String, IntDouble> multMap = ec.getEvalExpression().getMultiplier();
+                    LinkedHashMap<String, IntDouble> multMap = goal.getMultiplier();
                     Set multCollection = multMap.keySet();
                     Iterator multIterator = multCollection.iterator();
 
@@ -1032,7 +1025,7 @@ public class CbcSolver {
 	private static void setConstraintsSkip(String skipThisConstraint) {
         logger.atDebug().setMessage("Setting up constraints with skip: skipThisConstraint={}").addArgument(skipThisConstraint).log();
 
-        Map<String, EvalConstraint> constraintMap = SolverData.getConstraintDataMap();
+        Map<String, Goal> constraintMap = gov.ca.water.solverdata.SolverData.getConstraintDataMap();
         int rowCounter = 0;
         int skippedCount = 0;
 
@@ -1059,32 +1052,32 @@ public class CbcSolver {
                     continue;
                 }
 
-				EvalConstraint ec = constraintMap.get(constraintName);
+				Goal goal = constraintMap.get(constraintName);
 
-				if (ec.getSign().equals("=")) {
-					GT = -ec.getEvalExpression().getValue().getValue().doubleValue();
+				if (goal.getSign().equals("=")) {
+					GT = -goal.getIntDouble().getValue().doubleValue();
 					if(Math.abs(GT)<ControlData.zeroTolerance) {
                         GT=0;
                     }
 					LT = GT;
-				} else if (ec.getSign().equals("<") || ec.getSign().equals("<=")){
+				} else if (goal.getSign().equals("<") || goal.getSign().equals("<=")){
 					GT = -maxValue;
-					LT = -ec.getEvalExpression().getValue().getValue().doubleValue();
+					LT = -goal.getIntDouble().getValue().doubleValue();
 					if(Math.abs(LT)<ControlData.zeroTolerance) {
                         LT=0;
                     }
-				} else if (ec.getSign().equals(">")){
-					GT = -ec.getEvalExpression().getValue().getValue().doubleValue();
+				} else if (goal.getSign().equals(">")){
+					GT = -goal.getIntDouble().getValue().doubleValue();
 					if(Math.abs(GT)<ControlData.zeroTolerance) {
                         GT=0;
                     }
 					LT = maxValue;
                 } else {
 					// error!!
-                    logger.atError().setMessage("Invalid constraint sign in CbcSolver: {}").addArgument(ec.getSign()).log();
+                    logger.atError().setMessage("Invalid constraint sign in CbcSolver: {}").addArgument(goal.getSign()).log();
                 }
 
-				HashMap<String, IntDouble> multMap = ec.getEvalExpression().getMultiplier();
+				HashMap<String, IntDouble> multMap = goal.getMultiplier();
 				Set multCollection = multMap.keySet();
 				Iterator multIterator = multCollection.iterator();
 
@@ -1126,7 +1119,7 @@ public class CbcSolver {
         logger.atDebug().setMessage("Setting up IIS constraints: firstTimeRun={}, enforceThisConstraint size={}").addArgument(firstTimeRun).addArgument(enforceThisConstraint.size()).log();
 
 
-        Map<String, EvalConstraint> constraintMap = SolverData.getConstraintDataMap();
+        Map<String, Goal> constraintMap = gov.ca.water.solverdata.SolverData.getConstraintDataMap();
 		int total=0;
         int enforcedCount = 0;
 
@@ -1147,22 +1140,22 @@ public class CbcSolver {
 				double LT= 999;
 
 				String constraintName=(String)constraintIterator.next();
-				EvalConstraint ec=constraintMap.get(constraintName);
+				Goal goal=constraintMap.get(constraintName);
 
-                if (ec.getSign().equals("=")) {
-                    GT = -ec.getEvalExpression().getValue().getValue().doubleValue();
+                if (goal.getSign().equals("=")) {
+                    GT = -goal.getIntDouble().getValue().doubleValue();
                     if (Math.abs(GT) < gov.ca.water.wrims.engine.core.components.ControlData.zeroTolerance) {
                         GT = 0;
                     }
                     LT = GT;
-                } else if (ec.getSign().equals("<") || ec.getSign().equals("<=")) {
+                } else if (goal.getSign().equals("<") || goal.getSign().equals("<=")) {
                     GT = -maxValue;
-                    LT = -ec.getEvalExpression().getValue().getValue().doubleValue();
+                    LT = -goal.getIntDouble().getValue().doubleValue();
                     if (Math.abs(LT) < gov.ca.water.wrims.engine.core.components.ControlData.zeroTolerance) {
                         LT = 0;
                     }
-                } else if (ec.getSign().equals(">")) {
-                    GT = -ec.getEvalExpression().getValue().getValue().doubleValue();
+                } else if (goal.getSign().equals(">")) {
+                    GT = -goal.getIntDouble().getValue().doubleValue();
                     if (Math.abs(GT) < gov.ca.water.wrims.engine.core.components.ControlData.zeroTolerance) {
                         GT = 0;
                     }
@@ -1171,7 +1164,7 @@ public class CbcSolver {
                     logger.atError().setMessage("Unknown constraint sign in CbcSolver IIS").log();
                 }
 
-				HashMap<String, IntDouble> multMap = ec.getEvalExpression().getMultiplier();
+				HashMap<String, IntDouble> multMap = goal.getMultiplier();
 				Set multCollection = multMap.keySet();
 				Iterator multIterator = multCollection.iterator();
 
@@ -1204,8 +1197,8 @@ public class CbcSolver {
 					double[] newElements = Arrays.copyOfRange(elements, 0, elements.length - 2);
 					iisConstraintIndexMap.put(constraintName, newIndex);
 					iisConstraintElementMap.put(constraintName, newElements);
-					iisConstraintSignMap.put(constraintName, ec.getSign());
-					iisConstraintRHSMap.put(constraintName, -ec.getEvalExpression().getValue().getValue().doubleValue());
+					iisConstraintSignMap.put(constraintName, goal.getSign());
+					iisConstraintRHSMap.put(constraintName, -goal.getIntDouble().getValue().doubleValue());
 				}
 				// TODO: add index and elements here for IIS
 				String iisNameP = constraintName + "_p";
@@ -1261,7 +1254,7 @@ public class CbcSolver {
         logger.atDebug().setMessage("CBC Solver: Setting up decision variables...").log();
 
         try {
-            Map<String, WeightElement> wm1 = SolverData.getWeightMap();
+            Map<String, WeightElement> wm1 = gov.ca.water.solverdata.SolverData.getWeightMap();
             String c = "quicklog version 1.0\n";
             int intVarCount = 0;
             int contVarCount = 0;
@@ -1323,7 +1316,7 @@ public class CbcSolver {
 
         try {
             int intSize = 0;
-            Map<String, WeightElement> wm1 = SolverData.getWeightMap();
+            Map<String, WeightElement> wm1 = gov.ca.water.solverdata.SolverData.getWeightMap();
             String c = "quicklog version 1.0\n";
             double totalWeight = 0;
 
@@ -1562,7 +1555,7 @@ public class CbcSolver {
                 logger.atDebug().setMessage("Checking solve result for violations").log();
                 int ColumnSize = jCbc.getNumCols(model);
 					SWIGTYPE_p_double v_ary = jCbc.getColSolution(solver);
-					Map<String, Dvar> dMap = SolverData.getDvarMap();
+					Map<String, Dvar> dMap = gov.ca.water.solverdata.SolverData.getDvarMap();
 
 					for (int j = 0; j < ColumnSize; j++){
 						 //varDoubleMap.put(jCbc.getColName(model,j), jCbc.jarray_double_getitem(jCbc.getColSolution(solver),j));
@@ -2047,7 +2040,7 @@ logger.atTrace().setMessage("Integer variable (2021): name={}, value={} (rounded
 		List<String> dvarTimeArrayCycleIndexList = sds.getDvarTimeArrayCycleIndexList();
 		Map<String, Map<String, IntDouble>> varCycleIndexValueMap = sds.getVarCycleIndexValueMap();
 
-		Map<String, Dvar> dvarMap = SolverData.getDvarMap();
+		Map<String, Dvar> dvarMap = gov.ca.water.solverdata.SolverData.getDvarMap();
 
 		HashSet<String> extraDv = new HashSet<String>(dvarMap.keySet());
 		extraDv.removeAll(varDoubleMap.keySet());
@@ -2514,7 +2507,7 @@ logger.atTrace().setMessage("Integer variable (2021): name={}, value={} (rounded
         boolean violation = false;
         int ColumnSize = jCbc.getNumCols(model);
 		SWIGTYPE_p_double v_ary = jCbc.getColSolution(model);
-		Map<String, Dvar> dMap = SolverData.getDvarMap();
+		Map<String, Dvar> dMap = gov.ca.water.solverdata.SolverData.getDvarMap();
 
         int intViolationCount = 0;
         int boundViolationCount = 0;

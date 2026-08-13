@@ -19,7 +19,6 @@ import gov.ca.water.wrims.engine.core.components.ControlData;
 import gov.ca.water.wrims.engine.core.components.FilePaths;
 import gov.ca.water.wrims.engine.core.evaluator.DataTimeSeries;
 import gov.ca.water.wrims.engine.core.evaluator.DssDataSetFixLength;
-import gov.ca.water.wrims.engine.core.evaluator.DssOperation;;
 
 public class MySQLCWriter {
 	

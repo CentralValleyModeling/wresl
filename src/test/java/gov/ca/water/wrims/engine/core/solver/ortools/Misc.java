@@ -4,18 +4,13 @@ import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import gov.ca.water.io.DSS.DssOperations;
-import gov.ca.water.wresl.domain.Dvar;
+import gov.ca.water.wresl.domain.*;
 import gov.ca.water.utilities.Param;
-import gov.ca.water.wresl.domain.StudyDataSet;
-import gov.ca.water.wresl.domain.WeightElement;
-import gov.ca.water.wresl.domain.IntDouble;
 
-import gov.ca.water.wrims.engine.core.commondata.solverdata.SolverData;
+import gov.ca.water.solverdata.SolverData;
 import gov.ca.water.wrims.engine.core.components.ControlData;
 import gov.ca.water.wrims.engine.core.components.Error;
 import gov.ca.water.wrims.engine.core.evaluator.DataTimeSeries;
-import gov.ca.water.wrims.engine.core.evaluator.DssOperation;
-import gov.ca.water.wrims.engine.core.evaluator.EvalConstraint;
 import gov.ca.water.wrims.engine.core.solver.mpmodel.MPModel;
 
 
@@ -23,7 +18,7 @@ public class Misc {
 
 	
 	protected static void setConstraints(MPModel m) {
-		Map<String, EvalConstraint> constraintMap = SolverData.getConstraintDataMap();
+		Map<String, Goal> constraintMap = SolverData.getConstraintDataMap();
 		Map<String, Dvar> dvarMap=SolverData.getDvarMap();
 		for (int i=0; i<=1; i++){
 			ArrayList<String> constraintCollection;
@@ -37,25 +32,25 @@ public class Misc {
 		
 			while(constraintIterator.hasNext()){                          
 				String constraintName=(String)constraintIterator.next();
-				EvalConstraint ec=constraintMap.get(constraintName);
+				Goal goal=constraintMap.get(constraintName);
 			
 				double lb = -Param.inf;
 				double ub =  Param.inf;
 				
-				if (ec.getSign().equals("=")) {
+				if (goal.getSign().equals("=")) {
 					//ControlData.xasolver.setRowFix(constraintName, -ec.getEvalExpression().getValue().getData().doubleValue()); 
-					lb = -ec.getEvalExpression().getValue().getValue().doubleValue();
-					ub = -ec.getEvalExpression().getValue().getValue().doubleValue();
+					lb = -goal.getIntDouble().getValue().doubleValue();
+					ub = -goal.getIntDouble().getValue().doubleValue();
 				}
-				else if (ec.getSign().equals("<") || ec.getSign().equals("<=")){
+				else if (goal.getSign().equals("<") || goal.getSign().equals("<=")){
 					//ControlData.xasolver.setRowMax(constraintName, -ec.getEvalExpression().getValue().getData().doubleValue()); 
-					ub = -ec.getEvalExpression().getValue().getValue().doubleValue();
+					ub = -goal.getIntDouble().getValue().doubleValue();
 				}
-				else if (ec.getSign().equals(">")){
-					lb = -ec.getEvalExpression().getValue().getValue().doubleValue();
+				else if (goal.getSign().equals(">")){
+					lb = -goal.getIntDouble().getValue().doubleValue();
 				}
 			
-				HashMap<String, IntDouble> multMap = ec.getEvalExpression().getMultiplier();
+				HashMap<String, IntDouble> multMap = goal.getMultiplier();
 				
 				//TODO: what if multMap is empty?? this means 0 according to wresl parser.
 				// for example,      lb < 0

@@ -4,22 +4,16 @@ import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import gov.ca.water.io.DSS.DssOperations;
+import gov.ca.water.wresl.domain.*;
 import org.coinor.clp.SWIGTYPE_p_ClpSimplex;
 import org.coinor.clp.SWIGTYPE_p_CoinBuild;
 import org.coinor.clp.SWIGTYPE_p_double;
 import org.coinor.clp.SWIGTYPE_p_int;
 import org.coinor.clp.jClp;
 
-import gov.ca.water.wresl.domain.Dvar;
-import gov.ca.water.wresl.domain.StudyDataSet;
-import gov.ca.water.wresl.domain.WeightElement;
-import gov.ca.water.wresl.domain.IntDouble;
-import gov.ca.water.wrims.engine.core.commondata.solverdata.*;
 import gov.ca.water.wrims.engine.core.components.ControlData;
 import gov.ca.water.wrims.engine.core.components.Error;
 import gov.ca.water.wrims.engine.core.evaluator.DataTimeSeries;
-import gov.ca.water.wrims.engine.core.evaluator.DssOperation;
-import gov.ca.water.wrims.engine.core.evaluator.EvalConstraint;
 
 public class ClpSolver {
 	
@@ -67,7 +61,7 @@ public class ClpSolver {
 			jClp.setModelName(model, modelName);
 			jClp.setLogLevel(model , 0);
 
-			dvarMap = SolverData.getDvarMap();
+			dvarMap = gov.ca.water.solverdata.SolverData.getDvarMap();
 
 
 			rowIndex_array = new ArrayList<SWIGTYPE_p_int>();
@@ -149,7 +143,7 @@ public class ClpSolver {
 	}
 	
 	private static void setConstraints() {
-		Map<String, EvalConstraint> constraintMap = SolverData.getConstraintDataMap();
+		Map<String, Goal> constraintMap = gov.ca.water.solverdata.SolverData.getConstraintDataMap();
 		
 		int rowCounter=0; // row index
 		for (int i=0; i<=1; i++){
@@ -170,21 +164,21 @@ public class ClpSolver {
 				
 				
 				String constraintName=(String)constraintIterator.next();
-				EvalConstraint ec=constraintMap.get(constraintName);
+				Goal goal=constraintMap.get(constraintName);
 			
-				if (ec.getSign().equals("=")) {
+				if (goal.getSign().equals("=")) {
 					//ClpSolverJNI.setRowFix(constraintName, -ec.getEvalExpression().getValue().getData().doubleValue()); //string constraint name
-					GT = -ec.getEvalExpression().getValue().getValue().doubleValue();
+					GT = -goal.getIntDouble().getValue().doubleValue();
 					LT = GT;
 				}
-				else if (ec.getSign().equals("<") || ec.getSign().equals("<=")){
+				else if (goal.getSign().equals("<") || goal.getSign().equals("<=")){
 					//ClpSolverJNI.setRowMax(constraintName, -ec.getEvalExpression().getValue().getData().doubleValue()); //string constraint name
 					GT = -maxValue;
-					LT = -ec.getEvalExpression().getValue().getValue().doubleValue();
+					LT = -goal.getIntDouble().getValue().doubleValue();
 				}
-				else if (ec.getSign().equals(">")){
+				else if (goal.getSign().equals(">")){
 					//ClpSolverJNI.setRowMin(constraintName, -ec.getEvalExpression().getValue().getData().doubleValue()); //string constraint name
-					GT = -ec.getEvalExpression().getValue().getValue().doubleValue();
+					GT = -goal.getIntDouble().getValue().doubleValue();
 					LT = maxValue;
 				}
 				else {
@@ -192,7 +186,7 @@ public class ClpSolver {
 					
 				}
 			
-				HashMap<String, IntDouble> multMap = ec.getEvalExpression().getMultiplier();
+				HashMap<String, IntDouble> multMap = goal.getMultiplier();
 				Set multCollection = multMap.keySet();
 				Iterator multIterator = multCollection.iterator();				
 				
@@ -240,7 +234,7 @@ public class ClpSolver {
 
     private static void setWeights(){
    	 
-		Map<String, WeightElement> weightMap = SolverData.getWeightMap();
+		Map<String, WeightElement> weightMap = gov.ca.water.solverdata.SolverData.getWeightMap();
 		for (int i=0; i<=1; i++){
 			List<String> weightCollection;
 			if (i==0){
@@ -258,7 +252,7 @@ public class ClpSolver {
 				jClp.setObjectiveCoefficient(model, dvKeys.indexOf(weightName), weightMap.get(weightName).getValue());
 			}
 		}
-		Map<String, WeightElement> weightSlackSurplusMap = SolverData.getWeightSlackSurplusMap();
+		Map<String, WeightElement> weightSlackSurplusMap = gov.ca.water.solverdata.SolverData.getWeightSlackSurplusMap();
 		CopyOnWriteArrayList<String> usedWeightSlackSurplusCollection = ControlData.currModelDataSet.usedWtSlackSurplusList;
 		Iterator<String> usedWeightSlackSurplusIterator = usedWeightSlackSurplusCollection.iterator();
 	
@@ -369,7 +363,7 @@ public class ClpSolver {
 		List<String> dvarTimeArrayCycleIndexList = sds.getDvarTimeArrayCycleIndexList();
 		Map<String, Map<String, IntDouble>> varCycleIndexValueMap = sds.getVarCycleIndexValueMap();
 		
-		Map<String, Dvar> dvarMap = SolverData.getDvarMap();
+		Map<String, Dvar> dvarMap = gov.ca.water.solverdata.SolverData.getDvarMap();
 		Set dvarCollection = dvarMap.keySet();
 		Iterator dvarIterator = dvarCollection.iterator();
 			
