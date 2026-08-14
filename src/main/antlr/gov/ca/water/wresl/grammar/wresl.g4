@@ -256,7 +256,11 @@ sumEnd: expression ;
 sumStep: expression ;
 
 variableReference
-    : OBJECT_NAME scope? timestepOffset? #objectReference
+    : CFS_TAF timestepOffset?            #cfstafReference
+    | TAF_CFS timestepOffset?            #tafcfsReference
+    | CFS_AF timestepOffset?             #cfsafReference
+    | AF_CFS timestepOffset?             #afcfsReference
+    | OBJECT_NAME scope? timestepOffset? #objectReference
     | DAYSIN                             #daysInMonthReference
     | CURRENT_MONTH                      #currentMonthReference
     | WATER_YEAR                         #waterYearReference
@@ -370,6 +374,10 @@ MONTH:
 STEP_1MON: '1mon';
 STEP_1DAY: '1day';
 FUTURE_ARRAY_INDEX: '$m' ;
+CFS_TAF: 'cfs_taf';
+TAF_CFS: 'taf_cfs';
+CFS_AF: 'cfs_af';
+AF_CFS: 'af_cfs';
 // Keywords - instructions
 VALUE: 'value';
 EXTERNAL: 'external';

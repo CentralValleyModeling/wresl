@@ -230,24 +230,16 @@ public class Timeseries extends WRESLComponent implements Serializable {
     }
 
     // Retrieve data for a time
-    public Double retrieveDataForTime(ParallelVars prvs, boolean isInit) {
+    public Double retrieveDataForTime(ParallelVars prvs) {
         int index = timeSeriesIndex(prvs, this.startTime, this.timeStep);
         if (index >= 0) {
             if (index < this.data.size()) {
                 Double value = null;
-                if (isInit) {
-                    value = this.data.get(index);
-                } else {
-                    if (index > this.studyStartIndex) {
-                        value = this.data.get(index);
-                    }
-                }
+                value = this.data.get(index);
                 if (value == null) { return null; }
-                if (value.doubleValue() != -901.0) {
-                    if (value.doubleValue() != -902.0) {
-                        return value;
-                    }
-                }
+                if (value.doubleValue() == -901.0) { return null; }
+                if (value.doubleValue() == -902.0) { return null; }
+                return value;
             }
         }
 

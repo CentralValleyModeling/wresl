@@ -1,7 +1,8 @@
 package gov.ca.water.wresl.parsing;
 
-import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.Token;
+import gov.ca.water.wresl.grammar.wreslLexer;
+import gov.ca.water.wresl.grammar.wreslParser;
+import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
@@ -38,5 +39,27 @@ public final class Utilities {
         return tree.getText().toLowerCase();
     }
 
+
+    // ------------------------------------------------------------
+    // --- METHODS TO GENERATE PARSE TREES FROM TEXT
+    // ------------------------------------------------------------
+
+    // Generate an Expression parse tree from a string
+    public static wreslParser.ExpressionContext generateExpressionParseTree(String expression) {
+        CharStream charStream = CharStreams.fromString(expression);
+        wreslLexer lexer = new wreslLexer(charStream);
+        CommonTokenStream tokenStream = new CommonTokenStream(lexer);
+        wreslParser parser = new wreslParser(tokenStream);
+        return parser.expression();
+    }
+
+    // Generate a GoalBody parse tree from a string
+    public static wreslParser.GoalBodyContext generateGoalBodyParseTree(String expression) {
+        CharStream charStream = CharStreams.fromString(expression);
+        wreslLexer lexer = new wreslLexer(charStream);
+        CommonTokenStream tokenStream = new CommonTokenStream(lexer);
+        wreslParser parser = new wreslParser(tokenStream);
+        return parser.goalBody();
+    }
 
 }

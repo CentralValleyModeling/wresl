@@ -3,6 +3,7 @@ package gov.ca.water.wresl.parsing;
 import gov.ca.water.io.DSS.DssOperations;
 import gov.ca.water.solverdata.SolverData;
 import gov.ca.water.utilities.ParallelVars;
+import gov.ca.water.utilities.Param;
 import gov.ca.water.utilities.TimeOperations;
 import gov.ca.water.wresl.domain.*;
 import gov.ca.water.wresl.errors.EvaluationErrorException;
@@ -16,6 +17,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static gov.ca.water.wresl.parsing.Utilities.generateExpressionParseTree;
 import static gov.ca.water.wresl.parsing.Utilities.getWreslText;
 
 // Package-private class
@@ -42,6 +44,13 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         FALSE(-1);
         private final int value;
         Logical(int value) {this.value = value;}
+    }
+
+    private enum FlowConversion {
+        CFS_TAF,
+        CFS_AF,
+        TAF_CFS,
+        AF_CFS
     }
 
     // Runtime data
@@ -515,6 +524,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     }
 
     @Override
+    // expressionNot
     public IntDouble visitExpressionNot(wreslParser.ExpressionNotContext ctx) throws EvaluationErrorException {
         IntDouble logicalResult = visit(ctx.expression());
 
@@ -542,7 +552,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         int intRight = valueRight.getValue().intValue();
 
         // Process logical operation
-        switch (ctx.opLogical().getText()) {
+        switch (getWreslText(ctx.opLogical())) {
             // AND
             case ".and." -> {
                 if (intLeft==Logical.TRUE.value && intRight==Logical.TRUE.value) {
@@ -564,6 +574,58 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             // default; should not need this
             default -> {return null;}
         }
+    }
+
+    @Override
+    // expressionSum
+    public IntDouble visitExpressionSum(wreslParser.ExpressionSumContext ctx) {
+        int iBegin;
+        int iEnd;
+        int iStep = 1;
+
+        // Retrieve SUM begin index
+        IntDouble indexBegin = visit(ctx.sumExpressionBody().sumBegin());
+        if (indexBegin == null) {
+            return null;
+        } else {
+            iBegin = indexBegin.getValue().intValue();
+        }
+
+        // Retrieve SUM end index
+        IntDouble indexEnd = visit(ctx.sumExpressionBody().sumEnd());
+        if (indexEnd == null) {
+            return null;
+        } else {
+            iEnd = indexEnd.getValue().intValue();
+        }
+
+        // Retrieve SUM step size
+        if (ctx.sumExpressionBody().sumStep() != null) {
+            IntDouble step = visit(ctx.sumExpressionBody().sumStep());
+            if (step == null) {
+                return null;
+            } else {
+                iStep = step.getValue().intValue();
+            }
+        }
+
+        // Loop through SUM
+        String sumIndex = "(" + getWreslText(ctx.sumExpressionBody().OBJECT_NAME()) + ")";
+        double sum =0.0;
+        IntDouble data;
+        for (int i=iBegin; i<=iEnd; i++) {
+            // Create a new parse tree for the accumulating expression with the index value specified
+            String accumExpression = getWreslText(ctx.sumExpressionBody().accumulatingExpression());
+            String accumExpressionMod = accumExpression.replace(sumIndex, "("+i+")");
+            ParseTree accumParseTree = generateExpressionParseTree(accumExpressionMod);
+
+            // Retrieve value and add it to sum
+            data = visit(accumParseTree);
+            if (data == null) { return null; }
+            sum = sum + data.getValue().doubleValue();
+        }
+
+        return new IntDouble(sum,false);
     }
 
     @Override
@@ -760,22 +822,25 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         Timeseries tsVar = INSTANCE.sds.getSVTimeseries(tsName);
         if (tsVar != null) {
             // Retrieve timestep offset and make sure it is an integer number
-            IntDouble temp = visit(ctx.timestepOffset().expression());
-            if (!temp.isInt()) {
-                throw new EvaluationErrorException("Timeseries index for " + varName + " must be an integer value.");
+            int timeOffset = 0;
+            if (ctx.timestepOffset() != null) {
+                IntDouble temp = visit(ctx.timestepOffset().expression());
+                if (!temp.isInt()) {
+                    throw new EvaluationErrorException("Timeseries index for " + varName + " must be an integer value.");
+                }
+                timeOffset = temp.getValue().intValue();
             }
-            int timeOffset = temp.getValue().intValue();
             ParallelVars prvs = TimeOperations.findTime(tsVar.timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
 
             // Retrieve data from Timeseries
             Double value;
-            value = tsVar.retrieveDataForTime(prvs, false);
+            value = tsVar.retrieveDataForTime(prvs);
             if (value != null) { return new IntDouble(value.doubleValue(), false); }
 
             // If made it this far, timeseries did not extend back in time; try to retrieve from initial data
             Timeseries svInit = INSTANCE.sds.getSVInitTimeseries(tsName);
             if (svInit != null) {
-                value = svInit.retrieveDataForTime(prvs, true);
+                value = svInit.retrieveDataForTime(prvs);
                 if (value != null) {
                     return new IntDouble(value.doubleValue(), false);
                 }
@@ -785,7 +850,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             svInit = tsVar.copyOf();
             boolean success = svInit.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
             if (success) {
-                value = svInit.retrieveDataForTime(prvs, true);
+                value = svInit.retrieveDataForTime(prvs);
                 if (value != null) {
                     INSTANCE.sds.addSVInitTimeseries(svInit);
                     return new IntDouble(value.doubleValue(), false);
@@ -810,14 +875,14 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
             // Retrieve data from Alias
             Double value;
-            value = asVar.retrieveDataForTime(prvs, true);
+            value = asVar.retrieveDataForTime(prvs);
             if (value != null) { return new IntDouble(value.doubleValue(), false); }
 
             // If made it this far, alias did not extend back in time; try to retrieve from initial data
             asVar.setDssBPart(asVar.name);
             asVar.setTimeStep(INSTANCE.currentModelDataSet.getTimeStep());
             asVar.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
-            value = asVar.retrieveDataForTime(prvs, true);
+            value = asVar.retrieveDataForTime(prvs);
             if (value != null ) { return new IntDouble(value.doubleValue(), false); }
 
             // If made it this far, value was not found; generate error
@@ -843,6 +908,34 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         String monthName = TimeOperations.monthName(INSTANCE.currentMonth);
         Number daysInMonth = Integer.valueOf(TimeOperations.numberOfDays(INSTANCE.currentMonth, INSTANCE.currentYear));
         return new IntDouble(daysInMonth, true);
+    }
+
+    @Override
+    // cfstafReference
+    public IntDouble visitCfstafReference(wreslParser.CfstafReferenceContext ctx) {
+        IntDouble conversion = flowUnitConversion(ctx.timestepOffset(), FlowConversion.CFS_TAF);
+        return conversion;
+    }
+
+    @Override
+    // tafcfsReference
+    public IntDouble visitTafcfsReference(wreslParser.TafcfsReferenceContext ctx) {
+        IntDouble conversion = flowUnitConversion(ctx.timestepOffset(), FlowConversion.TAF_CFS);
+        return conversion;
+    }
+
+    @Override
+    // cfsafReference
+    public IntDouble visitCfsafReference(wreslParser.CfsafReferenceContext ctx) {
+        IntDouble conversion = flowUnitConversion(ctx.timestepOffset(), FlowConversion.CFS_AF);
+        return conversion;
+    }
+
+    @Override
+    // afcfsReference
+    public IntDouble visitAfcfsReference(wreslParser.AfcfsReferenceContext ctx) {
+        IntDouble conversion = flowUnitConversion(ctx.timestepOffset(), FlowConversion.AF_CFS);
+        return conversion;
     }
 
     @Override
@@ -969,6 +1062,44 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         IntDouble result = findDataInLookupTable(tableName, selectColumn, where, given, use);
         return result;
 
+    }
+
+
+    // ------------------------------------------------------------
+    // --- HELPER METHOD TO CONVERT FLOW UNITS
+    // ------------------------------------------------------------
+    private IntDouble flowUnitConversion(wreslParser.TimestepOffsetContext ctx, FlowConversion conversionType) {
+        // If timestep is not known, return null
+        String timeStep = INSTANCE.currentModelDataSet.getTimeStep();
+        if (timeStep.equals(Param.undefined)) { return null; }
+
+        // Retrieve time offset
+        int timeOffset = 0;
+        if (ctx != null) {
+            IntDouble value = visit(ctx.expression());
+            if (value == null) { return null; }
+            timeOffset = value.getValue().intValue();
+        }
+
+        // Compute month when time offset is used
+        ParallelVars prvs = TimeOperations.findTime(timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+
+        // Based on timestep, compute number of days
+        int nDays;
+        if (TimeOperations.isMonthlyInterval(timeStep)) {
+            nDays = TimeOperations.numberOfDays(prvs.dataMonth, prvs.dataYear);
+        } else {
+            nDays = 1;
+        }
+
+        // Based on conversion type, return data
+        switch (conversionType) {
+            case CFS_TAF -> { return new IntDouble(nDays / 504.1666667, false); }
+            case CFS_AF ->  { return new IntDouble(nDays / 504.1666667 * 1000., false); }
+            case TAF_CFS -> { return new IntDouble(504.1666667 / nDays, false); }
+            case AF_CFS ->  { return new IntDouble(504.1666667 / nDays / 1000., false); }
+            default     ->  { return null; }
+        }
     }
 
 

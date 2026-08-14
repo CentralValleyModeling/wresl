@@ -6,7 +6,6 @@ import gov.ca.water.wresl.domain.*;
 import gov.ca.water.wresl.errors.EvaluationErrorException;
 import gov.ca.water.wresl.errors.SyntaxErrorException;
 import gov.ca.water.wresl.grammar.wreslBaseVisitor;
-import gov.ca.water.wresl.grammar.wreslLexer;
 import gov.ca.water.wresl.grammar.wreslParser;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -18,7 +17,7 @@ import java.io.*;
 import java.nio.file.Path;
 import java.util.*;
 
-import static gov.ca.water.wresl.parsing.Utilities.getWreslText;
+import static gov.ca.water.wresl.parsing.Utilities.*;
 
 // Package-private class
 class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
@@ -1709,24 +1708,6 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     // --- HELPER METHODS
     // ------------------------------------------------------------
     // ------------------------------------------------------------
-
-    // Generate an Expression parse tree from a string
-    private static wreslParser.ExpressionContext generateExpressionParseTree(String expression) {
-        CharStream charStream = CharStreams.fromString(expression);
-        wreslLexer lexer = new wreslLexer(charStream);
-        CommonTokenStream tokenStream = new CommonTokenStream(lexer);
-        wreslParser parser = new wreslParser(tokenStream);
-        return parser.expression();
-    }
-
-    // Generate a GoalBody parse tree from a string
-    private static wreslParser.GoalBodyContext generateGoalBodyParseTree(String expression) {
-        CharStream charStream = CharStreams.fromString(expression);
-        wreslLexer lexer = new wreslLexer(charStream);
-        CommonTokenStream tokenStream = new CommonTokenStream(lexer);
-        wreslParser parser = new wreslParser(tokenStream);
-        return parser.goalBody();
-    }
 
     // Convert visitor result to string
     private static String visitorResultToString(VisitorResult result) {
