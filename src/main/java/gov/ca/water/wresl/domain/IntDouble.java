@@ -16,7 +16,12 @@ public class IntDouble {
     public IntDouble(Number value, boolean isInt) {
         this.data = value;
         this.isInteger = isInt;
-        this.argName = "";
+    }
+
+    public IntDouble(Number value, boolean isInt, String name) {
+        this.data = value;
+        this.isInteger = isInt;
+        this.argName = name;
     }
 
     public IntDouble(Number value, boolean isInt, String name, int index) {
@@ -28,12 +33,23 @@ public class IntDouble {
 
 
     // ------------------------------------------------------------
+    // --- SETTERS
+    // ------------------------------------------------------------
+    public void setValue(Number value) { this.data = value; }
+
+    public void setIsInteger(boolean isInt) { this.isInteger = isInt; }
+
+    public void setArgName(String name) { this.argName = name; }
+
+    public void setIndex(int index) {this.index = index; }
+
+
+    // ------------------------------------------------------------
     // --- GETTERS
     // ------------------------------------------------------------
     public Number getValue() {
         return this.data;
     }
-
 
     public IntDouble copyOf(){
         if (this.isInteger){
@@ -43,10 +59,6 @@ public class IntDouble {
         }
     }
 
-
-    // ------------------------------------------------------------
-    // --- PREDICATES
-    // ------------------------------------------------------------
     public boolean isInt(){
         return this.isInteger;
     }

@@ -13,8 +13,8 @@ public class Goal extends WRESLComponent implements Serializable {
     public List<String> caseName = new ArrayList<>();
     public List<String> caseCondition = new ArrayList<>();
     public List<ParseTree> caseConditionParseTrees = new ArrayList<>();
-    public List<String> caseExpression = new ArrayList<>();
-    public List<ParseTree> caseExpressionParseTrees = new ArrayList<>();
+    public List<String> goalExpression = new ArrayList<>();
+    public List<ParseTree> goalExpressionParseTrees = new ArrayList<>();
 
     // Time array default is zero
     public String timeArraySize = Param.zero;

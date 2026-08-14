@@ -33,7 +33,6 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     private Map<String, Timeseries> svInitTimeseriesMap = new HashMap<>();     // Timeseries that are read from INIT file to initialize timeseries Svars
     private Map<String, Timeseries> dvAliasTS = new HashMap<>();
     private Map<String, Timeseries> dvAliasInit = new HashMap<>();
- //   private Map<String, List<String>> timeseriesTimeStepMap = new HashMap<>(); // Map that holds timesteps for timeseries data
 
     /// this map contains value of vars needed for WRESL syntax: varName[cycleName]
     /// < VarName, < CycleName, Value >>
@@ -45,6 +44,16 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
 
     public LinkedHashSet<String> allIntDv=new LinkedHashSet<>();
     public Map<Integer,LinkedHashSet<String>> cycIntDvMap=new HashMap<>();
+
+    // Data for SV and INIT files
+    private CondensedReferenceCacheAndRead.CondensedReferenceCache cacheInit = null;
+    private CondensedReferenceCacheAndRead.CondensedReferenceCache cacheSvar = null;
+    private CondensedReferenceCacheAndRead.CondensedReferenceCache cacheSvar2 = null;
+
+    // DSS parts
+    private String partA = "";
+    private String partF = "";
+    private String partF_Init = "";
 
 
     // ------------------------------------------------------------
@@ -135,6 +144,14 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         return this.dvarTimeArrayCycleIndexList;
     }
 
+    public CondensedReferenceCacheAndRead.CondensedReferenceCache getCacheInit() { return this.cacheInit; }
+
+    public String getPartA() { return this.partA; }
+
+    public String getPartF() { return this.partF; }
+
+    public String getPartF_Init() { return this.partF_Init; }
+
 
     // ------------------------------------------------------------
     // --- SETTERS
@@ -188,6 +205,10 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     // ------------------------------------------------------------
     // --- MISC. METHODS
     // ------------------------------------------------------------
+    public void addSVInitTimeseries(Timeseries tsInit) {
+        this.svInitTimeseriesMap.put(tsInit.name, tsInit);
+    }
+
     public void addParameter(Svar parameter) throws SyntaxErrorException {
         // Check that parameter is not defined more than once
         if (this.parameterList.contains(parameter.name)) {
@@ -207,11 +228,9 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     }
 
     // Read timeseries data from SV and INIT files
-    public void readTimeSeriesData(CondensedReferenceCacheAndRead.CondensedReferenceCache cacheTS,
-                                   CondensedReferenceCacheAndRead.CondensedReferenceCache cacheTS2,
-                                   CondensedReferenceCacheAndRead.CondensedReferenceCache cacheInitTS,
-                                   String svFileName_HDF,
-                                   String initFileName_HDF,
+    public void readTimeSeriesData(String svFileName,
+                                   String svFileName2,
+                                   String initFileName,
                                    String partA,
                                    String partF_SV,
                                    String partF_Init,
@@ -220,10 +239,26 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
                                    int studyStartDay) {
 
         // Flags
-        boolean isSVFileDSS = true;
-        boolean isInitFileDSS = true;
-        if (cacheTS == null) { isSVFileDSS = false; }
-        if (cacheInitTS == null) { isInitFileDSS = false; }
+        boolean isSVFileDSS = false;
+        boolean isInitFileDSS = false;
+
+        // Set part A and part B of DSS pathnames
+        this.partA = partA;
+        this.partF = partF;
+        this.partF_Init = partF_Init;
+
+        // Figure out input file types; for DSS files create cache
+        if (!svFileName.toLowerCase().endsWith(".h5")) {
+            this.cacheSvar = CondensedReferenceCacheAndRead.createCondensedCache(svFileName, "*");
+            isSVFileDSS = true;
+            if (!svFileName2.equals("")) {
+                this.cacheSvar2 = CondensedReferenceCacheAndRead.createCondensedCache(svFileName2, "*");
+            }
+        }
+        if (!initFileName.toLowerCase().endsWith(".h5")) {
+            this.cacheInit = CondensedReferenceCacheAndRead.createCondensedCache(initFileName, "*");
+            isInitFileDSS = true;
+        }
 
         // Both SV and INIT files are DSS
         if (isSVFileDSS && isInitFileDSS) {
@@ -232,15 +267,10 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
                 boolean success;
 
                 // Read SV data
-                success = ts.readTimeseries_DSS(cacheTS, partA, partF_SV, studyStartYear, studyStartMonth, studyStartDay);
-                if (cacheTS2 != null) {
-                    success = ts.readTimeseries_DSS(cacheTS2, partA, partF_SV, studyStartYear, studyStartMonth, studyStartDay);
+                success = ts.readTimeseries_DSS(this.cacheSvar, partA, partF_SV, studyStartYear, studyStartMonth, studyStartDay);
+                if (this.cacheSvar2 != null) {
+                    success = ts.readTimeseries_DSS(this.cacheSvar2, partA, partF_SV, studyStartYear, studyStartMonth, studyStartDay);
                 }
-
-                // Read initial data and add it to our list if reading is successful
-                Timeseries tsInit = ts.copyOf();
-                success = tsInit.readTimeseries_DSS(cacheInitTS, partA, partF_Init, studyStartYear, studyStartMonth, studyStartDay);
-                if (success) { this.svInitTimeseriesMap.put(tsName, tsInit); }
             });
             return;
         }
@@ -250,28 +280,14 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
             // Loop through SV timeseries and read data
             boolean success;
             for (Timeseries ts : this.svTimeseriesMap.values()) {
-                success = ts.readTimeseries_DSS(cacheTS, partA, partF_SV, studyStartYear, studyStartMonth, studyStartDay);
-                if (cacheTS2 != null) {
-                    success = ts.readTimeseries_DSS(cacheTS2, partA, partF_SV, studyStartYear, studyStartMonth, studyStartDay);
+                success = ts.readTimeseries_DSS(this.cacheSvar, partA, partF_SV, studyStartYear, studyStartMonth, studyStartDay);
+                if (this.cacheSvar2 != null) {
+                    success = ts.readTimeseries_DSS(this.cacheSvar2, partA, partF_SV, studyStartYear, studyStartMonth, studyStartDay);
                 }
             }
 
-            // Read INIT timeseries
-            // First, open file
-            HDF5Reader.openInitFile(initFileName_HDF, partA, partF_Init);
-
-            // Loop through timeseries and read data
-            this.svTimeseriesMap.forEach((tsName, ts) -> {
-                boolean success1;
-                Timeseries tsInit = ts.copyOf();
-                success1 = tsInit.readTimeseries_HDF(studyStartYear, studyStartMonth, studyStartDay);
-
-                // Add Timeseries to the list of initial SV timeseries, if read successfully
-                if (success1) { this.svInitTimeseriesMap.put(tsName, tsInit); }
-            });
-
-            // Close HDF5 file
-            HDF5Reader.closeInitFile();
+            // Open INIT file (reading data will need to be done later as needed)
+            HDF5Reader.openInitFile(initFileName, partA, partF_Init);
 
             return;
         }
@@ -280,7 +296,7 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         if (!isSVFileDSS && isInitFileDSS) {
             // First read the SV timeseries data
             // First, open file
-            HDF5Reader.openSVFile(svFileName_HDF, partA, partF_SV);
+            HDF5Reader.openSVFile(svFileName, partA, partF_SV);
 
             // Loop through timeseries and read data
             boolean success;
@@ -291,22 +307,13 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
             // Close HDF5 file
             HDF5Reader.closeSVFile();
 
-            // Next, read the INIT data
-            this.svTimeseriesMap.forEach((tsName, ts) -> {
-                boolean success1;
-                Timeseries tsInit = ts.copyOf();
-                success1 = tsInit.readTimeseries_DSS(cacheInitTS, partA, partF_Init, studyStartYear, studyStartMonth, studyStartDay);
-
-                // Add Timeseries to the list of initial SV timeseries, if read successfully
-                if (success1) { this.svInitTimeseriesMap.put(tsName, tsInit); }
-            });
             return;
         }
 
         // If, made it this far, both SV and INIT files are HDF
         // First, open files
-        HDF5Reader.openSVFile(svFileName_HDF, partA, partF_SV);
-        HDF5Reader.openInitFile(initFileName_HDF, partA, partF_Init);
+        HDF5Reader.openSVFile(svFileName, partA, partF_SV);
+        HDF5Reader.openInitFile(initFileName, partA, partF_Init);
 
         // Loop through timeseries and read data
         this.svTimeseriesMap.forEach((tsName, ts) -> {
@@ -320,9 +327,22 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
             if (success) { this.svInitTimeseriesMap.put(tsName, tsInit); }
         });
 
-        // Close HDF5 files
+        // Close SV HDF5 file; INIT file will be kept open and be used as needed
         HDF5Reader.closeSVFile();
-        HDF5Reader.closeInitFile();
+    }
+
+    // Initialize ALIAS data by setting their start date to the begining of the model simulation date
+    public void initialAlias(int startYear, int startMonth, int startDay) {
+        // Compute start time
+        Date startTime = new Date(startYear-1900, startMonth-1, startDay);
+
+        // Loop through models
+        for (ModelDataSet mds : this.modelDataSetMap.values()) {
+            // Loop through Aliases
+            for (Alias as : mds.asMap.values()) {
+                as.setStartTime(startTime);
+            }
+        }
     }
 
 

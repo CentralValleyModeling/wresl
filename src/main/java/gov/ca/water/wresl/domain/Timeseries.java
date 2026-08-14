@@ -28,7 +28,7 @@ public class Timeseries extends WRESLComponent implements Serializable {
     public Date startTime;
     public int studyStartIndex = -1;
 
-    private List<Double> data = new ArrayList<>();
+    public List<Double> data = new ArrayList<>();
 
 
     // --------------------
@@ -94,10 +94,10 @@ public class Timeseries extends WRESLComponent implements Serializable {
     }
 
     // Read timeseries data from DSS file
-    public boolean readTimeseries_DSS(CondensedReferenceCacheAndRead.CondensedReferenceCache cacheTS, String partA, String partF, int studyStartYear, int studyStartMonth, int studyStartDay) {
+    public boolean readTimeseries_DSS(CondensedReferenceCacheAndRead.CondensedReferenceCache cacheTS, String partA, String partF_Init, int studyStartYear, int studyStartMonth, int studyStartDay) {
         // Read data
         TimeSeriesContainer tsc;
-        tsc = DssOperations.readTimeSeriesData(cacheTS, this.units, this.timeStep, partA, this.dssBPart, this.kind, "", partF);
+        tsc = DssOperations.readTimeSeriesData(cacheTS, this.units, this.timeStep, partA, this.dssBPart, this.kind, "", partF_Init);
 
         // Return "false" if data was not read
         if (tsc == null) {return false;}
@@ -218,9 +218,20 @@ public class Timeseries extends WRESLComponent implements Serializable {
         return true;
     }
 
+    // Read initial data from INIT file
+    public boolean readInitData(CondensedReferenceCacheAndRead.CondensedReferenceCache cacheInit, String partA, String partF_Init, int studyStartYear, int studyStartMonth, int studyStartDay) {
+        boolean success;
+        if (cacheInit != null) {
+            success = this.readTimeseries_DSS(cacheInit, partA, partF_Init, studyStartYear, studyStartMonth, studyStartDay);
+        } else {
+            success = this.readTimeseries_HDF(studyStartYear, studyStartMonth, studyStartDay);
+        }
+        return success;
+    }
+
     // Retrieve data for a time
     public Double retrieveDataForTime(ParallelVars prvs, boolean isInit) {
-        int index = timeSeriesIndex(prvs);
+        int index = timeSeriesIndex(prvs, this.startTime, this.timeStep);
         if (index >= 0) {
             if (index < this.data.size()) {
                 Double value = null;
@@ -262,17 +273,16 @@ public class Timeseries extends WRESLComponent implements Serializable {
         }
     }
 
-    private int timeSeriesIndex(ParallelVars prvs) {
-        Date st = this.startTime;
-        int sYear = st.getYear() + 1900;
-        int sMonth = st.getMonth() + 1; //HEC DSS7 uses getMonth()+1. However, Vista/HecDSS6 uses getMonth()bbecause dss data store at 24:00 Jan31, 1921 is considered to store at 0:00 Feb 1, 1921
+    private int timeSeriesIndex(ParallelVars prvs, Date tsStartTime, String timeStep) {
+        int sYear = tsStartTime.getYear() + 1900;
+        int sMonth = tsStartTime.getMonth() + 1; //HEC DSS7 uses getMonth()+1. However, Vista/HecDSS6 uses getMonth()bbecause dss data store at 24:00 Jan31, 1921 is considered to store at 0:00 Feb 1, 1921
         Date dataDate = new Date(prvs.dataYear-1900, prvs.dataMonth-1, prvs.dataDay);
         int index;
-        if (TimeOperations.isMonthlyInterval(this.timeStep)) {
+        if (TimeOperations.isMonthlyInterval(timeStep)) {
             index = prvs.dataYear*12+prvs.dataMonth-(sYear*12+sMonth);
         } else {
             Calendar c1=Calendar.getInstance();
-            c1.setTime(st);
+            c1.setTime(tsStartTime);
             Calendar c2=Calendar.getInstance();
             c2.setTime(dataDate);
             long indexValue = Duration.between(c1.toInstant(), c2.toInstant()).toDays();

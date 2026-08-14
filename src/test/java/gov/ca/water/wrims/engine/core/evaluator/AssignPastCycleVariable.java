@@ -62,7 +62,7 @@ public class AssignPastCycleVariable {
 				ModelDataSet mds = mdsMap.get(modelList.get(i));
 				Map<String, Alias> asMap = mds.asMap;
 				if (asMap.containsKey(asName)){
-					IntDouble id=asMap.get(asName).getData();
+					IntDouble id=null; //asMap.get(asName).getData();
 					if (id !=null){
 						varCycleValueMap.get(asName).put(cycleName, id);
 						isAssigned=true;

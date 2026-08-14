@@ -26,12 +26,6 @@ public class ClearValue {
 				Svar svar=svMap.get(svName);
 				svar.setData(null);
 			}
-			List<String> asList = mds.asList;
-			Map<String, Alias> asMap =mds.asMap;
-			for (String asName: asList){
-				Alias alias=asMap.get(asName);
-				alias.setData(null);
-			}
 	}
 	
 	public static void 	clearValues(List<String> modelList, Map<String, ModelDataSet> modelDataSetMap){
@@ -50,13 +44,7 @@ public class ClearValue {
 				Svar svar=svMap.get(svName);
 				svar.setData(null);
 			}
-			List<String> asList = mds.asList;
-			Map<String, Alias> asMap =mds.asMap;
-			for (String asName: asList){
-				Alias alias=asMap.get(asName);
-				alias.setData(null);
-			}
-			
+						
 			mds.clearFutureSvMap();
 			mds.clearFutureAsMap();
 		}

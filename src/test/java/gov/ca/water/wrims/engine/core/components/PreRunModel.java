@@ -67,22 +67,8 @@ public class PreRunModel {
 
 		HecTimeSeries.setMessageLevel(0);
 		long t1 = Calendar.getInstance().getTimeInMillis();
-		if (!FilePaths.svarFile.toLowerCase().endsWith(".h5")) {
-			ControlData.cacheSvar = CondensedReferenceCacheAndRead.createCondensedCache(FilePaths.fullSvarFilePath, "*");
-			if (!FilePaths.fullSvarFile2Path.equals("")) {
-				ControlData.cacheSvar2 = CondensedReferenceCacheAndRead.createCondensedCache(FilePaths.fullSvarFile2Path, "*");
-			}
-		}
-		if (!FilePaths.initFile.toLowerCase().endsWith(".h5")) {
-			ControlData.initHDF5 = false;
-			ControlData.cacheInit = CondensedReferenceCacheAndRead.createCondensedCache(FilePaths.fullInitFilePath, "*");
-		} else {
-			ControlData.initHDF5 = true;
-		}
-		sds.readTimeSeriesData(ControlData.cacheSvar,
-				               ControlData.cacheSvar2,
-				               ControlData.cacheInit,
-				               FilePaths.svarFile,
+		sds.readTimeSeriesData(FilePaths.fullSvarFilePath,
+							   FilePaths.fullSvarFile2Path,
 				               FilePaths.fullInitFilePath,
 				               ControlData.partA,
 				               ControlData.svDvPartF,
@@ -94,7 +80,7 @@ public class PreRunModel {
 		long t2 = Calendar.getInstance().getTimeInMillis();
 		ControlData.t_readTs=ControlData.t_readTs+(int) (t2-t1);
 
-		initialDvarAliasTS();
+		initialDvarAliasTS(sds);
 
 		for (int i=0; i<modelList.size(); i++){
 			String model=modelList.get(i);
@@ -116,7 +102,8 @@ public class PreRunModel {
 		if (!ControlData.unchangeGWRestart) setGroundwaterInitFile();
 	}
 
-	private void initialDvarAliasTS(){
+	private void initialDvarAliasTS(StudyDataSet sds){
+		sds.initialAlias(ControlData.startYear, ControlData.startMonth, ControlData.startDay);
 		DataTimeSeries.dvAliasTS=new HashMap<String, DssDataSetFixLength>();
 		//if (ControlData.outputCycleToDss) {
 		ControlData.cycleDataStartYear=ControlData.startYear;

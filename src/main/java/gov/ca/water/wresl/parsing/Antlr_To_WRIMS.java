@@ -312,13 +312,6 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         mds.wtList.add(name);
                         mds.wtMap.put(name, weight);
                     }
-                    case Timeseries ts -> {
-                        // Make sure ts is not defined more than once
-                        if (mds.tsMap_Temp.containsKey(name)) {
-                            throw new SyntaxErrorException(ts.fromWresl, ts.line, "Timeseries '"+name+"' is defined more than once in model '"+mds.name+"'!");
-                        }
-                        mds.tsMap_Temp.put(name, ts);
-                    }
                     case Goal goal -> {
                         // Make sure goal is not defined more than once
                         if (mds.gList.contains(name)) {
@@ -334,6 +327,13 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         }
                         mds.asList.add(name);
                         mds.asMap.put(name, alias);
+                    }
+                    case Timeseries ts -> {
+                        // Make sure ts is not defined more than once
+                        if (mds.tsMap_Temp.containsKey(name)) {
+                            throw new SyntaxErrorException(ts.fromWresl, ts.line, "Timeseries '"+name+"' is defined more than once in model '"+mds.name+"'!");
+                        }
+                        mds.tsMap_Temp.put(name, ts);
                     }
                     case External external -> {
                         mds.exList.add(name);
@@ -402,13 +402,6 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         mds.wtList.add(name);
                         mds.wtMap.put(name, weight);
                     }
-                    case Timeseries ts -> {
-                        // Make sure ts is not defined more than once
-                        if (mds.tsMap_Temp.containsKey(name)) {
-                            throw new SyntaxErrorException(ts.fromWresl, ts.line, "Timeseries '"+name+"' is defined more than once in group '"+mds.name+"'!");
-                        }
-                        mds.tsMap_Temp.put(name, ts);
-                    }
                     case Goal goal -> {
                         mds.gList.add(name);
                         mds.gMap.put(name, goal);
@@ -416,6 +409,13 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                     case Alias alias    -> {
                         mds.asList.add(name);
                         mds.asMap.put(name, alias);
+                    }
+                    case Timeseries ts -> {
+                        // Make sure ts is not defined more than once
+                        if (mds.tsMap_Temp.containsKey(name)) {
+                            throw new SyntaxErrorException(ts.fromWresl, ts.line, "Timeseries '"+name+"' is defined more than once in group '"+mds.name+"'!");
+                        }
+                        mds.tsMap_Temp.put(name, ts);
                     }
                     case External external -> {
                         mds.exList.add(name);
@@ -798,8 +798,8 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         // Set case related stuff
         goal.caseName.add(Param.defaultCaseName);
         goal.caseCondition.add(Param.always);
-        goal.caseExpression.add(getWreslText(ctx));
-        goal.caseExpressionParseTrees.add(generateExpressionParseTree(goal.caseExpression.get(0)));
+        goal.goalExpression.add(getWreslText(ctx));
+        goal.goalExpressionParseTrees.add(generateGoalBodyParseTree(goal.goalExpression.get(0)));
 
         return new VisitorResult(goal);
     }
@@ -832,7 +832,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                 String dvarName = slackSurplusDvarName.substring(0,slackSurplusDvarName.lastIndexOf("_")+1) + (i+1);
                 String tempCaseExpression = caseData.caseExpressionList.get(0).replace(slackSurplusDvarName,dvarName);
                 caseData.caseExpressionList.set(0, tempCaseExpression);
-                caseData.caseExpressionTreeList.set(0, generateExpressionParseTree(tempCaseExpression));
+                caseData.caseExpressionTreeList.set(0, generateGoalBodyParseTree(tempCaseExpression));
                 dvarUpdate.name = dvarName;
                 dvarSlackSurplusListForGoal.add(dvarUpdate);
                 weightUpdate.name = dvarName;
@@ -843,8 +843,8 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             goal.caseName.add(caseData.name);
             goal.caseCondition.add(caseData.caseCondition);
             goal.caseConditionParseTrees.add(caseData.caseConditionTree);
-            goal.caseExpression.addAll(caseData.caseExpressionList);
-            goal.caseExpressionParseTrees.addAll(caseData.caseExpressionTreeList);
+            goal.goalExpression.addAll(caseData.caseExpressionList);
+            goal.goalExpressionParseTrees.addAll(caseData.caseExpressionTreeList);
         }
 
         // Copile goal, slack/surplus dvars and weights into a list and return
@@ -866,15 +866,15 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         if (ctx.goalPenalties() != null) {
             result = visit(ctx.goalPenalties());
             WRESL_CaseData caseData = (WRESL_CaseData) result.data().get(0);
-            goal.caseExpression.addAll(caseData.caseExpressionList);
-            goal.caseExpressionParseTrees.addAll(caseData.caseExpressionTreeList);
+            goal.goalExpression.addAll(caseData.caseExpressionList);
+            goal.goalExpressionParseTrees.addAll(caseData.caseExpressionTreeList);
         } else {
             // Retrieve LHS and RHS expressions
             String lhsExpression = getWreslText(ctx.expression(0));
             String rhsExpression = getWreslText(ctx.expression(1));
             String caseExpression = lhsExpression + "=" + rhsExpression;
-            goal.caseExpression.add(caseExpression);
-            goal.caseExpressionParseTrees.add(generateExpressionParseTree(caseExpression));
+            goal.goalExpression.add(caseExpression);
+            goal.goalExpressionParseTrees.add(generateGoalBodyParseTree(caseExpression));
         }
 
         // Default case name and condition
@@ -928,7 +928,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             String rhsExpression = getWreslText(ctx.expression());
             String caseExpression = lhsExpression + "=" + rhsExpression;
             caseExpressionList.add(caseExpression);
-            caseExpressionTreeList.add(generateExpressionParseTree(caseExpression));
+            caseExpressionTreeList.add(generateGoalBodyParseTree(caseExpression));
         }
 
         // Assemble case data
@@ -1273,7 +1273,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         }
 
         // Generate parser tree for case expression
-        caseData.caseExpressionTreeList.add(generateExpressionParseTree(caseData.caseExpressionList.get(0)));
+        caseData.caseExpressionTreeList.add(generateGoalBodyParseTree(caseData.caseExpressionList.get(0)));
 
         // Create a list of VisitorResults to return
         List<WRESLComponent> returnData = new ArrayList<>(List.of(caseData));
@@ -1719,6 +1719,15 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         return parser.expression();
     }
 
+    // Generate a GoalBody parse tree from a string
+    private static wreslParser.GoalBodyContext generateGoalBodyParseTree(String expression) {
+        CharStream charStream = CharStreams.fromString(expression);
+        wreslLexer lexer = new wreslLexer(charStream);
+        CommonTokenStream tokenStream = new CommonTokenStream(lexer);
+        wreslParser parser = new wreslParser(tokenStream);
+        return parser.goalBody();
+    }
+
     // Convert visitor result to string
     private static String visitorResultToString(VisitorResult result) {
         String stringData;
@@ -1750,9 +1759,9 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
         // Loop over the goals of the model
         for (Goal goal : mdsIn.gMap.values()) {
-            for (ParseTree expressionTree : goal.caseExpressionParseTrees) {
+            for (ParseTree goalExpressionTree : goal.goalExpressionParseTrees) {
                 // Retrieve ALIASes
-                Set<String> aliasList = aliasListForGoals(expressionTree, mdsIn.asMap);
+                Set<String> aliasList = aliasListForGoals(goalExpressionTree, mdsIn.asMap);
 
                 // Find aliases and convert them to dvars
                 for (String asName : aliasList) {
@@ -1761,7 +1770,6 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                     dvar.name = as.name;
                     dvar.fromWresl = as.fromWresl;
                     dvar.line = as.line;
-                    dvar.condition = as.condition;
                     dvar.kind = as.kind;
                     dvar.units = as.units;
                     dvar.lowerBound = Param.lower_unbounded;
@@ -1775,8 +1783,8 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                     goalForAlias.caseCondition.add(Param.always);
                     goalForAlias.caseConditionParseTrees.add(null);
                     String caseExpression = as.name + "=" + as.expression;
-                    goalForAlias.caseExpression.add(caseExpression);
-                    goalForAlias.caseExpressionParseTrees.add(generateExpressionParseTree(caseExpression));
+                    goalForAlias.goalExpression.add(caseExpression);
+                    goalForAlias.goalExpressionParseTrees.add(generateGoalBodyParseTree(caseExpression));
                     goalForAlias.fromWresl = as.fromWresl;
                     goalForAlias.line = as.line;
 

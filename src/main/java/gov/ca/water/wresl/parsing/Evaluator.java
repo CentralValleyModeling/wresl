@@ -333,10 +333,22 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                     throw new EvaluationErrorException(goal.fromWresl, goal.line, "Case conditions for time array GOAL " + goal.name + " did not yield a case!");
                 }
 
-                // Process case expression
+                // Process goal expression
                 //goal.caseExpressionParseTrees.get(caseIndex)
             }
         }
+    }
+
+
+    // ------------------------------------------------------------
+    // --- GOAL EXPRESSION VISITOR METHODS
+    // ------------------------------------------------------------
+
+    @Override
+    // goalShortForm
+    public IntDouble visitGoalShortForm(wreslParser.GoalShortFormContext ctx) {
+        IntDouble goalData = new IntDouble();
+        return goalData;
     }
 
 
@@ -723,7 +735,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
         IntDouble varData;
 
-        // This is an svar
+        // This is an SVAR
         Svar var = INSTANCE.currentModelDataSet.getSvar(varName);                       // Is this an Svar?
         if (var != null) {
             varData = var.getData();
@@ -743,41 +755,83 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             return varData;
         }
 
-        // This is a timeseries data
+        // This is a TIMESERIES data
         String tsName = DssOperations.entryNameTS(varName, INSTANCE.currentModelDataSet.getTimeStep());
         Timeseries tsVar = INSTANCE.sds.getSVTimeseries(tsName);
         if (tsVar != null) {
-            // Now retrieve the corresponding SV timeseries data
-            Timeseries svTSVar = INSTANCE.sds.getSVTimeseries(tsName);
-
             // Retrieve timestep offset and make sure it is an integer number
             IntDouble temp = visit(ctx.timestepOffset().expression());
             if (!temp.isInt()) {
                 throw new EvaluationErrorException("Timeseries index for " + varName + " must be an integer value.");
             }
             int timeOffset = temp.getValue().intValue();
-            ParallelVars prvs = TimeOperations.findTime(svTSVar.timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+            ParallelVars prvs = TimeOperations.findTime(tsVar.timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
 
             // Retrieve data from Timeseries
             Double value;
-            value = svTSVar.retrieveDataForTime(prvs, false);
+            value = tsVar.retrieveDataForTime(prvs, false);
             if (value != null) { return new IntDouble(value.doubleValue(), false); }
 
-            // If made it this far, timeseries di not extend back in time; retrieve from initial data
+            // If made it this far, timeseries did not extend back in time; try to retrieve from initial data
             Timeseries svInit = INSTANCE.sds.getSVInitTimeseries(tsName);
-            value = svInit.retrieveDataForTime(prvs, true);
-            if (value != null ) { return new IntDouble(value.doubleValue(), false); }
+            if (svInit != null) {
+                value = svInit.retrieveDataForTime(prvs, true);
+                if (value != null) {
+                    return new IntDouble(value.doubleValue(), false);
+                }
+            }
+
+            // If made it this far, it means initial timeseries data was not read before; try reading it
+            svInit = tsVar.copyOf();
+            boolean success = svInit.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+            if (success) {
+                value = svInit.retrieveDataForTime(prvs, true);
+                if (value != null) {
+                    INSTANCE.sds.addSVInitTimeseries(svInit);
+                    return new IntDouble(value.doubleValue(), false);
+                }
+            }
 
             // If made it this far, value was not found; generate error
             throw new EvaluationErrorException(tsVar.fromWresl, tsVar.line, "Was not able to retrieve data from the timeseries data for the provided time index.");
         }
 
-        // This is an alias
+        // This is an ALIAS
         Alias asVar = INSTANCE.currentModelDataSet.asMap.get(varName);
         if (asVar != null) {
-            return null;  // Need to implement
+            // Retrieve timestep offset and make sure it is an integer number
+            IntDouble temp = visit(ctx.timestepOffset().expression());
+            if (!temp.isInt()) {
+                throw new EvaluationErrorException("Timeseries index for ALIAS" + varName + " must be an integer value.");
+            }
+            int timeOffset = temp.getValue().intValue();
+            String timeStep = currentModelDataSet.getTimeStep();
+            ParallelVars prvs = TimeOperations.findTime(timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+
+            // Retrieve data from Alias
+            Double value;
+            value = asVar.retrieveDataForTime(prvs, true);
+            if (value != null) { return new IntDouble(value.doubleValue(), false); }
+
+            // If made it this far, alias did not extend back in time; try to retrieve from initial data
+            asVar.setDssBPart(asVar.name);
+            asVar.setTimeStep(INSTANCE.currentModelDataSet.getTimeStep());
+            asVar.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+            value = asVar.retrieveDataForTime(prvs, true);
+            if (value != null ) { return new IntDouble(value.doubleValue(), false); }
+
+            // If made it this far, value was not found; generate error
+            throw new EvaluationErrorException(asVar.fromWresl, asVar.line, "Was not able to retrieve data for ALIAS " + asVar.name + " for the provided time index.");
+
         }
 
+        // This is a DVAR
+        Dvar dvar = INSTANCE.currentModelDataSet.getDvar(varName);
+        if (dvar != null) {
+            IntDouble data = new IntDouble();
+            data.setArgName(dvar.getName());
+            data.setIsInteger(false);
+        }
 
         // If made it this far, variable was not found; generate error
         throw new EvaluationErrorException("Variable " + varName + " is not defined!");
