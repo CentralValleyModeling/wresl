@@ -1,5 +1,6 @@
 package gov.ca.water.wrims.engine.core.components;
 
+import gov.ca.water.solverdata.SolverData;
 import gov.ca.water.utilities.Param;
 import gov.ca.water.utilities.TimeOperations;
 import gov.ca.water.wresl.domain.ModelDataSet;
@@ -12,6 +13,7 @@ import gov.ca.water.wrims.engine.core.config.ConfigUtils;
 import gov.ca.water.wrims.engine.core.evaluator.AssignPastCycleVariable;
 import gov.ca.water.wrims.engine.core.evaluator.DssOperation;
 import gov.ca.water.wrims.engine.core.evaluator.WeightEval;
+import gov.ca.water.wrims.engine.core.fromWrims2.ErrorCheck;
 import gov.ca.water.wrims.engine.core.fromWrims2.StudyUtils;
 import gov.ca.water.wrims.engine.core.hdf5.HDF5Writer;
 import gov.ca.water.wrims.engine.core.ilp.ILP;
@@ -57,6 +59,9 @@ public class ControllerBatch {
         try {
             Study study = new Study();
             sds = study.compile(FilePaths.fullMainPath);
+            ControlData.cycWarmStart = sds.getCycWarmStart();
+            ControlData.cycWarmStop = sds.getCycWarmStop();
+            ControlData.cycWarmUse = sds.getCycWarmUse();
         }
         catch (SyntaxErrorException e) {
             System.err.println("WRESL+ syntax error(s) encountered in file "+e.getSourceFile());
@@ -264,6 +269,9 @@ public class ControllerBatch {
                 while (VariableTimeStep.checkEndDate(ControlData.currDay, ControlData.currMonth, ControlData.currYear, ControlData.cycleEndDay, ControlData.cycleEndMonth, ControlData.cycleEndYear)<0 && noError) {
                     boolean modelProcessed = Evaluator.processModel(sds, i, ControlData.currDay, ControlData.currMonth, ControlData.currYear, ControlData.nThreads, ControlData.showRunTimeMessage);
                     if (modelProcessed) {
+                        // Compile solver data
+                        SolverData.compile(sds, i);
+
                         if (ILP.logging && (isSelectedCycleOutput || ILP.loggingAllCycles)) {
 
                             long beginT = System.currentTimeMillis();
@@ -286,133 +294,127 @@ public class ControllerBatch {
                             noError=false;break time_marching;
                         }
 
-    //                    // choose solver to solve. TODO: this is not efficient. need to be done outside ILP
-    //                    if (ControlData.solverType == Param.SOLVER_LPSOLVE.intValue()) {
-    //                        LPSolveSolver.setLP(ILP.lpSolveFilePath);
-    //                        LPSolveSolver.solve();
-    //                        if (Error.error_solving.size()<1) {
-    //                            if (ILP.logging)  {
-    //                                ILP.writeObjValue_LPSOLVE();
-    //                                if (ILP.loggingVariableValue) ILP.writeDvarValue_LPSOLVE();
-    //                            }
-    //                        }
-    //                        // for cbc0
-    //                    } else if (ControlData.solverType == Param.SOLVER_CBC0.intValue()){
-//
-    //                        ILP.closeCplexLpFile(); // prevent double-locked by both core and ilp
-//
-    //                        // send lp file path to cbc
-    //                        Cbc0Solver.setLP(ILP.cplexLpFilePath);
-//
-    //                        // call cbc solve
-    //                        Cbc0Solver.solve();
-//
-//
-//
-    //                        // check solving errors and put them in Error.error_solving
-    //                        if (Error.error_solving.size()<1) {
-    //                            if (ILP.logging) {
-//
-    //                                ILP.reOpenCplexLpFile(true);
-    //                                // write objValue in lp file
-    //                                ILP.writeObjValue_Clp0_Cbc0();
-    //                                if (ILP.loggingVariableValue) {
-    //                                    // TODO: write solution
-    //                                    ILP.writeDvarValue_Clp0_Cbc0(Cbc0Solver.varDoubleMap);
-    //                                }
-    //                            }
-    //                        }
-    //                        // for clp
-    //                    } else if (ControlData.solverType == Param.SOLVER_CLP0.intValue()){
-//
-    //                        ILP.closeCplexLpFile(); // prevent double-locked by both core and ilp
-//
-    //                        // send lp file path to clp
-    //                        Clp0Solver.setLP(ILP.cplexLpFilePath);
-//
-    //                        // call clp solve
-    //                        Clp0Solver.solve();
-//
-//
-//
-    //                        // check solving errors and put them in Error.error_solving
-    //                        if (Error.error_solving.size()<1) {
-    //                            if (ILP.logging)  {
-//
-    //                                ILP.reOpenCplexLpFile(true);
-    //                                // write objValue in lp file
-    //                                ILP.writeObjValue_Clp0_Cbc0();
-    //                                if (ILP.loggingVariableValue) {
-    //                                    // TODO: write solution
-    //                                    ILP.writeDvarValue_Clp0_Cbc0(Clp0Solver.varDoubleMap);
-    //                                }
-    //                            }
-    //                        }
-    //                    } else if (ControlData.solverType == Param.SOLVER_CBC1.intValue()||ControlData.solverType == Param.SOLVER_CBC.intValue()){
-//
-    //                        if(!ControlData.useCplexLpString) ILP.closeCplexLpFile(); // prevent double-locked by both core and ilp
-//
-//
-    //                        CbcSolver.newProblem();
-//
-    //                        // check solving errors and put them in Error.error_solving
-    //                        if (Error.error_solving.size()<1) {
-    //                            if (ILP.logging)  {
-//
-    //                                if(!ControlData.useCplexLpString) ILP.reOpenCplexLpFile(true);
-    //                                // write objValue in lp file
-    //                                ILP.writeObjValue_Clp0_Cbc0();
-    //                                if(ControlData.saveCplexLpStringToFile) ILP.saveCplexLpStringToFile();
-    //                                if (ILP.loggingVariableValue) {
-    //                                    // TODO: write solution
-    //                                    ILP.writeDvarValue_Clp0_Cbc0(CbcSolver.varDoubleMap);
-    //                                }
-    //                            }
-    //                        }
-//
-    //                    } else if (ControlData.solverType == Param.SOLVER_CLP1.intValue()){
-//
-    //                        ILP.closeCplexLpFile(); // prevent double-locked by both core and ilp
-//
-    //                        // send lp file path to clp
-    //                        ClpSolver.newProblem(ILP.cplexLpFilePath, true);
-//
-    //                        // check solving errors and put them in Error.error_solving
-    //                        if (Error.error_solving.size()<1) {
-    //                            if (ILP.logging)  {
-//
-    //                                ILP.reOpenCplexLpFile(true);
-    //                                // write objValue in lp file
-    //                                ILP.writeObjValue_Clp0_Cbc0();
-    //                                if (ILP.loggingVariableValue) {
-    //                                    // TODO: write solution
-    //                                    ILP.writeDvarValue_Clp0_Cbc0(ClpSolver.varDoubleMap);
-    //                                }
-    //                            }
-    //                        }
-//
-    //                    } else {
-//
-    //                        new XASolver();
-//
-    //                        if (ILP.logging) {
-    //                            ILP.writeObjValue_XA();
-    //                            if (ILP.loggingVariableValue) ILP.writeDvarValue_XA();
-    //                        }
-    //                    }
+                        // choose solver to solve. TODO: this is not efficient. need to be done outside ILP
+                        if (ControlData.solverType == Param.SOLVER_LPSOLVE.intValue()) {
+                            LPSolveSolver.setLP(ILP.lpSolveFilePath);
+                            LPSolveSolver.solve();
+                            if (Error.error_solving.size()<1) {
+                                if (ILP.logging)  {
+                                    ILP.writeObjValue_LPSOLVE();
+                                    if (ILP.loggingVariableValue) ILP.writeDvarValue_LPSOLVE();
+                                }
+                            }
+                        // for cbc0
+                        } else if (ControlData.solverType == Param.SOLVER_CBC0.intValue()){
+
+                            ILP.closeCplexLpFile(); // prevent double-locked by both core and ilp
+
+                            // send lp file path to cbc
+                            Cbc0Solver.setLP(ILP.cplexLpFilePath);
+
+                            // call cbc solve
+                            Cbc0Solver.solve();
+
+                            // check solving errors and put them in Error.error_solving
+                            if (Error.error_solving.size()<1) {
+                                if (ILP.logging) {
+
+                                    ILP.reOpenCplexLpFile(true);
+                                    // write objValue in lp file
+                                    ILP.writeObjValue_Clp0_Cbc0();
+                                    if (ILP.loggingVariableValue) {
+                                        // TODO: write solution
+                                        ILP.writeDvarValue_Clp0_Cbc0(Cbc0Solver.varDoubleMap);
+                                    }
+                                }
+                            }
+                        // for clp
+                        } else if (ControlData.solverType == Param.SOLVER_CLP0.intValue()){
+
+                            ILP.closeCplexLpFile(); // prevent double-locked by both core and ilp
+
+                            // send lp file path to clp
+                            Clp0Solver.setLP(ILP.cplexLpFilePath);
+
+                            // call clp solve
+                            Clp0Solver.solve();
+
+                            // check solving errors and put them in Error.error_solving
+                            if (Error.error_solving.size()<1) {
+                                if (ILP.logging)  {
+
+                                    ILP.reOpenCplexLpFile(true);
+                                    // write objValue in lp file
+                                    ILP.writeObjValue_Clp0_Cbc0();
+                                    if (ILP.loggingVariableValue) {
+                                        // TODO: write solution
+                                        ILP.writeDvarValue_Clp0_Cbc0(Clp0Solver.varDoubleMap);
+                                    }
+                                }
+                            }
+                        } else if (ControlData.solverType == Param.SOLVER_CBC1.intValue()||ControlData.solverType == Param.SOLVER_CBC.intValue()){
+
+                            if(!ControlData.useCplexLpString) ILP.closeCplexLpFile(); // prevent double-locked by both core and ilp
+
+                            CbcSolver.newProblem();
+
+                            // check solving errors and put them in Error.error_solving
+                            if (Error.error_solving.size()<1) {
+                                if (ILP.logging)  {
+
+                                    if(!ControlData.useCplexLpString) ILP.reOpenCplexLpFile(true);
+                                    // write objValue in lp file
+                                    ILP.writeObjValue_Clp0_Cbc0();
+                                    if(ControlData.saveCplexLpStringToFile) ILP.saveCplexLpStringToFile();
+                                    if (ILP.loggingVariableValue) {
+                                        // TODO: write solution
+                                        ILP.writeDvarValue_Clp0_Cbc0(CbcSolver.varDoubleMap);
+                                    }
+                                }
+                            }
+
+                        } else if (ControlData.solverType == Param.SOLVER_CLP1.intValue()){
+
+                            ILP.closeCplexLpFile(); // prevent double-locked by both core and ilp
+
+                            // send lp file path to clp
+                            ClpSolver.newProblem(ILP.cplexLpFilePath, true);
+
+                            // check solving errors and put them in Error.error_solving
+                            if (Error.error_solving.size()<1) {
+                                if (ILP.logging)  {
+
+                                    ILP.reOpenCplexLpFile(true);
+                                    // write objValue in lp file
+                                    ILP.writeObjValue_Clp0_Cbc0();
+                                    if (ILP.loggingVariableValue) {
+                                        // TODO: write solution
+                                        ILP.writeDvarValue_Clp0_Cbc0(ClpSolver.varDoubleMap);
+                                    }
+                                }
+                            }
+
+                        } else {
+
+                            new XASolver();
+
+                            if (ILP.logging) {
+                                ILP.writeObjValue_XA();
+                                if (ILP.loggingVariableValue) ILP.writeDvarValue_XA();
+                            }
+                        }
 
                         ILP.closeIlpFile();
 
                         // check monitored dvar list. they are slack and surplus generated automatically
                         // from the weight group deviation penalty
                         // give error if they are not zero or greater than a small tolerance.
-     //                   noError = !ErrorCheck.checkDeviationSlackSurplus(mds.deviationSlackSurplus_toleranceMap, mds.dvMap);
-                        noError = true;
+                        noError = !ErrorCheck.checkDeviationSlackSurplus(mds.deviationSlackSurplus_toleranceMap, mds.dvMap);
 
                         if (ControlData.showRunTimeMessage) System.out.println("Solving Done.");
                         if (Error.error_solving.size()<1) {
                             ControlData.isPostProcessing=true;
-     //                       mds.processAlias();
+                            Evaluator.processAliases(sds, i, ControlData.showRunTimeMessage);
                             if (ControlData.showRunTimeMessage) System.out.println("Assign Alias Done.");
                         } else if (infeasCyclIndex==i) {
                             noError=false;

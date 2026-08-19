@@ -9,12 +9,7 @@ import hec.heclib.dss.HecDss;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 import com.sunsetsoft.xa.Optimizer;
 
@@ -118,9 +113,9 @@ public class ControlData {
 	public static boolean isNameSorting = false;
 	//public static Map<Integer,LinkedHashSet<String>> cycIntDvMap;
 	//public static LinkedHashSet<String> allIntDv;
-	public static ArrayList<Integer> cycWarmStart;
-	public static ArrayList<Integer> cycWarmStop;
-	public static ArrayList<Integer> cycWarmUse;
+	public static List<Integer> cycWarmStart;
+	public static List<Integer> cycWarmStop;
+	public static List<Integer> cycWarmUse;
 	public static boolean cbc_debug_routeXA=false; //use xa solution	
 	public static boolean cbc_debug_routeCbc=false;	// use cbc solution
 	public static String[] watchList={};

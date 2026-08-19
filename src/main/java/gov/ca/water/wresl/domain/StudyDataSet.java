@@ -44,6 +44,9 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
 
     public LinkedHashSet<String> allIntDv=new LinkedHashSet<>();
     public Map<Integer,LinkedHashSet<String>> cycIntDvMap=new HashMap<>();
+    public List<Integer> cycWarmStart = new ArrayList<>();
+    public List<Integer> cycWarmStop = new ArrayList<>();;
+    public List<Integer> cycWarmUse = new ArrayList<>();;
 
     // Data for SV and INIT files
     private CondensedReferenceCacheAndRead.CondensedReferenceCache cacheInit = null;
@@ -59,6 +62,28 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     // ------------------------------------------------------------
     // --- GETTERS
     // ------------------------------------------------------------
+
+    public List<Integer> getCycWarmStart() {return this.cycWarmStart; }
+
+    public List<Integer> getCycWarmStop() {return this.cycWarmStop; }
+
+    public List<Integer> getCycWarmUse() {return this.cycWarmUse; }
+
+    public Map<String, EvalConstraint> getConstraintMap(int modelIndex) {
+        return this.getModelDataSet(modelIndex).getConstraintMap();
+    }
+
+    public Map<String, WeightElement> getWeightMap(int modelIndex) {
+        return this.getModelDataSet(modelIndex).getWeightMap();
+    }
+
+    public Map<String, WeightElement> getWeightSlackSurplusMap(int modelIndex) {
+        return this.getModelDataSet(modelIndex).getWeightSlackSurplusMap();
+    }
+
+    public Map<String, Goal> getGoalMap(int modelIndex) {
+        return this.getModelDataSet(modelIndex).getGoalMap();
+    }
 
     public Svar getParameter(String parameterName) {
         return this.parameterMap.get(parameterName);
@@ -138,6 +163,10 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
 
     public List<String> getVarCycleIndexList(){
         return this.varCycleIndexList;
+    }
+
+    public Map<String, Dvar> getDvarMap(int modelIndex) {
+        return this.getModelDataSet(modelIndex).getDvMap();
     }
 
     public List<String> getDvarTimeArrayCycleIndexList(){
@@ -769,7 +798,5 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
             return 504.1666667;
         }
     }
-
-
 
 }

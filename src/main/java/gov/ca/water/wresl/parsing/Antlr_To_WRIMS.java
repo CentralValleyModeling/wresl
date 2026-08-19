@@ -142,21 +142,8 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         }
         this.sds.setSVTimeseriesMap(svTSMap);
 
-
-        // Check for duplicate Dvars within each model
-
-        // Check for duplicate Svars within each model
-
-        // Check for duplicate Goals within each model
-
-        // Check for duplicate aliases within each model
-
-        // Check for duplicate External within each model
-
-        // Check for duplicate Timeseries within each model
-
-        // Check for duplicate weight tables within each model
-
+        // Compile list of integer DVARS
+        collectIntegerDV_2();
 
         // Clear scratch memory that is no longer needed
         clearMemory();
@@ -797,8 +784,9 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         // Set case related stuff
         goal.caseName.add(Param.defaultCaseName);
         goal.caseCondition.add(Param.always);
+        goal.caseConditionParseTrees = null;
         goal.goalExpression.add(getWreslText(ctx));
-        goal.goalExpressionParseTrees.add(generateGoalBodyParseTree(goal.goalExpression.get(0)));
+        goal.goalExpressionParseTrees.add(generateExpressionParseTree(goal.goalExpression.get(0)));
 
         return new VisitorResult(goal);
     }
@@ -831,7 +819,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                 String dvarName = slackSurplusDvarName.substring(0,slackSurplusDvarName.lastIndexOf("_")+1) + (i+1);
                 String tempCaseExpression = caseData.caseExpressionList.get(0).replace(slackSurplusDvarName,dvarName);
                 caseData.caseExpressionList.set(0, tempCaseExpression);
-                caseData.caseExpressionTreeList.set(0, generateGoalBodyParseTree(tempCaseExpression));
+                caseData.caseExpressionTreeList.set(0, generateExpressionParseTree(tempCaseExpression));
                 dvarUpdate.name = dvarName;
                 dvarSlackSurplusListForGoal.add(dvarUpdate);
                 weightUpdate.name = dvarName;
@@ -873,7 +861,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             String rhsExpression = getWreslText(ctx.expression(1));
             String caseExpression = lhsExpression + "=" + rhsExpression;
             goal.goalExpression.add(caseExpression);
-            goal.goalExpressionParseTrees.add(generateGoalBodyParseTree(caseExpression));
+            goal.goalExpressionParseTrees.add(generateExpressionParseTree(caseExpression));
         }
 
         // Default case name and condition
@@ -927,7 +915,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             String rhsExpression = getWreslText(ctx.expression());
             String caseExpression = lhsExpression + "=" + rhsExpression;
             caseExpressionList.add(caseExpression);
-            caseExpressionTreeList.add(generateGoalBodyParseTree(caseExpression));
+            caseExpressionTreeList.add(generateExpressionParseTree(caseExpression));
         }
 
         // Assemble case data
@@ -1272,7 +1260,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         }
 
         // Generate parser tree for case expression
-        caseData.caseExpressionTreeList.add(generateGoalBodyParseTree(caseData.caseExpressionList.get(0)));
+        caseData.caseExpressionTreeList.add(generateExpressionParseTree(caseData.caseExpressionList.get(0)));
 
         // Create a list of VisitorResults to return
         List<WRESLComponent> returnData = new ArrayList<>(List.of(caseData));
@@ -1765,7 +1753,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                     goalForAlias.caseConditionParseTrees.add(null);
                     String caseExpression = as.name + "=" + as.expression;
                     goalForAlias.goalExpression.add(caseExpression);
-                    goalForAlias.goalExpressionParseTrees.add(generateGoalBodyParseTree(caseExpression));
+                    goalForAlias.goalExpressionParseTrees.add(generateExpressionParseTree(caseExpression));
                     goalForAlias.fromWresl = as.fromWresl;
                     goalForAlias.line = as.line;
 
@@ -1812,6 +1800,84 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
         return asListToConvert;
     }
+
+    // Identify integer DVARs and warm-start cycles
+    private void collectIntegerDV_2() {
+        this.sds.cycIntDvMap = new HashMap<Integer,LinkedHashSet<String>>();
+        this.sds.allIntDv = new LinkedHashSet<>();
+
+        int cyc = -1;
+        for (String k: this.sds.getModelList()) {
+            cyc = cyc + 1;
+            LinkedHashSet<String> intDVSet = new LinkedHashSet<>();
+
+            Map<String, Dvar> dvMap = this.sds.getModelDataSet(cyc).dvMap;
+            dvMap.forEach((key, value) -> {
+                if (value.integer == Param.yes) intDVSet.add(key);
+            });
+
+            this.sds.allIntDv.addAll(intDVSet);
+            this.sds.cycIntDvMap.put(cyc, intDVSet);
+        }
+
+        int nCyc = this.sds.cycIntDvMap.size();
+
+        int firstCycWarmStart = 9999;
+        List<Integer> cycWarmStart = this.sds.getCycWarmStart();
+        List<Integer> cycWarmStop = this.sds.getCycWarmStop();
+        List<Integer> cycWarmUse = this.sds.getCycWarmUse();
+
+        for (int i=0; i<nCyc-1; i++) {
+            if (this.sds.cycIntDvMap.get(i).size() > Param.cbcMinIntNumber) {
+                firstCycWarmStart = i;
+                cycWarmStart.add(i);
+                break;
+            }
+        }
+
+        if (firstCycWarmStart < nCyc-1){
+            int stop = firstCycWarmStart;
+            int start = firstCycWarmStart;
+
+            while(stop < nCyc && start < nCyc-1) {
+                stop  = findWarmStop(start, nCyc);
+                if ( stop > start) {
+                    cycWarmStop.add(stop);
+                    for (int i=start+1; i<= stop; i++) cycWarmUse.add(i);
+                } else {
+                    cycWarmStart.remove(cycWarmStart.size()-1);
+                }
+
+                start = findWarmStart(stop, nCyc);
+                if (start<nCyc-1) cycWarmStart.add(start);
+            }
+            if (cycWarmStart.size() != cycWarmStop.size()) System.out.println("*** Error in warm setting.");
+        }
+
+        System.out.println("cycWarmStart: " + cycWarmStart);
+        System.out.println("cycWarmUse: " + cycWarmUse);
+    }
+
+    // Find warm start cycle
+    private int findWarmStart(int preStop, int nCyc) {
+        for (int i=preStop+1; i<nCyc; i++) {
+            if (this.sds.cycIntDvMap.get(i).size() > Param.cbcMinIntNumber) {
+                return i;
+            }
+        }
+        return nCyc+1;
+    }
+
+    // Find warm stop cycle
+    private int findWarmStop(int start, int nCyc) {
+        for (int i=start; i<nCyc-1; i++){
+            if (!this.sds.cycIntDvMap.get(i).equals(this.sds.cycIntDvMap.get(i+1))) {
+                return i;
+            }
+        }
+        return nCyc-1;
+    }
+
 
 
 

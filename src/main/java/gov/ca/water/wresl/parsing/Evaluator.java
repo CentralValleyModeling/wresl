@@ -1,13 +1,13 @@
 package gov.ca.water.wresl.parsing;
 
 import gov.ca.water.io.DSS.DssOperations;
-import gov.ca.water.solverdata.SolverData;
 import gov.ca.water.utilities.ParallelVars;
 import gov.ca.water.utilities.Param;
 import gov.ca.water.utilities.TimeOperations;
 import gov.ca.water.wresl.domain.*;
 import gov.ca.water.wresl.errors.EvaluationErrorException;
 import gov.ca.water.wresl.grammar.wreslBaseVisitor;
+import gov.ca.water.wresl.grammar.wreslLexer;
 import gov.ca.water.wresl.grammar.wreslParser;
 import org.antlr.v4.runtime.tree.ParseTree;
 
@@ -87,9 +87,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         // Store StudyDataSet in common memory to be used by visitor methods
         INSTANCE.sds = sds;
 
-        // Clear solverdata
-        SolverData.clearSolverData();
-
         // Check if condition to process model holds true
         ParseTree modelConditionParseTree = sds.getModelConditionParseTree(modelIndex);
         boolean toBeProcessed = Evaluator.evaluateCondition(null, modelConditionParseTree);
@@ -114,6 +111,30 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         INSTANCE.processGoals(nThreads, showRunTimeMessage);
 
         return true;
+    }
+
+    // Process Aliases
+    public static void processAliases(StudyDataSet sds, int modelIndex, boolean showRunTimeMessage) {
+        // Store StudyDataSet in common memory to be used by visitor methods
+        INSTANCE.sds = sds;
+
+        // Retrieve model data
+        INSTANCE.currentModelDataSet = sds.getModelDataSet(modelIndex);
+
+        // Loop through aliases
+        Map<String, Alias> asMap = INSTANCE.currentModelDataSet.getAliasMap();
+        for (Alias as : asMap.values()) {
+            System.out.println("ALIAS:" + as.name);
+            if (showRunTimeMessage) System.out.println("Processing alias " + as.name);
+
+            // Process alias at current time
+            IntDouble data = INSTANCE.visit(as.expressionParseTree);
+            as.addData(data.getValue().doubleValue());
+
+            // Process future-array alias
+
+        }
+
     }
 
     // Process Svars
@@ -146,6 +167,34 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         }
     }
 
+    // Process a single Svar
+    private static void processSvar(Svar svar) throws EvaluationErrorException {
+        int index = -1;
+        // Process case conditions and figure out which case expression to use
+        if (svar.caseConditionParseTree == null) {
+            index = 0;
+        } else {
+            for (int i = 0; i < svar.caseName.size(); i++) {
+                // Process case conditions until one of them turns true
+                ParseTree caseConditionParseTree = svar.caseConditionParseTree.get(i);
+                if (caseConditionParseTree == null) {
+                    index = i;
+                } else {
+                    if (INSTANCE.evaluateCondition(null, caseConditionParseTree)) {
+                        index = i;
+                        break;
+                    }
+                }
+            }
+        }
+        // If index is still -1, case conditions were not defined properly; generate error
+        if (index == -1) {
+            throw new EvaluationErrorException(svar.fromWresl, svar.line, "A viable condition cannot be found for Svar " + svar.name + " defined in file " + svar.fromWresl + " at line " + svar.line + "!");
+        }
+        // We know which expression to evaluate; evaluate caseExpression
+        IntDouble data = INSTANCE.visit(svar.caseExpressionParseTree.get(index));
+        svar.setData(data);
+    }
 
     // Process Dvars
     private void processDvars(int nThreads) {
@@ -172,6 +221,60 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         INSTANCE.currentModelDataSet.setDvTimeArrayList(dvTimeArrayList);
     }
 
+    // Process a single Dvar
+    private void processDvar(Dvar dvar, List<String> timeArrayDvList, List<String> dvTimeArrayList) {
+        System.out.println("DVAR: " + dvar.name);
+
+        // Process lower bound
+        if (dvar.lowerBoundExpressionParseTree != null) {
+            dvar.lowerBoundValue = visit(dvar.lowerBoundExpressionParseTree).getValue().doubleValue();
+            if (dvar.lowerBoundValue == null) {
+                throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Error in evaluating the lower bound of DVAR " + dvar.name + "!");
+            }
+        }
+
+        // Process upper bound
+        if (dvar.upperBoundExpressionParseTree != null) {
+            dvar.upperBoundValue = visit(dvar.upperBoundExpressionParseTree).getValue().doubleValue();
+            if (dvar.upperBoundValue == null) {
+                throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Error in evaluating the upper bound of DVAR " + dvar.name + "!");
+            }
+        }
+
+        // Return if there is no timearray
+        if (dvar.timeArraySizeExpressionParseTree == null) { return; }
+
+        // Otherwise, process time array size
+        String dvName = dvar.name;
+        int timeArraySize = visit(dvar.timeArraySizeExpressionParseTree).getValue().intValue();
+        if (timeArraySize != 0) {
+            if (timeArrayDvList.contains(dvName)) {
+                timeArrayDvList.add(dvName);
+
+                for (int timeIndex=1; timeIndex<=timeArraySize; timeIndex++) {
+                    Dvar newDvar=new Dvar();
+                    String newDvarName = dvName + "__fut__" + timeIndex;
+                    newDvar.setName(newDvarName);
+                    newDvar.setKind(dvar.kind);
+                    newDvar.setUnits(dvar.units);
+                    newDvar.setInteger(dvar.integer);
+
+                    newDvar.lowerBoundValue = visit(dvar.lowerBoundExpressionParseTree).getValue().doubleValue();
+                    if (newDvar.lowerBoundValue == null) {
+                        throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Error in evaluating the lower bound of time array DVAR " + dvar.name + "!");
+                    }
+
+                    newDvar.upperBoundValue = visit(dvar.upperBoundExpressionParseTree).getValue().doubleValue();
+                    if (newDvar.upperBoundValue == null) {
+                        throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Error in evaluating the upper bound of time array DVAR " + dvar.name + "!");
+                    }
+
+                    dvTimeArrayList.add(newDvarName);
+                }
+            }
+        }
+    }
+
     // Process Goals
     private void processGoals(int nThreads, boolean showRunTimeMessage) {
         List<Goal> goalList = INSTANCE.currentModelDataSet.getGoals();
@@ -187,6 +290,64 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 item -> processGoal(item, showRunTimeMessage)
         );
         pool.invoke(task);
+    }
+
+    // Process a single Goal
+    private void processGoal(Goal goal, boolean showRunTimeMessage) {
+        System.out.println("GOAL: " + goal.name);
+
+        if (showRunTimeMessage) System.out.println("Processing constraint " + goal.name);
+
+        // Process time array
+        if (goal.timeArraySizeParseTree != null) {
+            int timeArraySize = visit(goal.timeArraySizeParseTree).getValue().intValue();
+            for (int timeIndex=1; timeIndex<=timeArraySize; timeIndex++)  {
+                Goal newGoal = new Goal();
+                String newGoalName = goal.name + "__fut__" + timeIndex;
+                newGoal.setName(newGoalName);
+
+                // Find the case for which we are going to compute goal
+                int index = -1;
+                for (int caseIndex=0; caseIndex<goal.caseConditionParseTrees.size(); caseIndex++) {
+                    if (INSTANCE.evaluateCondition(null,goal.caseConditionParseTrees.get(caseIndex))) {
+                        index = caseIndex;
+                        break;
+                    }
+                }
+                if (index == -1) {
+                    throw new EvaluationErrorException(goal.fromWresl, goal.line, "Case conditions for time array GOAL " + goal.name + " did not yield a case!");
+                }
+
+                // Process goal expression
+                GoalEvaluator goalEvaluator = new GoalEvaluator();
+                EvalConstraint constraint = goalEvaluator.evaluate(goal.fromWresl, goal.line, goal.goalExpressionParseTrees.get(index));
+                goal.setSolverData(constraint);
+            }
+        }
+
+        // Process goal itself
+        // --------------------
+        // Find the case for which we are going to compute goal
+        int index;
+        if (goal.caseConditionParseTrees == null) {
+            index = 0;
+        } else {
+            index = -1;
+            for (int caseIndex = 0; caseIndex < goal.caseConditionParseTrees.size(); caseIndex++) {
+                if (INSTANCE.evaluateCondition(null, goal.caseConditionParseTrees.get(caseIndex))) {
+                    index = caseIndex;
+                    break;
+                }
+            }
+            if (index == -1) {
+                throw new EvaluationErrorException(goal.fromWresl, goal.line, "Case conditions for GOAL " + goal.name + " did not yield a case!");
+            }
+        }
+
+        // Process goal expression
+        GoalEvaluator goalBuilder = new GoalEvaluator();
+        EvalConstraint constraint = goalBuilder.evaluate(goal.fromWresl, goal.line, goal.goalExpressionParseTrees.get(index));
+        goal.setSolverData(constraint);
     }
 
 
@@ -218,146 +379,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         } else {
             return false;
         }
-    }
-
-
-    // ------------------------------------------------------------
-    // --- PROCESS AN SVAR
-    // ------------------------------------------------------------
-    private static void processSvar(Svar svar) throws EvaluationErrorException {
-        int index = -1;
-        // Process case conditions and figure out which case expression to use
-        if (svar.caseConditionParseTree == null) {
-            index = 0;
-        } else {
-            for (int i = 0; i < svar.caseName.size(); i++) {
-                // Process case conditions until one of them turns true
-                ParseTree caseConditionParseTree = svar.caseConditionParseTree.get(i);
-                if (caseConditionParseTree == null) {
-                    index = i;
-                } else {
-                    if (INSTANCE.evaluateCondition(null, caseConditionParseTree)) {
-                        index = i;
-                        break;
-                    }
-                }
-            }
-        }
-        // If index is still -1, case conditions were not defined properly; generate error
-        if (index == -1) {
-            throw new EvaluationErrorException(svar.fromWresl, svar.line, "A viable condition cannot be found for Svar " + svar.name + " defined in file " + svar.fromWresl + " at line " + svar.line + "!");
-        }
-        // We know which expression to evaluate; evaluate caseExpression
-        IntDouble data = INSTANCE.visit(svar.caseExpressionParseTree.get(index));
-        svar.setData(data);
-    }
-
-
-    // ------------------------------------------------------------
-    // --- PROCESS A DVAR
-    // ------------------------------------------------------------
-    private void processDvar(Dvar dvar, List<String> timeArrayDvList, List<String> dvTimeArrayList) {
-        System.out.println("DVAR: " + dvar.name);
-
-        // Process lower bound
-        if (dvar.lowerBoundExpressionParseTree != null) {
-            dvar.lowerBoundValue = visit(dvar.lowerBoundExpressionParseTree).getValue().doubleValue();
-            if (dvar.lowerBoundValue == null) {
-                throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Error in evaluating the lower bound of DVAR " + dvar.name + "!");
-            }
-        }
-
-        // Process upper bound
-        if (dvar.upperBoundExpressionParseTree != null) {
-            dvar.upperBoundValue = visit(dvar.upperBoundExpressionParseTree).getValue().doubleValue();
-            if (dvar.upperBoundValue == null) {
-                throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Error in evaluating the upper bound of DVAR " + dvar.name + "!");
-            }
-        }
-
-        // Add dvar to solver data
-        SolverData.addDvar(dvar);
-
-        // Return if there is no timearray
-        if (dvar.timeArraySizeExpressionParseTree == null) { return; }
-
-        // Otherwise, process time array size
-        String dvName = dvar.name;
-        int timeArraySize = visit(dvar.timeArraySizeExpressionParseTree).getValue().intValue();
-        if (timeArraySize != 0) {
-            if (timeArrayDvList.contains(dvName)) {
-                timeArrayDvList.add(dvName);
-
-                for (int timeIndex=1; timeIndex<=timeArraySize; timeIndex++) {
-                    Dvar newDvar=new Dvar();
-                    String newDvarName = dvName + "__fut__" + timeIndex;
-                    newDvar.setName(newDvarName);
-                    newDvar.setKind(dvar.kind);
-                    newDvar.setUnits(dvar.units);
-                    newDvar.setInteger(dvar.integer);
-
-                    newDvar.lowerBoundValue = visit(dvar.lowerBoundExpressionParseTree).getValue().doubleValue();
-                    if (newDvar.lowerBoundValue == null) {
-                        throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Error in evaluating the lower bound of time array DVAR " + dvar.name + "!");
-                    }
-
-                    newDvar.upperBoundValue = visit(dvar.upperBoundExpressionParseTree).getValue().doubleValue();
-                    if (newDvar.upperBoundValue == null) {
-                        throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Error in evaluating the upper bound of time array DVAR " + dvar.name + "!");
-                    }
-
-                    dvTimeArrayList.add(newDvarName);
-                    SolverData.addDvar(newDvar);
-                }
-            }
-        }
-    }
-
-
-    // ------------------------------------------------------------
-    // --- PROCESS A GOAL
-    // ------------------------------------------------------------
-    private void processGoal(Goal goal, boolean showRunTimeMessage) {
-        System.out.println("GOAL: " + goal.name);
-
-        if (showRunTimeMessage) System.out.println("Processing constraint "+goal.name);
-
-        // Process time array
-        if (goal.timeArraySizeParseTree != null) {
-            int timeArraySize = visit(goal.timeArraySizeParseTree).getValue().intValue();
-            for (int timeIndex=1; timeIndex<=timeArraySize; timeIndex++)  {
-                Goal newGoal = new Goal();
-                String newGoalName = goal.name + "__fut__" + timeIndex;
-                newGoal.setName(newGoalName);
-
-                // Find the case for which we are going to compute goal
-                boolean lFound = false;
-                for (int caseIndex=0; caseIndex<goal.caseConditionParseTrees.size(); caseIndex++) {
-                    if (INSTANCE.evaluateCondition(null,goal.caseConditionParseTrees.get(caseIndex))) {
-                        lFound = true;
-                        break;
-                    }
-                }
-                if (!lFound) {
-                    throw new EvaluationErrorException(goal.fromWresl, goal.line, "Case conditions for time array GOAL " + goal.name + " did not yield a case!");
-                }
-
-                // Process goal expression
-                //goal.caseExpressionParseTrees.get(caseIndex)
-            }
-        }
-    }
-
-
-    // ------------------------------------------------------------
-    // --- GOAL EXPRESSION VISITOR METHODS
-    // ------------------------------------------------------------
-
-    @Override
-    // goalShortForm
-    public IntDouble visitGoalShortForm(wreslParser.GoalShortFormContext ctx) {
-        IntDouble goalData = new IntDouble();
-        return goalData;
     }
 
 
@@ -1430,5 +1451,396 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         return al;
     }
 
+    // ------------------------------------------------------------
+    // --- CLASS FOR PROCESSING OF GOALS (I.E. CONSTRAINTS)
+    // ------------------------------------------------------------
+    private class GoalEvaluator extends wreslBaseVisitor<IntDouble> {
+        // GOAL data that will be built through visit methods below
+        private EvalConstraint constraintLeft = null;
+        private EvalConstraint constraintRight = null;
+        private boolean isProcessingLeft = true;
 
+        // Source file and line number for the GOAL for error messages
+        private String fromWresl;
+        private int line;
+
+        public EvalConstraint evaluate(String fromWresl, int line, ParseTree expressionCtx) {
+            // Initialize goal data
+            this.constraintLeft = new EvalConstraint();
+            this.constraintRight = new EvalConstraint();
+            this.fromWresl = fromWresl;
+            this.line = line;
+
+            // Process; data will be accumulated in left and right common data fields
+            IntDouble dummy = visit(expressionCtx);
+
+            // Check for null values
+            if (this.constraintLeft.getMultipliers() == null) {
+                if (this.constraintRight.getMultipliers() == null) {
+                    return null;
+                }
+            }
+
+            // Shift right data to left
+
+
+            // Return compiled GOAL data
+            return this.constraintLeft;
+        }
+
+        @Override
+        // expressionComparison
+        // We will accumulate information into following form under the constraintLeft field:
+        //  C1xD1 + C2xD2 + C3xD3 + ... + Cn = 0.0 (comaprison sign can also be <, <=, > or >=)
+        public IntDouble visitExpressionComparison(wreslParser.ExpressionComparisonContext ctx) {
+            // Process left and right of the sign
+            this.isProcessingLeft = true;
+            IntDouble localLeft = visit(ctx.expression(0));
+            this.isProcessingLeft = false;
+            IntDouble localRight = visit(ctx.expression(1));
+
+            // Check the format of accumulated left and right data for further processing
+            // Left is multiplier/constant format, right is constant
+            if (this.constraintLeft.getMultipliers() != null) {
+                if (localRight != null) {
+                    // Shift right constant to left
+                    this.constraintLeft.getConstant().subtract(localRight);
+                }
+            }
+
+
+            // Retrieve sign; '==' and '!=' are not recognized
+            String sign = getWreslText(ctx.opCompare());
+            if (sign == wreslLexer.VOCABULARY.getLiteralName(wreslLexer.NOT_EQUAL)    ||
+                sign == wreslLexer.VOCABULARY.getLiteralName(wreslLexer.DOUBLE_EQUAL) ) {
+                return null;
+            }
+            this.constraintLeft.setSign(sign);
+
+            // Dummy return data is null
+            return null;
+        }
+
+        @Override
+        // expressionMultDiv
+        public IntDouble visitExpressionMultDiv(wreslParser.ExpressionMultDivContext ctx) {
+            // Compute left and right side of the operation
+            IntDouble leftOp = visit(ctx.expression(0));
+            IntDouble rightOp = visit(ctx.expression(1));
+
+            String leftOpArgName = leftOp.getArgName();
+            String rightOpArgName = rightOp.getArgName();
+            boolean isLeftOpDvar = (leftOpArgName != "");
+            boolean isRightOpDvar = (rightOpArgName != "");
+            IntDouble multiplier;
+
+            // Multiplication
+            // --------------
+            if (ctx.opMultiplicationDivision().MULT() != null) {
+                // If left and right operands are DVARs generate an error
+                if (isLeftOpDvar) {
+                    if (isRightOpDvar) {
+                        throw new EvaluationErrorException(this.fromWresl, this.line,"Two DVARs canot appear in a multiplication operation in a GOAL definition!");
+
+                    // If left operator is DVAR and right operand is a value, combine them in DVAR data as a multiplier
+                    } else {
+                        if (this.isProcessingLeft) {
+                            multiplier = this.constraintLeft.getMultiplier(leftOpArgName);
+                            multiplier.multiply(rightOp);
+                        } else {
+                            multiplier = this.constraintRight.getMultiplier(leftOpArgName);
+                            multiplier.multiply(rightOp);
+                        }
+                        return null;
+                    }
+                } else {
+                    // Left operand is a value and right operand is a DVAR, combine them in DVAR data as multiplier
+                    if (isRightOpDvar) {
+                        if (this.isProcessingLeft) {
+                            multiplier = this.constraintLeft.getMultiplier(rightOpArgName);
+                            multiplier.multiply(leftOp);
+                        } else {
+                            multiplier = this.constraintRight.getMultiplier(rightOpArgName);
+                            multiplier.multiply(leftOp);
+                        }
+                        return null;
+                    // Both left and right operands are values; multiply and return as value
+                    } else {
+                        leftOp.multiply(rightOp);
+                        return leftOp;
+                    }
+                }
+            // Division
+            // ----------
+            } else {
+                // If left and right operands are DVARs generate an error
+                if (isLeftOpDvar) {
+                    if (isRightOpDvar) {
+                        throw new EvaluationErrorException(this.fromWresl, this.line,"Two DVARs cannot appear in a division operation in a GOAL definition!");
+
+                    // If left operand is DVAR and right operand is a value, combine them in DVAR data as a multiplier
+                    } else {
+                        if (this.isProcessingLeft) {
+                            multiplier = this.constraintLeft.getMultiplier(leftOpArgName);
+                            multiplier.divide(rightOp);
+                        } else {
+                            multiplier = this.constraintRight.getMultiplier(leftOpArgName);
+                            multiplier.divide(rightOp);
+                        }
+                        return null;
+                    }
+                } else {
+                    // Left operandis a value and right operand is a DVAR, combine them in DVAR data as multiplier
+                    if (isRightOpDvar) {
+                        if (this.isProcessingLeft) {
+                            multiplier = this.constraintLeft.getMultiplier(rightOpArgName);
+                            multiplier.divide(leftOp);
+                        } else {
+                            multiplier = this.constraintRight.getMultiplier(rightOpArgName);
+                            multiplier.divide(leftOp);
+                        }
+                        return null;
+                        // Both left and right operands are values; divide and return as value
+                    } else {
+                        leftOp.divide(rightOp);
+                        return leftOp;
+                    }
+                }
+            }
+        }
+
+        @Override
+        // expressionAddSub
+        public IntDouble visitExpressionAddSub(wreslParser.ExpressionAddSubContext ctx) {
+            // Compute left and right side of the operation
+            IntDouble leftOp = visit(ctx.expression(0));
+            IntDouble rightOp = visit(ctx.expression(1));
+
+            String leftOpArgName = leftOp.getArgName();
+            String rightOpArgName = rightOp.getArgName();
+            boolean isLeftOpDvar = (leftOpArgName != "");
+            boolean isRightOpDvar = (rightOpArgName != "");
+
+            // Addition
+            // --------------
+            if (ctx.opAdditionSubtraction().PLUS() != null) {
+                // Both left and right operands are DVARs; do nothing since these were added to multiplier set in visitObjectReference method
+                if (isLeftOpDvar) {
+                    if (isRightOpDvar) {
+                        return null;
+                    // If left operand is DVAR and right operand is a value, do nothing for DVAR and add value as a constant
+                    } else {
+                        if (this.isProcessingLeft) {
+                            this.constraintLeft.addConstant(leftOp);
+                        } else {
+                            this.constraintRight.addConstant(leftOp);
+                        }
+                        return null;
+                    }
+                } else {
+                    // Left operand is a value and right operand is a DVAR, do nothing for DVAR and add value as a constant
+                    if (isRightOpDvar) {
+                        if (this.isProcessingLeft) {
+                            this.constraintLeft.addConstant(leftOp);
+                        } else {
+                            this.constraintRight.addConstant(leftOp);
+                        }
+                        return null;
+                    // Both left and right operands are values; combine them ad add them as constnat
+                    } else {
+                        leftOp.add(rightOp);
+                        if (this.isProcessingLeft) {
+                            this.constraintLeft.addConstant(leftOp);
+                        } else {
+                            this.constraintRight.addConstant(leftOp);
+                        }
+                        return null;
+                    }
+                }
+            // Subtraction
+            // ------------
+            } else {
+                IntDouble multiplier;
+                IntDouble minusOne = new IntDouble(-1.0, false);
+                // Both left and right operands are DVARs; do nothing for left operand, multiply right operand with -1.0
+                if (isLeftOpDvar) {
+                    if (isRightOpDvar) {
+                        if (this.isProcessingLeft) {
+                            multiplier = this.constraintLeft.getMultiplier(rightOpArgName);
+                            multiplier.multiply(minusOne);
+                        } else {
+                            multiplier = this.constraintRight.getMultiplier(rightOpArgName);
+                            multiplier.multiply(minusOne);
+                        }
+                        return null;
+                    // If left operand is DVAR and right operand is a value, do nothing for DVAR and subtract value as a constant
+                    } else {
+                        leftOp.multiply(minusOne);
+                        if (this.isProcessingLeft) {
+                            this.constraintLeft.addConstant(leftOp);
+                        } else {
+                            this.constraintRight.addConstant(leftOp);
+                        }
+                        return null;
+                    }
+                } else {
+                    // Left operand is a value and right operand is a DVAR, multiply DVAR with minus one and add value as a constant
+                    if (isRightOpDvar) {
+                        if (this.isProcessingLeft) {
+                            multiplier = this.constraintLeft.getMultiplier(leftOpArgName);
+                            multiplier.multiply(minusOne);
+                            this.constraintLeft.addConstant(leftOp);
+                        } else {
+                            multiplier = this.constraintRight.getMultiplier(leftOpArgName);
+                            multiplier.multiply(minusOne);
+                            this.constraintRight.addConstant(leftOp);
+                        }
+                        return null;
+                    // Both left and right operands are values; combine them and add them as constant
+                    } else {
+                        leftOp.subtract(rightOp);
+                        if (this.isProcessingLeft) {
+                            this.constraintLeft.addConstant(leftOp);
+                        } else {
+                            this.constraintRight.addConstant(leftOp);
+                        }
+                        return null;
+                    }
+                }
+            }
+        }
+
+        @Override
+        // expressionReference
+        public IntDouble visitExpressionReference(wreslParser.ExpressionReferenceContext ctx) {
+            return visit(ctx.variableReference());
+        }
+
+        @Override
+        // cfstafReference
+        public IntDouble visitCfstafReference(wreslParser.CfstafReferenceContext ctx) {
+            return INSTANCE.visit(ctx);
+        }
+
+        @Override
+        // objectReference
+        public IntDouble visitObjectReference(wreslParser.ObjectReferenceContext ctx) {
+            // Retrieve object name
+            String varName = getWreslText(ctx.OBJECT_NAME());
+
+            // This is an SVAR
+            Svar var = INSTANCE.currentModelDataSet.getSvar(varName);                       // Is this an Svar?
+            if (var != null) {
+                IntDouble varData = var.getData();
+                if (varData == null) {
+                    throw new EvaluationErrorException("Variable " + varName + " is being used before its value is computed!");
+                }
+                return varData;
+            }
+
+            // This is a parameter
+            var = INSTANCE.sds.getParameter(varName);
+            if (var != null) {
+                IntDouble varData = var.getData();
+                if (varData == null) {
+                    throw new EvaluationErrorException("Variable " + varName + " is being used before its value is computed!");
+                }
+                return varData;
+            }
+
+            // This is a TIMESERIES data
+            String tsName = DssOperations.entryNameTS(varName, INSTANCE.currentModelDataSet.getTimeStep());
+            Timeseries tsVar = INSTANCE.sds.getSVTimeseries(tsName);
+            if (tsVar != null) {
+                // Retrieve timestep offset and make sure it is an integer number
+                int timeOffset = 0;
+                if (ctx.timestepOffset() != null) {
+                    IntDouble temp = INSTANCE.visit(ctx.timestepOffset().expression());
+                    if (!temp.isInt()) {
+                        throw new EvaluationErrorException("Timeseries index for " + varName + " must be an integer value.");
+                    }
+                    timeOffset = temp.getValue().intValue();
+                }
+                ParallelVars prvs = TimeOperations.findTime(tsVar.timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+
+                // Retrieve data from Timeseries
+                Double value;
+                value = tsVar.retrieveDataForTime(prvs);
+                if (value != null) {
+                    return new IntDouble(value.doubleValue(), false);
+                }
+
+                // If made it this far, timeseries did not extend back in time; try to retrieve from initial data
+                Timeseries svInit = INSTANCE.sds.getSVInitTimeseries(tsName);
+                if (svInit != null) {
+                    value = svInit.retrieveDataForTime(prvs);
+                    if (value != null) {
+                        return new IntDouble(value.doubleValue(), false);
+                    }
+                }
+
+                // If made it this far, it means initial timeseries data was not read before; try reading it
+                svInit = tsVar.copyOf();
+                boolean success = svInit.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+                if (success) {
+                    value = svInit.retrieveDataForTime(prvs);
+                    if (value != null) {
+                        INSTANCE.sds.addSVInitTimeseries(svInit);
+                        return new IntDouble(value.doubleValue(), false);
+                    }
+                }
+
+                // If made it this far, value was not found; generate error
+                throw new EvaluationErrorException(tsVar.fromWresl, tsVar.line, "Was not able to retrieve data from the timeseries data for the provided time index.");
+            }
+
+            // This is an ALIAS
+            Alias asVar = INSTANCE.currentModelDataSet.asMap.get(varName);
+            if (asVar != null) {
+                // Retrieve timestep offset and make sure it is an integer number
+                IntDouble temp = INSTANCE.visit(ctx.timestepOffset().expression());
+                if (!temp.isInt()) {
+                    throw new EvaluationErrorException("Timeseries index for ALIAS" + varName + " must be an integer value.");
+                }
+                int timeOffset = temp.getValue().intValue();
+                String timeStep = currentModelDataSet.getTimeStep();
+                ParallelVars prvs = TimeOperations.findTime(timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+
+                // Retrieve data from Alias
+                Double value;
+                value = asVar.retrieveDataForTime(prvs);
+                if (value != null) {
+                    return new IntDouble(value.doubleValue(), false);
+                }
+
+                // If made it this far, alias did not extend back in time; try to retrieve from initial data
+                asVar.setDssBPart(asVar.name);
+                asVar.setTimeStep(INSTANCE.currentModelDataSet.getTimeStep());
+                asVar.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+                value = asVar.retrieveDataForTime(prvs);
+                if (value != null ) {
+                    return new IntDouble(value.doubleValue(), false);
+                }
+
+                // If made it this far, value was not found; generate error
+                throw new EvaluationErrorException(asVar.fromWresl, asVar.line, "Was not able to retrieve data for ALIAS " + asVar.name + " for the provided time index.");
+
+            }
+
+            // This is a DVAR
+            Dvar dvar = INSTANCE.currentModelDataSet.getDvar(varName);
+            if (dvar != null) {
+                IntDouble varData = new IntDouble(1.0, false, varName);
+                if (this.isProcessingLeft) {
+                    this.constraintLeft.addMultiplier(varName, varData);
+                } else {
+                    this.constraintRight.addMultiplier(varName, varData);
+                }
+                return null;
+            }
+
+            // If made it this far, variable was not found; generate error
+            throw new EvaluationErrorException("Variable " + varName + " is not defined!");
+        }
+    }
 }

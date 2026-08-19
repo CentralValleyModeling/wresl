@@ -143,7 +143,7 @@ public class ClpSolver {
 	}
 	
 	private static void setConstraints() {
-		Map<String, Goal> constraintMap = gov.ca.water.solverdata.SolverData.getConstraintDataMap();
+		Map<String, EvalConstraint> constraintMap = gov.ca.water.solverdata.SolverData.getConstraintDataMap();
 		
 		int rowCounter=0; // row index
 		for (int i=0; i<=1; i++){
@@ -164,21 +164,21 @@ public class ClpSolver {
 				
 				
 				String constraintName=(String)constraintIterator.next();
-				Goal goal=constraintMap.get(constraintName);
+				EvalConstraint goal=constraintMap.get(constraintName);
 			
 				if (goal.getSign().equals("=")) {
 					//ClpSolverJNI.setRowFix(constraintName, -ec.getEvalExpression().getValue().getData().doubleValue()); //string constraint name
-					GT = -goal.getIntDouble().getValue().doubleValue();
+					GT = -goal.getConstant().getValue().doubleValue();
 					LT = GT;
 				}
 				else if (goal.getSign().equals("<") || goal.getSign().equals("<=")){
 					//ClpSolverJNI.setRowMax(constraintName, -ec.getEvalExpression().getValue().getData().doubleValue()); //string constraint name
 					GT = -maxValue;
-					LT = -goal.getIntDouble().getValue().doubleValue();
+					LT = -goal.getConstant().getValue().doubleValue();
 				}
 				else if (goal.getSign().equals(">")){
 					//ClpSolverJNI.setRowMin(constraintName, -ec.getEvalExpression().getValue().getData().doubleValue()); //string constraint name
-					GT = -goal.getIntDouble().getValue().doubleValue();
+					GT = -goal.getConstant().getValue().doubleValue();
 					LT = maxValue;
 				}
 				else {
@@ -186,7 +186,7 @@ public class ClpSolver {
 					
 				}
 			
-				HashMap<String, IntDouble> multMap = goal.getMultiplier();
+				HashMap<String, IntDouble> multMap = goal.getMultipliers();
 				Set multCollection = multMap.keySet();
 				Iterator multIterator = multCollection.iterator();				
 				

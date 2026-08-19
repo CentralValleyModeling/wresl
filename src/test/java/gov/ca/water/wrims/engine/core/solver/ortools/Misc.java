@@ -18,7 +18,7 @@ public class Misc {
 
 	
 	protected static void setConstraints(MPModel m) {
-		Map<String, Goal> constraintMap = SolverData.getConstraintDataMap();
+		Map<String, EvalConstraint> constraintMap = SolverData.getConstraintDataMap();
 		Map<String, Dvar> dvarMap=SolverData.getDvarMap();
 		for (int i=0; i<=1; i++){
 			ArrayList<String> constraintCollection;
@@ -32,25 +32,25 @@ public class Misc {
 		
 			while(constraintIterator.hasNext()){                          
 				String constraintName=(String)constraintIterator.next();
-				Goal goal=constraintMap.get(constraintName);
+				EvalConstraint goal=constraintMap.get(constraintName);
 			
 				double lb = -Param.inf;
 				double ub =  Param.inf;
 				
 				if (goal.getSign().equals("=")) {
 					//ControlData.xasolver.setRowFix(constraintName, -ec.getEvalExpression().getValue().getData().doubleValue()); 
-					lb = -goal.getIntDouble().getValue().doubleValue();
-					ub = -goal.getIntDouble().getValue().doubleValue();
+					lb = -goal.getConstant().getValue().doubleValue();
+					ub = -goal.getConstant().getValue().doubleValue();
 				}
 				else if (goal.getSign().equals("<") || goal.getSign().equals("<=")){
 					//ControlData.xasolver.setRowMax(constraintName, -ec.getEvalExpression().getValue().getData().doubleValue()); 
-					ub = -goal.getIntDouble().getValue().doubleValue();
+					ub = -goal.getConstant().getValue().doubleValue();
 				}
 				else if (goal.getSign().equals(">")){
-					lb = -goal.getIntDouble().getValue().doubleValue();
+					lb = -goal.getConstant().getValue().doubleValue();
 				}
 			
-				HashMap<String, IntDouble> multMap = goal.getMultiplier();
+				HashMap<String, IntDouble> multMap = goal.getMultipliers();
 				
 				//TODO: what if multMap is empty?? this means 0 according to wresl parser.
 				// for example,      lb < 0

@@ -68,6 +68,11 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
     // ------------------------------------------------------------
     // --- GETTERS
     // ------------------------------------------------------------
+
+    public Map<String, WeightElement> getWeightMap() { return this.wtMap; }
+
+    public Map<String, WeightElement> getWeightSlackSurplusMap() { return this.wtSlackSurplusMap; }
+
     public Svar getSvar(String svarName) {
         return this.svMap.get(svarName);
     }
@@ -85,6 +90,8 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
 
     public Dvar getDvar(String dvarName) { return this.dvMap.get(dvarName); }
 
+    public Map<String, Dvar> getDvMap() { return this.dvMap; }
+
     public List<String> getTimeArrayDvList() { return this.timeArrayDvList; }
 
     public List<String> getDvTimeArrayList() { return this.dvTimeArrayList; }
@@ -93,6 +100,18 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
         List<Goal> goals = new ArrayList<>(this.gMap.values());
         return goals;
     }
+
+    public Map<String, Goal> getGoalMap() { return this.gMap; }
+
+    public Map<String, EvalConstraint> getConstraintMap() {
+        Map<String, EvalConstraint> constraintMap = new HashMap<>();
+        this.gMap.forEach((key, value) -> {
+            constraintMap.put(key, value.getSolverData());
+        });
+        return constraintMap;
+    }
+
+    public Map<String, Alias> getAliasMap() {return this.asMap; }
 
 
     // ------------------------------------------------------------
@@ -173,4 +192,6 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
     public void clearTempTSMap() {
         this.tsMap_Temp = null;
     }
+
+
 }

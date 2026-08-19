@@ -262,7 +262,7 @@ public class XASolver {
 		lastEqualityConstraintCount = 0;
 		lastInequalityConstraintCount = 0;
 
-		Map<String, Goal> constraintMap = gov.ca.water.solverdata.SolverData.getConstraintDataMap();
+		Map<String, EvalConstraint> constraintMap = gov.ca.water.solverdata.SolverData.getConstraintDataMap();
 		Map<String, Dvar> dvarMap= gov.ca.water.solverdata.SolverData.getDvarMap();
 		for (int i=0; i<=1; i++){
 			ArrayList<String> constraintCollection;
@@ -276,22 +276,22 @@ public class XASolver {
 
 			while(constraintIterator.hasNext()){
 				String constraintName=(String)constraintIterator.next();
-				Goal goal=constraintMap.get(constraintName);
+				EvalConstraint goal=constraintMap.get(constraintName);
 
 				if (goal.getSign().equals("=")) {
-					ControlData.xasolver.setRowFix(constraintName, -goal.getIntDouble().getValue().doubleValue());
+					ControlData.xasolver.setRowFix(constraintName, -goal.getConstant().getValue().doubleValue());
 					lastEqualityConstraintCount++;
 				}
 				else if (goal.getSign().equals("<") || goal.getSign().equals("<=")){
-					ControlData.xasolver.setRowMax(constraintName, -goal.getIntDouble().getValue().doubleValue());
+					ControlData.xasolver.setRowMax(constraintName, -goal.getConstant().getValue().doubleValue());
 					lastInequalityConstraintCount++;
 				}
 				else if (goal.getSign().equals(">")){
-					ControlData.xasolver.setRowMin(constraintName, -goal.getIntDouble().getValue().doubleValue());
+					ControlData.xasolver.setRowMin(constraintName, -goal.getConstant().getValue().doubleValue());
 					lastInequalityConstraintCount++;
 				}
 
-				HashMap<String, IntDouble> multMap = goal.getMultiplier();
+				HashMap<String, IntDouble> multMap = goal.getMultipliers();
 				Set<String> multCollection = multMap.keySet();
 				Iterator<String> multIterator = multCollection.iterator();
 

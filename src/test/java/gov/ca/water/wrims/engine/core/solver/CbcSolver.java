@@ -902,7 +902,7 @@ public class CbcSolver {
         logger.atDebug().setMessage("CBC Solver: Setting up constraints...").log();
 
         try {
-		    Map<String, Goal> constraintMap = gov.ca.water.solverdata.SolverData.getConstraintDataMap();
+		    Map<String, EvalConstraint> constraintMap = gov.ca.water.solverdata.SolverData.getConstraintDataMap();
 		    String c="quicklog version 1.0\n";
 		    int rowCounter=0; // row index
             int equalityCount = 0;
@@ -928,13 +928,13 @@ public class CbcSolver {
 
 
                     String constraintName=(String)constraintIterator.next();
-                    Goal goal=constraintMap.get(constraintName);
-                    logger.atTrace().setMessage("Processing constraint: name={}, sign={}, RHS={}").addArgument(constraintName).addArgument(goal.getSign())
-                        .addArgument(goal.getIntDouble()
+                    EvalConstraint ec=constraintMap.get(constraintName);
+                    logger.atTrace().setMessage("Processing constraint: name={}, sign={}, RHS={}").addArgument(constraintName).addArgument(ec.getSign())
+                        .addArgument(ec.getConstant()
                         .getValue().doubleValue()).log();
 
-                    if (goal.getSign().equals("=")) {
-                        GT = -goal.getIntDouble().getValue().doubleValue();
+                    if (ec.getSign().equals("=")) {
+                        GT = -ec.getConstant().getValue().doubleValue();
                         if(Math.abs(GT)<ControlData.zeroTolerance) {
                             GT=0;
                         } else if (Math.abs(GT)>maxValue) {
@@ -942,17 +942,17 @@ public class CbcSolver {
                         }
                         LT = GT;
                         equalityCount++;
-                     } else if (goal.getSign().equals("<") || goal.getSign().equals("<=")){
+                     } else if (ec.getSign().equals("<") || ec.getSign().equals("<=")){
                         GT = -maxValue;
-                        LT = -goal.getIntDouble().getValue().doubleValue();
+                        LT = -ec.getConstant().getValue().doubleValue();
                         if(Math.abs(LT)<ControlData.zeroTolerance) {
                             LT=0;
                         } else if (Math.abs(LT)>maxValue) {
                             LT=maxValue*Math.signum(LT);
                         }
                         inequalityCount++;
-                    } else if (goal.getSign().equals(">")){
-                        GT = -goal.getIntDouble().getValue().doubleValue();
+                    } else if (ec.getSign().equals(">")){
+                        GT = -ec.getConstant().getValue().doubleValue();
                         if(Math.abs(GT)<ControlData.zeroTolerance) {
                             GT=0;
                         } else if (Math.abs(GT)>maxValue) {
@@ -963,10 +963,10 @@ public class CbcSolver {
                     }
                     else {
                         // error!!
-                        logger.atError().setMessage("Invalid constraint sign in CbcSolver: {}").addArgument(goal.getSign()).log();
+                        logger.atError().setMessage("Invalid constraint sign in CbcSolver: {}").addArgument(ec.getSign()).log();
                     }
 
-                    LinkedHashMap<String, IntDouble> multMap = goal.getMultiplier();
+                    LinkedHashMap<String, IntDouble> multMap = ec.getMultipliers();
                     Set multCollection = multMap.keySet();
                     Iterator multIterator = multCollection.iterator();
 
@@ -1025,7 +1025,7 @@ public class CbcSolver {
 	private static void setConstraintsSkip(String skipThisConstraint) {
         logger.atDebug().setMessage("Setting up constraints with skip: skipThisConstraint={}").addArgument(skipThisConstraint).log();
 
-        Map<String, Goal> constraintMap = gov.ca.water.solverdata.SolverData.getConstraintDataMap();
+        Map<String, EvalConstraint> constraintMap = gov.ca.water.solverdata.SolverData.getConstraintDataMap();
         int rowCounter = 0;
         int skippedCount = 0;
 
@@ -1052,22 +1052,22 @@ public class CbcSolver {
                     continue;
                 }
 
-				Goal goal = constraintMap.get(constraintName);
+				EvalConstraint goal = constraintMap.get(constraintName);
 
 				if (goal.getSign().equals("=")) {
-					GT = -goal.getIntDouble().getValue().doubleValue();
+					GT = -goal.getConstant().getValue().doubleValue();
 					if(Math.abs(GT)<ControlData.zeroTolerance) {
                         GT=0;
                     }
 					LT = GT;
 				} else if (goal.getSign().equals("<") || goal.getSign().equals("<=")){
 					GT = -maxValue;
-					LT = -goal.getIntDouble().getValue().doubleValue();
+					LT = -goal.getConstant().getValue().doubleValue();
 					if(Math.abs(LT)<ControlData.zeroTolerance) {
                         LT=0;
                     }
 				} else if (goal.getSign().equals(">")){
-					GT = -goal.getIntDouble().getValue().doubleValue();
+					GT = -goal.getConstant().getValue().doubleValue();
 					if(Math.abs(GT)<ControlData.zeroTolerance) {
                         GT=0;
                     }
@@ -1077,7 +1077,7 @@ public class CbcSolver {
                     logger.atError().setMessage("Invalid constraint sign in CbcSolver: {}").addArgument(goal.getSign()).log();
                 }
 
-				HashMap<String, IntDouble> multMap = goal.getMultiplier();
+				HashMap<String, IntDouble> multMap = goal.getMultipliers();
 				Set multCollection = multMap.keySet();
 				Iterator multIterator = multCollection.iterator();
 
@@ -1119,7 +1119,7 @@ public class CbcSolver {
         logger.atDebug().setMessage("Setting up IIS constraints: firstTimeRun={}, enforceThisConstraint size={}").addArgument(firstTimeRun).addArgument(enforceThisConstraint.size()).log();
 
 
-        Map<String, Goal> constraintMap = gov.ca.water.solverdata.SolverData.getConstraintDataMap();
+        Map<String, EvalConstraint> constraintMap = gov.ca.water.solverdata.SolverData.getConstraintDataMap();
 		int total=0;
         int enforcedCount = 0;
 
@@ -1140,22 +1140,22 @@ public class CbcSolver {
 				double LT= 999;
 
 				String constraintName=(String)constraintIterator.next();
-				Goal goal=constraintMap.get(constraintName);
+                EvalConstraint goal=constraintMap.get(constraintName);
 
                 if (goal.getSign().equals("=")) {
-                    GT = -goal.getIntDouble().getValue().doubleValue();
+                    GT = -goal.getConstant().getValue().doubleValue();
                     if (Math.abs(GT) < gov.ca.water.wrims.engine.core.components.ControlData.zeroTolerance) {
                         GT = 0;
                     }
                     LT = GT;
                 } else if (goal.getSign().equals("<") || goal.getSign().equals("<=")) {
                     GT = -maxValue;
-                    LT = -goal.getIntDouble().getValue().doubleValue();
+                    LT = -goal.getConstant().getValue().doubleValue();
                     if (Math.abs(LT) < gov.ca.water.wrims.engine.core.components.ControlData.zeroTolerance) {
                         LT = 0;
                     }
                 } else if (goal.getSign().equals(">")) {
-                    GT = -goal.getIntDouble().getValue().doubleValue();
+                    GT = -goal.getConstant().getValue().doubleValue();
                     if (Math.abs(GT) < gov.ca.water.wrims.engine.core.components.ControlData.zeroTolerance) {
                         GT = 0;
                     }
@@ -1164,7 +1164,7 @@ public class CbcSolver {
                     logger.atError().setMessage("Unknown constraint sign in CbcSolver IIS").log();
                 }
 
-				HashMap<String, IntDouble> multMap = goal.getMultiplier();
+				HashMap<String, IntDouble> multMap = goal.getMultipliers();
 				Set multCollection = multMap.keySet();
 				Iterator multIterator = multCollection.iterator();
 
@@ -1198,7 +1198,7 @@ public class CbcSolver {
 					iisConstraintIndexMap.put(constraintName, newIndex);
 					iisConstraintElementMap.put(constraintName, newElements);
 					iisConstraintSignMap.put(constraintName, goal.getSign());
-					iisConstraintRHSMap.put(constraintName, -goal.getIntDouble().getValue().doubleValue());
+					iisConstraintRHSMap.put(constraintName, -goal.getConstant().getValue().doubleValue());
 				}
 				// TODO: add index and elements here for IIS
 				String iisNameP = constraintName + "_p";

@@ -18,11 +18,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import gov.ca.water.wresl.domain.Dvar;
+import gov.ca.water.wresl.domain.*;
 import gov.ca.water.utilities.Param;
-import gov.ca.water.wresl.domain.Goal;
-import gov.ca.water.wresl.domain.Svar;
-import gov.ca.water.wresl.domain.WeightElement;
 import gov.ca.water.solverdata.SolverData;
 import gov.ca.water.wrims.engine.core.components.BuildProps;
 import gov.ca.water.wrims.engine.core.components.ControlData;
@@ -682,13 +679,13 @@ public class ILP {
 	
 		Set<String> dvar_inConstraint = new HashSet<>();
 
-		Map<String, Goal> constraintMap = SolverData.getConstraintDataMap();
+		Map<String, EvalConstraint> constraintMap = SolverData.getConstraintDataMap();
 	
 		for (String constraintName : constraintMap.keySet()) {	
 	
-			if (!constraintMap.get(constraintName).isEvalExpressionNumeric()) {
+			if (!constraintMap.get(constraintName).isNumeric()) {
 	
-				dvar_inConstraint.addAll(constraintMap.get(constraintName).getMultiplier().keySet());
+				dvar_inConstraint.addAll(constraintMap.get(constraintName).getMultipliers().keySet());
 			}	
 		}
 		return dvar_inConstraint;

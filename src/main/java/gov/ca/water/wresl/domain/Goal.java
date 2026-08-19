@@ -21,9 +21,8 @@ public class Goal extends WRESLComponent implements Serializable {
     public ParseTree timeArraySizeParseTree;
 
     // Data to be inserted into solver
-    private String sign = Param.undefined;
-    private IntDouble intDouble = null;
-    private LinkedHashMap<String, IntDouble> multiplier = new LinkedHashMap<>();
+    private EvalConstraint solverData;
+
 
 
     // ------------------------------------------------------------
@@ -31,28 +30,28 @@ public class Goal extends WRESLComponent implements Serializable {
     // ------------------------------------------------------------
     public void setName(String name) { this.name = name; }
 
+    public void setSolverData(EvalConstraint constraint) { this.solverData = constraint; }
+
 
     // ------------------------------------------------------------
     // --- GETTERS
     // ------------------------------------------------------------
+    public EvalConstraint getSolverData() { return this.solverData; }
+
     public String getName() { return this.name; }
 
-    public LinkedHashMap<String, IntDouble> getMultiplier() { return this.multiplier; }
+    public LinkedHashMap<String, IntDouble> getMultipliers() { return this.solverData.getMultipliers(); }
 
-    public IntDouble getIntDouble() { return this.intDouble; }
+    public IntDouble getConstant() { return this.solverData.getConstant(); }
 
-    public String getSign() { return this.sign; }
+    public String getSign() { return this.solverData.getSign(); }
 
 
     // ------------------------------------------------------------
     // --- MISC. METHODS
     // ------------------------------------------------------------
     public boolean isEvalExpressionNumeric() {
-        if (this.multiplier.size() == 0) {
-            return true;
-        } else {
-            return false;
-        }
+        return this.solverData.isNumeric();
     }
 
 }

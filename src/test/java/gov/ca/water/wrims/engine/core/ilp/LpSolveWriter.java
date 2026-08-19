@@ -5,6 +5,7 @@ import java.util.*;
 
 import gov.ca.water.solverdata.SolverData;
 import gov.ca.water.wresl.domain.Dvar;
+import gov.ca.water.wresl.domain.EvalConstraint;
 import gov.ca.water.wresl.domain.Goal;
 import gov.ca.water.wresl.domain.WeightElement;
 import gov.ca.water.utilities.Param;
@@ -87,7 +88,7 @@ public class LpSolveWriter {
 
 		outFile.println("/* constraint */");
 
-		Map<String, Goal> constraintMap = SolverData.getConstraintDataMap();
+		Map<String, EvalConstraint> constraintMap = SolverData.getConstraintDataMap();
 
 		List<String> sortedConstraint = new ArrayList<>(constraintMap.keySet());
 		Collections.sort(sortedConstraint);
@@ -96,14 +97,14 @@ public class LpSolveWriter {
 
 			String lhs = "";
 
-			if (!constraintMap.get(constraintName).isEvalExpressionNumeric()) {
+			if (!constraintMap.get(constraintName).isNumeric()) {
 
-				List<String> sortedTerm = new ArrayList<>(constraintMap.get(constraintName).getMultiplier().keySet());
+				List<String> sortedTerm = new ArrayList<>(constraintMap.get(constraintName).getMultipliers().keySet());
 				Collections.sort(sortedTerm);
 
 				for (String var : sortedTerm) {
 
-					Number coef = constraintMap.get(constraintName).getMultiplier().get(var).getValue();
+					Number coef = constraintMap.get(constraintName).getMultipliers().get(var).getValue();
 					double coefDouble = coef.doubleValue();
 					String coefStr = coef.toString();
 					String term;
@@ -130,7 +131,7 @@ public class LpSolveWriter {
 			}
 
 			String sign = constraintMap.get(constraintName).getSign();
-			double val = constraintMap.get(constraintName).getIntDouble().getValue().doubleValue();
+			double val = constraintMap.get(constraintName).getConstant().getValue().doubleValue();
 
 			if (val == 0) {
 				lhs = constraintName + ": " + lhs + " " + sign + " " + "0";

@@ -265,14 +265,14 @@ public class GurobiSolver {
     }
 
     private void setConstraints() throws GRBException {
-        Map<String, Goal> constraintMap = gov.ca.water.solverdata.SolverData.getConstraintDataMap();
+        Map<String, EvalConstraint> constraintMap = gov.ca.water.solverdata.SolverData.getConstraintDataMap();
         Set constraintCollection = constraintMap.keySet();
         Iterator constraintIterator = constraintCollection.iterator();
 
         while (constraintIterator.hasNext()) {
             String constraintName = (String) constraintIterator.next();
-            Goal goal = constraintMap.get(constraintName);
-            HashMap<String, IntDouble> multMap = goal.getMultiplier();
+            EvalConstraint goal = constraintMap.get(constraintName);
+            HashMap<String, IntDouble> multMap = goal.getMultipliers();
             Set multCollection = multMap.keySet();
             Iterator multIterator = multCollection.iterator();
             GRBLinExpr expr = new GRBLinExpr();
@@ -288,11 +288,11 @@ public class GurobiSolver {
                 counter++;
             }
             if (goal.getSign().equals("=")) {
-                model.addConstr(expr, GRB.EQUAL, -goal.getIntDouble().getValue().doubleValue(), constraintName);
+                model.addConstr(expr, GRB.EQUAL, -goal.getConstant().getValue().doubleValue(), constraintName);
             } else if (goal.getSign().equals("<") || goal.getSign().equals("<=")) {
-                model.addConstr(expr, GRB.LESS_EQUAL, -goal.getIntDouble().getValue().doubleValue(), constraintName);
+                model.addConstr(expr, GRB.LESS_EQUAL, -goal.getConstant().getValue().doubleValue(), constraintName);
             } else if (goal.getSign().equals(">") || goal.getSign().equals(">=")) {
-                model.addConstr(expr, GRB.GREATER_EQUAL, -goal.getIntDouble().getValue().doubleValue(), constraintName);
+                model.addConstr(expr, GRB.GREATER_EQUAL, -goal.getConstant().getValue().doubleValue(), constraintName);
             }
         }
     }
