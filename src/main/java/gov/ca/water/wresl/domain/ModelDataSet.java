@@ -193,5 +193,8 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
         this.tsMap_Temp = null;
     }
 
-
+    // Assign a simulated DVAR value to DVAR
+    public void assignDvarValue(String name, IntDouble data) {
+        this.dvMap.get(name).addData(data);
+    }
 }

@@ -6,6 +6,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import gov.ca.water.utilities.Param;
+import gov.ca.water.wresl.domain.StudyDataSet;
 import gov.ca.water.wrims.engine.core.solver.mpmodel.MPModel;
 
 import com.google.ortools.linearsolver.MPConstraint;
@@ -175,7 +176,7 @@ public class OrToolsSolver {
 
 	}
 	// for wrims only
-	public void run() {
+	public void run(StudyDataSet sds, int modelIndex) {
 		
 		int modelStatus = solve(model);
 		
@@ -194,7 +195,7 @@ public class OrToolsSolver {
 			}
 			
 			// assign dvar
-			Misc.assignDvar(solution); 
+			Misc.assignDvar(solution, sds, modelIndex);
 		}
 		
 	}

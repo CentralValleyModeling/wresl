@@ -886,11 +886,14 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         Alias asVar = INSTANCE.currentModelDataSet.asMap.get(varName);
         if (asVar != null) {
             // Retrieve timestep offset and make sure it is an integer number
-            IntDouble temp = visit(ctx.timestepOffset().expression());
-            if (!temp.isInt()) {
-                throw new EvaluationErrorException("Timeseries index for ALIAS" + varName + " must be an integer value.");
+            int timeOffset = 0;
+            if (ctx.timestepOffset() != null) {
+                IntDouble temp = visit(ctx.timestepOffset().expression());
+                if (!temp.isInt()) {
+                    throw new EvaluationErrorException("Timeseries index for ALIAS" + varName + " must be an integer value.");
+                }
+                timeOffset = temp.getValue().intValue();
             }
-            int timeOffset = temp.getValue().intValue();
             String timeStep = currentModelDataSet.getTimeStep();
             ParallelVars prvs = TimeOperations.findTime(timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
 
@@ -908,15 +911,37 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
             // If made it this far, value was not found; generate error
             throw new EvaluationErrorException(asVar.fromWresl, asVar.line, "Was not able to retrieve data for ALIAS " + asVar.name + " for the provided time index.");
-
         }
 
         // This is a DVAR
         Dvar dvar = INSTANCE.currentModelDataSet.getDvar(varName);
         if (dvar != null) {
-            IntDouble data = new IntDouble();
-            data.setArgName(dvar.getName());
-            data.setIsInteger(false);
+            // Retrieve timestep offset and make sure it is an integer number
+            int timeOffset = 0;
+            if (ctx.timestepOffset() != null) {
+                IntDouble temp = visit(ctx.timestepOffset().expression());
+                if (!temp.isInt()) {
+                    throw new EvaluationErrorException("Timeseries index for ALIAS" + varName + " must be an integer value.");
+                }
+                timeOffset = temp.getValue().intValue();
+            }
+            String timeStep = currentModelDataSet.getTimeStep();
+            ParallelVars prvs = TimeOperations.findTime(timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+
+            // Retrieve data from Dvar
+            IntDouble value;
+            value = dvar.retrieveDataForTime(prvs);
+            if (value != null) { return value; }
+
+            // If made it this far, dvar did not extend back in time; try to retrieve from initial data
+            dvar.setDssBPart(dvar.name);
+            dvar.setTimeStep(INSTANCE.currentModelDataSet.getTimeStep());
+            dvar.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+            value = dvar.retrieveDataForTime(prvs);
+            if (value != null ) { return value; }
+
+            // If made it this far, value was not found; generate error
+            throw new EvaluationErrorException(dvar.fromWresl, asVar.line, "Was not able to retrieve data for DVAR " + dvar.name + " for the provided time index.");
         }
 
         // If made it this far, variable was not found; generate error
@@ -1481,9 +1506,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 }
             }
 
-            // Shift right data to left
-
-
             // Return compiled GOAL data
             return this.constraintLeft;
         }
@@ -1505,6 +1527,20 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 if (localRight != null) {
                     // Shift right constant to left
                     this.constraintLeft.getConstant().subtract(localRight);
+                // Left is multiplier/constant format, right is multiplier/constant format
+                } else {
+                    this.constraintLeft.subtract(this.constraintRight);
+                }
+
+            } else {
+                // Left is a constant and right is a constant
+                if (localRight != null) {
+                    this.constraintLeft.getConstant().add(localLeft);
+                    this.constraintLeft.getConstant().subtract(localRight);
+                // Left is a constant and right is multiplier/constant format
+                } else {
+                    this.constraintLeft.getConstant().add(localLeft);
+                    this.constraintLeft.subtract(this.constraintRight);
                 }
             }
 
@@ -1631,9 +1667,9 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                     // If left operand is DVAR and right operand is a value, do nothing for DVAR and add value as a constant
                     } else {
                         if (this.isProcessingLeft) {
-                            this.constraintLeft.addConstant(leftOp);
+                            this.constraintLeft.sumConstant(leftOp);
                         } else {
-                            this.constraintRight.addConstant(leftOp);
+                            this.constraintRight.sumConstant(leftOp);
                         }
                         return null;
                     }
@@ -1641,18 +1677,18 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                     // Left operand is a value and right operand is a DVAR, do nothing for DVAR and add value as a constant
                     if (isRightOpDvar) {
                         if (this.isProcessingLeft) {
-                            this.constraintLeft.addConstant(leftOp);
+                            this.constraintLeft.sumConstant(leftOp);
                         } else {
-                            this.constraintRight.addConstant(leftOp);
+                            this.constraintRight.sumConstant(leftOp);
                         }
                         return null;
                     // Both left and right operands are values; combine them ad add them as constnat
                     } else {
                         leftOp.add(rightOp);
                         if (this.isProcessingLeft) {
-                            this.constraintLeft.addConstant(leftOp);
+                            this.constraintLeft.sumConstant(leftOp);
                         } else {
-                            this.constraintRight.addConstant(leftOp);
+                            this.constraintRight.sumConstant(leftOp);
                         }
                         return null;
                     }
@@ -1677,9 +1713,9 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                     } else {
                         leftOp.multiply(minusOne);
                         if (this.isProcessingLeft) {
-                            this.constraintLeft.addConstant(leftOp);
+                            this.constraintLeft.sumConstant(leftOp);
                         } else {
-                            this.constraintRight.addConstant(leftOp);
+                            this.constraintRight.sumConstant(leftOp);
                         }
                         return null;
                     }
@@ -1689,20 +1725,20 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                         if (this.isProcessingLeft) {
                             multiplier = this.constraintLeft.getMultiplier(leftOpArgName);
                             multiplier.multiply(minusOne);
-                            this.constraintLeft.addConstant(leftOp);
+                            this.constraintLeft.sumConstant(leftOp);
                         } else {
                             multiplier = this.constraintRight.getMultiplier(leftOpArgName);
                             multiplier.multiply(minusOne);
-                            this.constraintRight.addConstant(leftOp);
+                            this.constraintRight.sumConstant(leftOp);
                         }
                         return null;
                     // Both left and right operands are values; combine them and add them as constant
                     } else {
                         leftOp.subtract(rightOp);
                         if (this.isProcessingLeft) {
-                            this.constraintLeft.addConstant(leftOp);
+                            this.constraintLeft.sumConstant(leftOp);
                         } else {
-                            this.constraintRight.addConstant(leftOp);
+                            this.constraintRight.sumConstant(leftOp);
                         }
                         return null;
                     }
@@ -1714,12 +1750,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         // expressionReference
         public IntDouble visitExpressionReference(wreslParser.ExpressionReferenceContext ctx) {
             return visit(ctx.variableReference());
-        }
-
-        @Override
-        // cfstafReference
-        public IntDouble visitCfstafReference(wreslParser.CfstafReferenceContext ctx) {
-            return INSTANCE.visit(ctx);
         }
 
         @Override

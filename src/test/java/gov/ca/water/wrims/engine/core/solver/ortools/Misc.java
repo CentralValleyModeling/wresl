@@ -89,7 +89,7 @@ public class Misc {
 		dvarMap.put(multName, dvar);
 	}
 	
-	protected static void assignDvar(LinkedHashMap<String, Double> solution){
+	protected static void assignDvar(LinkedHashMap<String, Double> solution, StudyDataSet sds, int modelIndex){
 		Map<String, Map<String, IntDouble>> varCycleValueMap=ControlData.currStudyDataSet.getVarCycleValueMap();
 		Map<String, Map<String, IntDouble>> varTimeArrayCycleValueMap=ControlData.currStudyDataSet.getVarTimeArrayCycleValueMap();
 		Set<String> dvarUsedByLaterCycle = ControlData.currModelDataSet.dvarUsedByLaterCycle;
@@ -97,7 +97,6 @@ public class Misc {
 		List<String> timeArrayDvList = ControlData.currModelDataSet.timeArrayDvList;
 		String model=ControlData.currCycleName;
 		
-		StudyDataSet sds = ControlData.currStudyDataSet;
 		List<String> varCycleIndexList = sds.getVarCycleIndexList();
 		List<String> dvarTimeArrayCycleIndexList = sds.getDvarTimeArrayCycleIndexList();
 		Map<String, Map<String, IntDouble>> varCycleIndexValueMap = sds.getVarCycleIndexValueMap();
@@ -108,11 +107,9 @@ public class Misc {
 			
 		while(dvarIterator.hasNext()){ 
 			String dvName=(String)dvarIterator.next();
-			Dvar dvar=dvarMap.get(dvName);
-			//double value=ControlData.xasolver.getColumnActivity(dvName);
 			double value=solution.get(dvName);
 			IntDouble id=new IntDouble(value,false);
-			dvar.addData(id);
+			sds.assignDvarValue(dvName, id, modelIndex);
 			if(dvarUsedByLaterCycle.contains(dvName)){
 				varCycleValueMap.get(dvName).put(model, id);
 			}else if (dvarTimeArrayUsedByLaterCycle.contains(dvName)){
@@ -132,12 +129,6 @@ public class Misc {
 					cycleValue.put(model, id);
 					varCycleIndexValueMap.put(dvName, cycleValue);
 				}
-			}
-			String entryNameTS= DssOperations.entryNameTS(dvName, ControlData.timeStep);
-			DataTimeSeries.saveDataToTimeSeries(dvName, entryNameTS, value, dvar);
-			if (timeArrayDvList.contains(dvName)){
-				entryNameTS=DssOperations.entryNameTS(dvName+"__fut__0", ControlData.timeStep);
-				DataTimeSeries.saveDataToTimeSeries(entryNameTS, value, dvar, 0);
 			}
 		}
 		

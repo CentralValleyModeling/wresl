@@ -47,7 +47,7 @@ public class Clp0Solver {
 		  
 	}
 	
-	public static void solve(){
+	public static void solve(StudyDataSet sds, int modelIndex){
 	    		
 		// call clp to solve
 		
@@ -96,7 +96,7 @@ public class Clp0Solver {
 		  if (Error.error_solving.size()==0) {
 			  ControlData.clp_cbc_objective = FilePassingUtils.objective_value;
 			  collectDvar();
-		      assignDvar();				  
+		      assignDvar(sds, modelIndex);
 		  }	
 	    	
 	    }
@@ -140,7 +140,7 @@ public class Clp0Solver {
 	}
 	
 	
-	private static void assignDvar() {
+	private static void assignDvar(StudyDataSet sds, int modelIndex) {
 		Map<String, Map<String, IntDouble>> varCycleValueMap=ControlData.currStudyDataSet.getVarCycleValueMap();
 		Map<String, Map<String, IntDouble>> varTimeArrayCycleValueMap=ControlData.currStudyDataSet.getVarTimeArrayCycleValueMap();
 		Set<String> dvarUsedByLaterCycle = ControlData.currModelDataSet.dvarUsedByLaterCycle;
@@ -148,7 +148,6 @@ public class Clp0Solver {
 		List<String> timeArrayDvList = ControlData.currModelDataSet.timeArrayDvList;
 		String model=ControlData.currCycleName;
 		
-		StudyDataSet sds = ControlData.currStudyDataSet;
 		List<String> varCycleIndexList = sds.getVarCycleIndexList();
 		List<String> dvarTimeArrayCycleIndexList = sds.getDvarTimeArrayCycleIndexList();
 		Map<String, Map<String, IntDouble>> varCycleIndexValueMap = sds.getVarCycleIndexValueMap();
@@ -159,8 +158,7 @@ public class Clp0Solver {
 			
 		while(dvarIterator.hasNext()){ 
 			String dvName=(String)dvarIterator.next();
-			Dvar dvar=dvarMap.get(dvName);
-			
+
 			double value = -77777777;
 			try {
 				if ( varDoubleMap.keySet().contains(dvName) ) {
@@ -176,7 +174,7 @@ public class Clp0Solver {
 				
 			}
 			IntDouble id=new IntDouble(value,false);
-			dvar.addData(id);
+			sds.assignDvarValue(dvName, id, modelIndex);
 			if(dvarUsedByLaterCycle.contains(dvName)){
 				varCycleValueMap.get(dvName).put(model, id);
 			}else if (dvarTimeArrayUsedByLaterCycle.contains(dvName)){
@@ -196,12 +194,6 @@ public class Clp0Solver {
 					cycleValue.put(model, id);
 					varCycleIndexValueMap.put(dvName, cycleValue);
 				}
-			}
-			String entryNameTS=DssOperations.entryNameTS(dvName, ControlData.timeStep);
-			DataTimeSeries.saveDataToTimeSeries(dvName, entryNameTS, value, dvar);
-			if (timeArrayDvList.contains(dvName)){
-				entryNameTS= DssOperations.entryNameTS(dvName+"__fut__0", ControlData.timeStep);
-				DataTimeSeries.saveDataToTimeSeries(entryNameTS, value, dvar, 0);
 			}
 		}
 		

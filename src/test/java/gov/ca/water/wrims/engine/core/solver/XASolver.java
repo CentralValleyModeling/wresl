@@ -29,7 +29,7 @@ public class XASolver {
 	private int lastEqualityConstraintCount = 0;
 	private int lastInequalityConstraintCount = 0;
 
-	public XASolver(){
+	public XASolver(StudyDataSet sds, int modelIndex){
 		long t1 = Calendar.getInstance().getTimeInMillis();
 		long tLoadModel = 0L;
 		long tSetConstraints = 0L;
@@ -117,7 +117,7 @@ public class XASolver {
 		if (Error.error_solving.size()<1) {
 			LOG.atDebug().setMessage("Assigning XA variable values to data structures").log();
 			s = Calendar.getInstance().getTimeInMillis();
-			assignDvar();
+			assignDvar(sds, modelIndex);
 			tAssign = Calendar.getInstance().getTimeInMillis() - s;
 			assignDone = true;
 			LOG.atDebug().setMessage("XA variable assignment complete: total {} variables assigned").addArgument(assignedDvarCount).log();
@@ -305,7 +305,7 @@ public class XASolver {
 		lastSetConstraintsMs = Calendar.getInstance().getTimeInMillis() - s;
 	}
 
-	public void assignDvar(){
+	public void assignDvar(StudyDataSet sds, int modelIndex){
 		if (ControlData.showRunTimeMessage) LOG.atDebug().setMessage("XA Solver: Assigning dvars' values").log();
 
 		Map<String, Map<String, IntDouble>> varCycleValueMap=ControlData.currStudyDataSet.getVarCycleValueMap();
@@ -315,7 +315,6 @@ public class XASolver {
 		List<String> timeArrayDvList = ControlData.currModelDataSet.timeArrayDvList;
 		String model=ControlData.currCycleName;
 
-		StudyDataSet sds = ControlData.currStudyDataSet;
 		List<String> varCycleIndexList = sds.getVarCycleIndexList();
 		List<String> dvarTimeArrayCycleIndexList = sds.getDvarTimeArrayCycleIndexList();
 		Map<String, Map<String, IntDouble>> varCycleIndexValueMap = sds.getVarCycleIndexValueMap();
@@ -327,10 +326,9 @@ public class XASolver {
 		assignedDvarCount = 0;
 		while(dvarIterator.hasNext()){
 			String dvName=(String)dvarIterator.next();
-			Dvar dvar=dvarMap.get(dvName);
 			double value=ControlData.xasolver.getColumnActivity(dvName);
 			IntDouble id=new IntDouble(value,false);
-			dvar.addData(id);
+			sds.assignDvarValue(dvName, id, modelIndex);
 			if(dvarUsedByLaterCycle.contains(dvName)){
 				varCycleValueMap.get(dvName).put(model, id);
 			}else if (dvarTimeArrayUsedByLaterCycle.contains(dvName)){
@@ -350,12 +348,6 @@ public class XASolver {
 					cycleValue.put(model, id);
 					varCycleIndexValueMap.put(dvName, cycleValue);
 				}
-			}
-			String entryNameTS=DssOperations.entryNameTS(dvName, ControlData.timeStep);
-			DataTimeSeries.saveDataToTimeSeries(dvName, entryNameTS, value, dvar);
-			if (timeArrayDvList.contains(dvName)){
-				entryNameTS= DssOperations.entryNameTS(dvName+"__fut__0", ControlData.timeStep);
-				DataTimeSeries.saveDataToTimeSeries(entryNameTS, value, dvar, 0);
 			}
 			assignedDvarCount++;
 		}

@@ -35,8 +35,8 @@ public class EvalConstraint {
         }
     }
 
-    // Add constant
-    public void addConstant(IntDouble data) {
+    // Add a constant to existing constant
+    public void sumConstant(IntDouble data) {
         this.constant.add(data);
     }
 
@@ -63,4 +63,20 @@ public class EvalConstraint {
         if (this.multipliers.size() == 0) { return true; }
         return false;
     }
+
+    // Subtract one EvalConstraint from another
+    public void subtract(EvalConstraint ec) {
+        this.constant.subtract(ec.constant);
+        IntDouble minusOne = new IntDouble(-1.0, false);
+        ec.multipliers.forEach((key, value) -> {
+            value.multiply(minusOne);
+            IntDouble multiplier = this.multipliers.get(key);
+            if (multiplier == null) {
+                this.multipliers.put(key, value);
+            } else {
+                multiplier.add(value);
+            }
+        });
+    }
+
 }

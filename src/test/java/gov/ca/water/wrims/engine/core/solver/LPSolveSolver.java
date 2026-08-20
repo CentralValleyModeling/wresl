@@ -63,7 +63,7 @@ public class LPSolveSolver {
  
 	}
 	
-	public static void solve(){
+	public static void solve(StudyDataSet sds, int modelIndex){
 	    	
 			  int i = 1;
 			  int modelStatus = -777;
@@ -101,7 +101,7 @@ public class LPSolveSolver {
 				  if (Error.error_solving.size()==0) {
 					  ControlData.lpsolve_objective = solver.getObjective(); // for other processes
 					  collectDvar();
-				      assignDvar();				  
+				      assignDvar(sds, modelIndex);
 				  }	
 				  
 			      // delete the problem and free memory
@@ -165,7 +165,7 @@ public class LPSolveSolver {
 	
 	}
 	
-	private static void assignDvar() throws LpSolveException{
+	private static void assignDvar(StudyDataSet sds, int modelIndex) throws LpSolveException{
 		Map<String, Map<String, IntDouble>> varCycleValueMap=ControlData.currStudyDataSet.getVarCycleValueMap();
 		Map<String, Map<String, IntDouble>> varTimeArrayCycleValueMap=ControlData.currStudyDataSet.getVarTimeArrayCycleValueMap();
 		Set<String> dvarUsedByLaterCycle = ControlData.currModelDataSet.dvarUsedByLaterCycle;
@@ -173,7 +173,6 @@ public class LPSolveSolver {
 		List<String> timeArrayDvList = ControlData.currModelDataSet.timeArrayDvList;
 		String model=ControlData.currCycleName;
 		
-		StudyDataSet sds = ControlData.currStudyDataSet;
 		List<String> varCycleIndexList = sds.getVarCycleIndexList();
 		List<String> dvarTimeArrayCycleIndexList = sds.getDvarTimeArrayCycleIndexList();
 		Map<String, Map<String, IntDouble>> varCycleIndexValueMap = sds.getVarCycleIndexValueMap();
@@ -201,7 +200,7 @@ public class LPSolveSolver {
 				}
 			}
 			IntDouble id=new IntDouble(value,false);
-			dvar.addData(id);
+			sds.assignDvarValue(dvName, id, modelIndex);
 			if(dvarUsedByLaterCycle.contains(dvName)){
 				varCycleValueMap.get(dvName).put(model, id);
 			}else if (dvarTimeArrayUsedByLaterCycle.contains(dvName)){
@@ -222,12 +221,6 @@ public class LPSolveSolver {
 					varCycleIndexValueMap.put(dvName, cycleValue);
 				}
 			}
-			String entryNameTS=DssOperations.entryNameTS(dvName, ControlData.timeStep);
-			DataTimeSeries.saveDataToTimeSeries(dvName, entryNameTS, value, dvar);
-			if (timeArrayDvList.contains(dvName)){
-				entryNameTS= DssOperations.entryNameTS(dvName+"__fut__0", ControlData.timeStep);
-				DataTimeSeries.saveDataToTimeSeries(entryNameTS, value, dvar, 0);
-			}
 		}
 		
 		if (ControlData.showRunTimeMessage) {
@@ -235,6 +228,7 @@ public class LPSolveSolver {
 			System.out.println("Assign Dvar Done.");
 		}
 	}
+
 	public static void addConditionalSlackSurplusToDvarMap(Map<String, Dvar> dvarMap, String multName){
 		Dvar dvar=new Dvar();
 		dvar.upperBoundValue=1.0e23;

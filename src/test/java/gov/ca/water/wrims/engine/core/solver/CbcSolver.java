@@ -285,7 +285,7 @@ public class CbcSolver {
         performanceStats.logSummary();
     }
 
-    public static void newProblem() {
+    public static void newProblem(StudyDataSet sds, int modelIndex) {
         logger.atDebug().setMessage("==================== New Problem Solving Session ====================").log();
         long totalStartTime = System.currentTimeMillis();
 
@@ -502,7 +502,7 @@ public class CbcSolver {
             logger.atDebug().setMessage("Assigning variable values to data structures").log();
             PerformanceTimer assignTimer = new PerformanceTimer("Variable Assignment");
 
-            if (!ControlData.cbc_debug_routeXA) {assignDvar();}
+            if (!ControlData.cbc_debug_routeXA) {assignDvar(sds, modelIndex);}
 
             assignTimer.stop();
         }
@@ -2023,7 +2023,7 @@ logger.atTrace().setMessage("Integer variable (2021): name={}, value={} (rounded
 
 	}
 
-	private static void assignDvar() {
+	private static void assignDvar(StudyDataSet sds, int modelIndex) {
         PerformanceTimer timer = new PerformanceTimerCbc("Variable Assignment");
 
         logger.atInfo().setMessage("CBC Solver: Assigning variable values...").log();
@@ -2035,7 +2035,6 @@ logger.atTrace().setMessage("Integer variable (2021): name={}, value={} (rounded
 		List<String> timeArrayDvList = ControlData.currModelDataSet.timeArrayDvList;
 		String modelName=ControlData.currCycleName;
 
-		StudyDataSet sds = ControlData.currStudyDataSet;
 		List<String> varCycleIndexList = sds.getVarCycleIndexList();
 		List<String> dvarTimeArrayCycleIndexList = sds.getDvarTimeArrayCycleIndexList();
 		Map<String, Map<String, IntDouble>> varCycleIndexValueMap = sds.getVarCycleIndexValueMap();
@@ -2087,17 +2086,16 @@ logger.atTrace().setMessage("Integer variable (2021): name={}, value={} (rounded
         int assignedCount = 0;
         //TODO: weird bug. need to fix
 		for (String dvName: varDoubleMap.keySet()) {
-			Dvar dvar=dvarMap.get(dvName);
 			double value=varDoubleMap.get(dvName);
 			IntDouble id=new IntDouble(value,false);
 
 			//TODO: weird bug. need to fix
 			try {
-				dvar.addData(id);
+                sds.assignDvarValue(dvName, id, modelIndex);
                 assignedCount++;
             } catch (Exception e) {
                 logger.atWarn().setMessage("CBC assignDvar fallback: creating new variable for {}").addArgument(dvName).setCause(e).log();
-				dvar=new Dvar();
+				Dvar dvar=new Dvar();
 				dvar.upperBoundValue = maxValue;
 				dvar.lowerBoundValue = 0.0;
 				dvar.addData(id);
@@ -2125,12 +2123,6 @@ logger.atTrace().setMessage("Integer variable (2021): name={}, value={} (rounded
 					varCycleIndexValueMap.put(dvName, cycleValue);
 				}
 			}
-			String entryNameTS=DssOperations.entryNameTS(dvName, ControlData.timeStep);
-			DataTimeSeries.saveDataToTimeSeries(dvName, entryNameTS, value, dvar);
-			if (timeArrayDvList.contains(dvName)){
-				entryNameTS=DssOperations.entryNameTS(dvName+"__fut__0", ControlData.timeStep);
-				DataTimeSeries.saveDataToTimeSeries(entryNameTS, value, dvar, 0);
-			}
 		}
 
         if (assignedCount % 1000 == 0) {
@@ -2142,7 +2134,8 @@ logger.atTrace().setMessage("Integer variable (2021): name={}, value={} (rounded
 
         logger.atInfo().setMessage("Objective Value: {}").addArgument(ControlData.clp_cbc_objective).log();
         logger.atInfo().setMessage("Variable assignment completed.").log();
-}
+    }
+
 	public static void addConditionalSlackSurplusToDvarMap(Map<String, Dvar> dvarMap, String dvName, boolean isNoteCbc, String append){
 
         logger.atTrace().setMessage("Adding slack/surplus variable to variable map: name={}").addArgument(dvName).log();

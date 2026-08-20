@@ -46,6 +46,8 @@ public class Timeseries extends WRESLComponent implements Serializable {
 
     public void setName(String name) { this.name = name; }
 
+    public void setStartTime(Date startTime) { this.startTime = startTime; }
+
 
     // --------------------
     // --- GETTERS

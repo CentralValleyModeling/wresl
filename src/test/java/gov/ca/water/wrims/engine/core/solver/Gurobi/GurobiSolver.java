@@ -21,12 +21,12 @@ public class GurobiSolver {
     int modelStatus;
     Map<String, GRBVar> varMap = new HashMap<String, GRBVar>();
 
-    public GurobiSolver() throws GRBException {
+    public GurobiSolver(StudyDataSet sds, int modelIndex) throws GRBException {
 
         setDVars();
         setConstraints();
         model.optimize();
-        assignDvar();
+        assignDvar(sds, modelIndex);
         Output();
 
     }
@@ -71,7 +71,7 @@ public class GurobiSolver {
 
     }
 
-    public static void solve() {
+    public static void solve(StudyDataSet sds, int modelIndex) {
 
         LpResult result = new LpResult();
 
@@ -108,7 +108,7 @@ public class GurobiSolver {
 
                 ControlData.gurobi_objective = objval;
                 collectDvar(result);
-                assignDvar();
+                assignDvar(sds, modelIndex);
 
             } else if (optimstatus == GRB.Status.INFEASIBLE) {
 
@@ -136,7 +136,7 @@ public class GurobiSolver {
         //return result;
     }
 
-    public static void assignDvar() {
+    public static void assignDvar(StudyDataSet sds, int modelIndex) {
         Map<String, Map<String, IntDouble>> varCycleValueMap = ControlData.currStudyDataSet.getVarCycleValueMap();
         Map<String, Map<String, IntDouble>> varTimeArrayCycleValueMap = ControlData.currStudyDataSet.getVarTimeArrayCycleValueMap();
         Set<String> dvarUsedByLaterCycle = ControlData.currModelDataSet.dvarUsedByLaterCycle;
@@ -144,7 +144,6 @@ public class GurobiSolver {
         List<String> timeArrayDvList = ControlData.currModelDataSet.timeArrayDvList;
         String model = ControlData.currCycleName;
 
-        StudyDataSet sds = ControlData.currStudyDataSet;
         List<String> varCycleIndexList = sds.getVarCycleIndexList();
         List<String> dvarTimeArrayCycleIndexList = sds.getDvarTimeArrayCycleIndexList();
         Map<String, Map<String, IntDouble>> varCycleIndexValueMap = sds.getVarCycleIndexValueMap();
@@ -172,7 +171,7 @@ public class GurobiSolver {
                 }
             }
             IntDouble id = new IntDouble(value, false);
-            dvar.addData(id);
+            sds.assignDvarValue(dvName, id, modelIndex);
             if (dvarUsedByLaterCycle.contains(dvName)) {
                 varCycleValueMap.get(dvName).put(model, id);
             } else if (dvarTimeArrayUsedByLaterCycle.contains(dvName)) {
@@ -192,12 +191,6 @@ public class GurobiSolver {
                     cycleValue.put(model, id);
                     varCycleIndexValueMap.put(dvName, cycleValue);
                 }
-            }
-            String entryNameTS = DssOperations.entryNameTS(dvName, ControlData.timeStep);
-            DataTimeSeries.saveDataToTimeSeries(dvName, entryNameTS, value, dvar);
-            if (timeArrayDvList.contains(dvName)) {
-                entryNameTS = DssOperations.entryNameTS(dvName + "__fut__0", ControlData.timeStep);
-                DataTimeSeries.saveDataToTimeSeries(entryNameTS, value, dvar, 0);
             }
         }
 

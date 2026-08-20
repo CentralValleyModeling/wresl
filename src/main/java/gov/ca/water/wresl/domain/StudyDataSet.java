@@ -361,17 +361,27 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     }
 
     // Initialize ALIAS data by setting their start date to the begining of the model simulation date
-    public void initialAlias(int startYear, int startMonth, int startDay) {
+    public void initialDvarAlias(int startYear, int startMonth, int startDay) {
         // Compute start time
         Date startTime = new Date(startYear-1900, startMonth-1, startDay);
 
         // Loop through models
         for (ModelDataSet mds : this.modelDataSetMap.values()) {
+            // Loop through Dvars
+            for (Dvar dvar : mds.getDvMap().values()) {
+                dvar.setStartTime(startTime);
+            }
+
             // Loop through Aliases
             for (Alias as : mds.asMap.values()) {
                 as.setStartTime(startTime);
             }
         }
+    }
+
+    // Add DVAR value to DVAR object in the specified model
+    public void assignDvarValue(String name, IntDouble data, int modelIndex) {
+        this.getModelDataSet(modelIndex).assignDvarValue(name, data);
     }
 
 

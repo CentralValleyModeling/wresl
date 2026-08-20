@@ -297,7 +297,7 @@ public class ControllerBatch {
                         // choose solver to solve. TODO: this is not efficient. need to be done outside ILP
                         if (ControlData.solverType == Param.SOLVER_LPSOLVE.intValue()) {
                             LPSolveSolver.setLP(ILP.lpSolveFilePath);
-                            LPSolveSolver.solve();
+                            LPSolveSolver.solve(sds, i);
                             if (Error.error_solving.size()<1) {
                                 if (ILP.logging)  {
                                     ILP.writeObjValue_LPSOLVE();
@@ -313,7 +313,7 @@ public class ControllerBatch {
                             Cbc0Solver.setLP(ILP.cplexLpFilePath);
 
                             // call cbc solve
-                            Cbc0Solver.solve();
+                            Cbc0Solver.solve(sds, i);
 
                             // check solving errors and put them in Error.error_solving
                             if (Error.error_solving.size()<1) {
@@ -337,7 +337,7 @@ public class ControllerBatch {
                             Clp0Solver.setLP(ILP.cplexLpFilePath);
 
                             // call clp solve
-                            Clp0Solver.solve();
+                            Clp0Solver.solve(sds, i);
 
                             // check solving errors and put them in Error.error_solving
                             if (Error.error_solving.size()<1) {
@@ -356,7 +356,7 @@ public class ControllerBatch {
 
                             if(!ControlData.useCplexLpString) ILP.closeCplexLpFile(); // prevent double-locked by both core and ilp
 
-                            CbcSolver.newProblem();
+                            CbcSolver.newProblem(sds, i);
 
                             // check solving errors and put them in Error.error_solving
                             if (Error.error_solving.size()<1) {
@@ -378,7 +378,7 @@ public class ControllerBatch {
                             ILP.closeCplexLpFile(); // prevent double-locked by both core and ilp
 
                             // send lp file path to clp
-                            ClpSolver.newProblem(ILP.cplexLpFilePath, true);
+                            ClpSolver.newProblem(ILP.cplexLpFilePath, true, sds, i);
 
                             // check solving errors and put them in Error.error_solving
                             if (Error.error_solving.size()<1) {
@@ -396,7 +396,7 @@ public class ControllerBatch {
 
                         } else {
 
-                            new XASolver();
+                            new XASolver(sds, i);
 
                             if (ILP.logging) {
                                 ILP.writeObjValue_XA();

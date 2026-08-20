@@ -21,9 +21,4 @@ public class Alias extends Timeseries implements Serializable {
     public String timeArraySize = Param.zero;
     public ParseTree timeArraySizeParseTree = null;
 
-    // ------------------------------------------------------------
-    // --- SETTERS
-    // ------------------------------------------------------------
-    public void setStartTime(Date startTime) { this.startTime = startTime; }
-
 }
