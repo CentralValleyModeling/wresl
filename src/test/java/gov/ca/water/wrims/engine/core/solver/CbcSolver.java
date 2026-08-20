@@ -2056,24 +2056,24 @@ logger.atTrace().setMessage("Integer variable (2021): name={}, value={} (rounded
             }
 			varDoubleMap.put(dvName, value);
 			IntDouble id = new IntDouble(value, false);
-			dvar.setData(id);
+			dvar.addData(id);
 			if(dvarUsedByLaterCycle.contains(dvName)){
 				varCycleValueMap.get(dvName).put(modelName, id);
 			}else if (dvarTimeArrayUsedByLaterCycle.contains(dvName)){
 				if (varTimeArrayCycleValueMap.containsKey(dvName)){
-					varTimeArrayCycleValueMap.get(dvName).put(modelName, dvar.data);
+					varTimeArrayCycleValueMap.get(dvName).put(modelName, id);
 				}else{
 					Map<String, IntDouble> cycleValue = new HashMap<String, IntDouble>();
-					cycleValue.put(modelName, dvar.data);
+					cycleValue.put(modelName, id);
 					varTimeArrayCycleValueMap.put(dvName, cycleValue);
 				}
 			}
 			if (varCycleIndexList.contains(dvName) || dvarTimeArrayCycleIndexList.contains(dvName)){
 				if (varCycleIndexValueMap.containsKey(dvName)){
-					varCycleIndexValueMap.get(dvName).put(modelName, dvar.data);
+					varCycleIndexValueMap.get(dvName).put(modelName, id);
 				}else{
 					Map<String, IntDouble> cycleValue = new HashMap<String, IntDouble>();
-					cycleValue.put(modelName, dvar.data);
+					cycleValue.put(modelName, id);
 					varCycleIndexValueMap.put(dvName, cycleValue);
 				}
 			}
@@ -2093,14 +2093,14 @@ logger.atTrace().setMessage("Integer variable (2021): name={}, value={} (rounded
 
 			//TODO: weird bug. need to fix
 			try {
-				dvar.setData(id);
+				dvar.addData(id);
                 assignedCount++;
             } catch (Exception e) {
                 logger.atWarn().setMessage("CBC assignDvar fallback: creating new variable for {}").addArgument(dvName).setCause(e).log();
 				dvar=new Dvar();
 				dvar.upperBoundValue = maxValue;
 				dvar.lowerBoundValue = 0.0;
-				dvar.setData(id);
+				dvar.addData(id);
 				dvarMap.put(dvName, dvar);
                 assignedCount++;
             }
@@ -2109,19 +2109,19 @@ logger.atTrace().setMessage("Integer variable (2021): name={}, value={} (rounded
 				varCycleValueMap.get(dvName).put(modelName, id);
 			}else if (dvarTimeArrayUsedByLaterCycle.contains(dvName)){
 				if (varTimeArrayCycleValueMap.containsKey(dvName)){
-					varTimeArrayCycleValueMap.get(dvName).put(modelName, dvar.data);
+					varTimeArrayCycleValueMap.get(dvName).put(modelName, id);
 				} else {
 					Map<String, IntDouble> cycleValue = new HashMap<String, IntDouble>();
-					cycleValue.put(modelName, dvar.data);
+					cycleValue.put(modelName, id);
 					varTimeArrayCycleValueMap.put(dvName, cycleValue);
 				}
 			}
 			if (varCycleIndexList.contains(dvName) || dvarTimeArrayCycleIndexList.contains(dvName)){
 				if (varCycleIndexValueMap.containsKey(dvName)){
-					varCycleIndexValueMap.get(dvName).put(modelName, dvar.data);
+					varCycleIndexValueMap.get(dvName).put(modelName, id);
 				} else {
 					Map<String, IntDouble> cycleValue = new HashMap<String, IntDouble>();
-					cycleValue.put(modelName, dvar.data);
+					cycleValue.put(modelName, id);
 					varCycleIndexValueMap.put(dvName, cycleValue);
 				}
 			}

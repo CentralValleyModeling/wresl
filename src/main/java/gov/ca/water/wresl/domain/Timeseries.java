@@ -28,7 +28,7 @@ public class Timeseries extends WRESLComponent implements Serializable {
     public Date startTime;
     public int studyStartIndex = -1;
 
-    public List<Double> data = new ArrayList<>();
+    public List<IntDouble> data = new ArrayList<>();
 
 
     // --------------------
@@ -44,10 +44,14 @@ public class Timeseries extends WRESLComponent implements Serializable {
 
     public void setTimeStep(String timeStep) { this.timeStep = timeStep;}
 
+    public void setName(String name) { this.name = name; }
+
 
     // --------------------
     // --- GETTERS
     // --------------------
+    public String getName() { return this.name; }
+
     public String getKind() {
         return this.kind;
     }
@@ -60,7 +64,7 @@ public class Timeseries extends WRESLComponent implements Serializable {
         return this.startTime;
     }
 
-    public List<Double> getData(){
+    public List<IntDouble> getData(){
         return this.data;
     }
 
@@ -149,7 +153,9 @@ public class Timeseries extends WRESLComponent implements Serializable {
         }
 
         // Store data in timeseries
-        this.data = dataArray;
+        for (Double data : dataArray) {
+            this.data.add(new IntDouble(data, false));
+        }
         this.startTime = new Date(tsStartYear-1900, tsStartMonth-1, tsStartDay);
         this.generateStudyStartIndex(studyStartYear, studyStartMonth, studyStartDay);
 
@@ -210,7 +216,9 @@ public class Timeseries extends WRESLComponent implements Serializable {
         }
 
         // Store data in timeseries
-        this.data = dataArray;
+        for (Double data : dataArray) {
+            this.data.add(new IntDouble(data, false));
+        }
         this.startTime = tsStartDate;
         this.generateStudyStartIndex(studyStartYear, studyStartMonth, studyStartDay);
 
@@ -230,15 +238,15 @@ public class Timeseries extends WRESLComponent implements Serializable {
     }
 
     // Retrieve data for a time
-    public Double retrieveDataForTime(ParallelVars prvs) {
+    public IntDouble retrieveDataForTime(ParallelVars prvs) {
         int index = timeSeriesIndex(prvs, this.startTime, this.timeStep);
         if (index >= 0) {
             if (index < this.data.size()) {
-                Double value = null;
-                value = this.data.get(index);
+                IntDouble value = this.data.get(index);
                 if (value == null) { return null; }
-                if (value.doubleValue() == -901.0) { return null; }
-                if (value.doubleValue() == -902.0) { return null; }
+                Double doubleValue = value.getValue().doubleValue();
+                if (doubleValue == -901.0) { return null; }
+                if (doubleValue == -902.0) { return null; }
                 return value;
             }
         }
@@ -265,6 +273,7 @@ public class Timeseries extends WRESLComponent implements Serializable {
         }
     }
 
+    // Retrieve index of a data given current date and the starting date of the timeseries data
     private int timeSeriesIndex(ParallelVars prvs, Date tsStartTime, String timeStep) {
         int sYear = tsStartTime.getYear() + 1900;
         int sMonth = tsStartTime.getMonth() + 1; //HEC DSS7 uses getMonth()+1. However, Vista/HecDSS6 uses getMonth()bbecause dss data store at 24:00 Jan31, 1921 is considered to store at 0:00 Feb 1, 1921
@@ -282,6 +291,11 @@ public class Timeseries extends WRESLComponent implements Serializable {
         }
 
         return index;
+    }
+
+    // Add data
+    public void addData(IntDouble data){
+        this.data.add(data);
     }
 }
 

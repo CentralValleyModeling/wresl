@@ -17,7 +17,7 @@ public class ErrorCheck {
 		
 		for (String x : deviationSS_toleranceMap.keySet()){
 			
-			double v = (Double) dvMap.get(x).getData().getValue();
+			double v = dvMap.get(x).getLastData().getValue().doubleValue();
 			
 			if (v > deviationSS_toleranceMap.get(x)) {
 				

@@ -395,7 +395,7 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
                 ctu=ts.convertToUnits;
             }
             Timeseries dds=this.svTimeseriesMap.get(svTsName);
-            List<Double> values=dds.getData();
+            List<IntDouble> values=dds.getData();
             TimeSeriesContainer dc = new TimeSeriesContainer();
             dc.type="PER-AVER";
             int size=values.size();
@@ -415,7 +415,7 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
             //long startJulmin = TimeFactory.getInstance().createTime(startDateStr).getTimeInMinutes();
             if (units.equals("taf") && ctu.equals("cfs")) {
                 for (int i=0; i<size; i++){
-                    Double value=values.get(i);
+                    Double value=values.get(i).getValue().doubleValue();
                     if (value == null) {
                         dc.values[i]=-901.0;
                     } else {
@@ -429,7 +429,7 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
                 }
             } else if (units.equals("cfs") && ctu.equals("taf")) {
                 for (int i=0; i<size; i++){
-                    Double value=values.get(i);
+                    Double value=values.get(i).getValue().doubleValue();
                     if (value == null){
                         dc.values[i]=-901.0;
                     }else{
@@ -443,7 +443,7 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
                 }
             }else{
                 for (int i=0; i<size; i++){
-                    Double value=values.get(i);
+                    Double value=values.get(i).getValue().doubleValue();
                     dc.values[i]=value;
                 }
             }
@@ -514,11 +514,11 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
                     String unitsName=formUnitsName(dds.getUnits());
                     String variableName=formVariableName(nameUp);
                     String kindName=formKindName(origKindName);
-                    List<Double> data = dds.getData();
+                    List<IntDouble> data = dds.getData();
                     if (timestep.equals("1DAY")){
                         if (!isSimOutput) date= TimeOperations.backOneDay(date);
                         for (int i=0; i<data.size(); i++){
-                            double value = data.get(i);
+                            double value = data.get(i).getValue().doubleValue();
                             if (value != -901.0 && value !=-902.0){
                                 line = scenarioIndex+","+partA+","+partF+",1DAY,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+ value +"\n";
                                 bw.write(line);
@@ -533,7 +533,7 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
                     }else{
                         if (!isSimOutput) date= TimeOperations.backOneMonth(date);
                         for (int i=0; i<data.size(); i++){
-                            double value = data.get(i);
+                            double value = data.get(i).getValue().doubleValue();
                             if (value != -901.0 && value !=-902.0){
                                 line = scenarioIndex+","+partA+","+partF+",1MON,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+ value +"\n";
                                 bw.write(line);
@@ -573,11 +573,11 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
                     Date date = dds.getStartTime();
                     String variableName=formVariableName(nameUp);
                     String kindName=formKindName(origKindName);
-                    List<Double> data = dds.getData();
+                    List<IntDouble> data = dds.getData();
                     if (timestep.equals("1DAY")){
                         //date=TimeOperation.backOneDay(date);
                         for (int i=0; i<data.size(); i++){
-                            double value = data.get(i);
+                            double value = data.get(i).getValue().doubleValue();
                             if (value != -901.0 && value !=-902.0){
                                 line = scenarioIndex+","+partA+","+partF+",1DAY,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+ convertValue(value, units, convertToUnits, date, timestep) +"\n";
                                 bw.write(line);
@@ -587,7 +587,7 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
                     }else{
                         //date=TimeOperation.backOneMonth(date);
                         for (int i=0; i<data.size(); i++){
-                            double value = data.get(i);
+                            double value = data.get(i).getValue().doubleValue();
                             if (value != -901.0 && value !=-902.0){
                                 line = scenarioIndex+","+partA+","+partF+",1MON,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+convertValue(value, units, convertToUnits, date, timestep)+"\n";
                                 bw.write(line);
@@ -624,11 +624,11 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
                             String convertToUnits=dds.getConvertToUnits();
                             String variableName=formVariableName(nameUp);
                             String kindName=formKindName(origKindName);
-                            List<Double> data = dds.getData();
+                            List<IntDouble> data = dds.getData();
                             if (timestep.equals("1DAY")){
                                 date= TimeOperations.backOneDay(date);
                                 for (int i=0; i<data.size(); i++){
-                                    double value = data.get(i);
+                                    double value = data.get(i).getValue().doubleValue();
                                     if (value != -901.0 && value !=-902.0){
                                         line = scenarioIndex+","+partA+","+partF+",1DAY,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+convertValue(value, units, convertToUnits, date, timestep)+"\n";
                                         bw.write(line);
@@ -638,7 +638,7 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
                             }else{
                                 date= TimeOperations.backOneMonth(date);
                                 for (int i=0; i<data.size(); i++){
-                                    double value = data.get(i);
+                                    double value = data.get(i).getValue().doubleValue();
                                     if (value != -901.0 && value !=-902.0){
                                         line = scenarioIndex+","+partA+","+partF+",1MON,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+convertValue(value, units, convertToUnits, date, timestep)+"\n";
                                         bw.write(line);
@@ -676,11 +676,11 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
                         String convertToUnits=dds.getConvertToUnits();
                         String variableName=formVariableName(nameUp);
                         String kindName=formKindName(origKindName);
-                        List<Double> data = dds.getData();
+                        List<IntDouble> data = dds.getData();
                         if (timestep.equals("1DAY")){
                             date= TimeOperations.backOneDay(date);
                             for (int i=0; i<data.size(); i++){
-                                double value = data.get(i);
+                                double value = data.get(i).getValue().doubleValue();
                                 if (value != -901.0 && value !=-902.0){
                                     line = scenarioIndex+","+partA+","+partF+",1DAY,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+convertValue(value, units, convertToUnits, date, timestep)+"\n";
                                     bw.write(line);
@@ -690,7 +690,7 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
                         }else{
                             date= TimeOperations.backOneMonth(date);
                             for (int i=0; i<data.size(); i++){
-                                double value = data.get(i);
+                                double value = data.get(i).getValue().doubleValue();
                                 if (value != -901.0 && value !=-902.0){
                                     line = scenarioIndex+","+partA+","+partF+",1MON,"+unitsName+","+formDateData(date)+","+variableName+","+kindName+","+convertValue(value, units, convertToUnits, date, timestep)+"\n";
                                     bw.write(line);

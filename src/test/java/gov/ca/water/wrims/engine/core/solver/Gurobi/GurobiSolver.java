@@ -166,30 +166,30 @@ public class GurobiSolver {
                 //System.out.println(" This dvName not found: "+ dvName);
                 //continue;
                 try {
-                    value = (Double) dvar.getData().getValue(); // use whatever is in the container.
+                    value = (Double) dvar.getLastData().getValue(); // use whatever is in the container.
                 } catch (Exception e2) {
                     value = -77777777; // TODO: if this value is used, then this is probably an error in the wresl code. need to give warning.
                 }
             }
             IntDouble id = new IntDouble(value, false);
-            dvar.setData(id);
+            dvar.addData(id);
             if (dvarUsedByLaterCycle.contains(dvName)) {
                 varCycleValueMap.get(dvName).put(model, id);
             } else if (dvarTimeArrayUsedByLaterCycle.contains(dvName)) {
                 if (varTimeArrayCycleValueMap.containsKey(dvName)) {
-                    varTimeArrayCycleValueMap.get(dvName).put(model, dvar.data);
+                    varTimeArrayCycleValueMap.get(dvName).put(model, id);
                 } else {
                     Map<String, IntDouble> cycleValue = new HashMap<String, IntDouble>();
-                    cycleValue.put(model, dvar.data);
+                    cycleValue.put(model, id);
                     varTimeArrayCycleValueMap.put(dvName, cycleValue);
                 }
             }
             if (varCycleIndexList.contains(dvName) || dvarTimeArrayCycleIndexList.contains(dvName)) {
                 if (varCycleIndexValueMap.containsKey(dvName)) {
-                    varCycleIndexValueMap.get(dvName).put(model, dvar.data);
+                    varCycleIndexValueMap.get(dvName).put(model, id);
                 } else {
                     Map<String, IntDouble> cycleValue = new HashMap<String, IntDouble>();
-                    cycleValue.put(model, dvar.data);
+                    cycleValue.put(model, id);
                     varCycleIndexValueMap.put(dvName, cycleValue);
                 }
             }
@@ -362,7 +362,7 @@ public class GurobiSolver {
         while (dvarIterator.hasNext()) {
             String dvName = (String) dvarIterator.next();
             Dvar dvar = dvarMap.get(dvName);
-            System.out.print(dvName + ": " + dvar.getData().getValue() + "\n");
+            System.out.print(dvName + ": " + dvar.getLastData().getValue() + "\n");
         }
 
         System.out.println("Obj: " + model.get(GRB.DoubleAttr.ObjVal));

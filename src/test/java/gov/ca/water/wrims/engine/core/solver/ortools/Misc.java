@@ -112,24 +112,24 @@ public class Misc {
 			//double value=ControlData.xasolver.getColumnActivity(dvName);
 			double value=solution.get(dvName);
 			IntDouble id=new IntDouble(value,false);
-			dvar.setData(id);
+			dvar.addData(id);
 			if(dvarUsedByLaterCycle.contains(dvName)){
 				varCycleValueMap.get(dvName).put(model, id);
 			}else if (dvarTimeArrayUsedByLaterCycle.contains(dvName)){
 				if (varTimeArrayCycleValueMap.containsKey(dvName)){
-					varTimeArrayCycleValueMap.get(dvName).put(model, dvar.data);
+					varTimeArrayCycleValueMap.get(dvName).put(model, id);
 				}else{
 					Map<String, IntDouble> cycleValue = new HashMap<String, IntDouble>();
-					cycleValue.put(model, dvar.data);
+					cycleValue.put(model, id);
 					varTimeArrayCycleValueMap.put(dvName, cycleValue);
 				}
 			}
 			if (varCycleIndexList.contains(dvName) || dvarTimeArrayCycleIndexList.contains(dvName)){
 				if (varCycleIndexValueMap.containsKey(dvName)){
-					varCycleIndexValueMap.get(dvName).put(model, dvar.data);
+					varCycleIndexValueMap.get(dvName).put(model, id);
 				}else{
 					Map<String, IntDouble> cycleValue = new HashMap<String, IntDouble>();
-					cycleValue.put(model, dvar.data);
+					cycleValue.put(model, id);
 					varCycleIndexValueMap.put(dvName, cycleValue);
 				}
 			}

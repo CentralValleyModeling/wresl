@@ -129,7 +129,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
             // Process alias at current time
             IntDouble data = INSTANCE.visit(as.expressionParseTree);
-            as.addData(data.getValue().doubleValue());
+            as.addData(data);
 
             // Process future-array alias
 
@@ -854,16 +854,16 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             ParallelVars prvs = TimeOperations.findTime(tsVar.timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
 
             // Retrieve data from Timeseries
-            Double value;
+            IntDouble value;
             value = tsVar.retrieveDataForTime(prvs);
-            if (value != null) { return new IntDouble(value.doubleValue(), false); }
+            if (value != null) { return value; }
 
             // If made it this far, timeseries did not extend back in time; try to retrieve from initial data
             Timeseries svInit = INSTANCE.sds.getSVInitTimeseries(tsName);
             if (svInit != null) {
                 value = svInit.retrieveDataForTime(prvs);
                 if (value != null) {
-                    return new IntDouble(value.doubleValue(), false);
+                    return value;
                 }
             }
 
@@ -874,7 +874,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 value = svInit.retrieveDataForTime(prvs);
                 if (value != null) {
                     INSTANCE.sds.addSVInitTimeseries(svInit);
-                    return new IntDouble(value.doubleValue(), false);
+                    return value;
                 }
             }
 
@@ -895,16 +895,16 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             ParallelVars prvs = TimeOperations.findTime(timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
 
             // Retrieve data from Alias
-            Double value;
+            IntDouble value;
             value = asVar.retrieveDataForTime(prvs);
-            if (value != null) { return new IntDouble(value.doubleValue(), false); }
+            if (value != null) { return value; }
 
             // If made it this far, alias did not extend back in time; try to retrieve from initial data
             asVar.setDssBPart(asVar.name);
             asVar.setTimeStep(INSTANCE.currentModelDataSet.getTimeStep());
             asVar.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
             value = asVar.retrieveDataForTime(prvs);
-            if (value != null ) { return new IntDouble(value.doubleValue(), false); }
+            if (value != null ) { return value; }
 
             // If made it this far, value was not found; generate error
             throw new EvaluationErrorException(asVar.fromWresl, asVar.line, "Was not able to retrieve data for ALIAS " + asVar.name + " for the provided time index.");
@@ -1764,10 +1764,10 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 ParallelVars prvs = TimeOperations.findTime(tsVar.timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
 
                 // Retrieve data from Timeseries
-                Double value;
+                IntDouble value;
                 value = tsVar.retrieveDataForTime(prvs);
                 if (value != null) {
-                    return new IntDouble(value.doubleValue(), false);
+                    return value;
                 }
 
                 // If made it this far, timeseries did not extend back in time; try to retrieve from initial data
@@ -1775,7 +1775,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 if (svInit != null) {
                     value = svInit.retrieveDataForTime(prvs);
                     if (value != null) {
-                        return new IntDouble(value.doubleValue(), false);
+                        return value;
                     }
                 }
 
@@ -1786,7 +1786,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                     value = svInit.retrieveDataForTime(prvs);
                     if (value != null) {
                         INSTANCE.sds.addSVInitTimeseries(svInit);
-                        return new IntDouble(value.doubleValue(), false);
+                        return value;
                     }
                 }
 
@@ -1807,10 +1807,10 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 ParallelVars prvs = TimeOperations.findTime(timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
 
                 // Retrieve data from Alias
-                Double value;
+                IntDouble value;
                 value = asVar.retrieveDataForTime(prvs);
                 if (value != null) {
-                    return new IntDouble(value.doubleValue(), false);
+                    return value;
                 }
 
                 // If made it this far, alias did not extend back in time; try to retrieve from initial data
@@ -1819,7 +1819,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 asVar.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
                 value = asVar.retrieveDataForTime(prvs);
                 if (value != null ) {
-                    return new IntDouble(value.doubleValue(), false);
+                    return value;
                 }
 
                 // If made it this far, value was not found; generate error

@@ -8,6 +8,8 @@ import java.io.Serializable;
 import java.util.*;
 
 public class Alias extends Timeseries implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     public String expression = null;
     public ParseTree expressionParseTree = null;
     public Set<String> dependants = new HashSet<>();
@@ -23,14 +25,5 @@ public class Alias extends Timeseries implements Serializable {
     // --- SETTERS
     // ------------------------------------------------------------
     public void setStartTime(Date startTime) { this.startTime = startTime; }
-
-
-    // ------------------------------------------------------------
-    // --- MISC. METHODS
-    // ------------------------------------------------------------
-    // Add data
-    public void addData(double data){
-        this.data.add(data);
-    }
 
 }

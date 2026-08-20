@@ -14,12 +14,6 @@ public class ClearValue {
 	public static void clearCycleLoopValue(List<String> modelList, Map<String, ModelDataSet> modelDataSetMap){
 			String model=modelList.get(ControlData.currCycleIndex);
 			ModelDataSet mds=modelDataSetMap.get(model);
-			List<String> dvList = mds.dvList;
-			Map<String, Dvar> dvMap =mds.dvMap;
-			for (String dvName: dvList){
-				Dvar dvar=dvMap.get(dvName);
-				dvar.setData(null);
-			}
 			List<String> svList = mds.svList;
 			Map<String, Svar> svMap =mds.svMap;
 			for (String svName: svList){
@@ -32,12 +26,6 @@ public class ClearValue {
 		for (int i=0; i<modelList.size(); i++){
 			String model=modelList.get(i);
 			ModelDataSet mds=modelDataSetMap.get(model);
-			List<String> dvList = mds.dvList;
-			Map<String, Dvar> dvMap =mds.dvMap;
-			for (String dvName: dvList){
-				Dvar dvar=dvMap.get(dvName);
-				dvar.setData(null);
-			}
 			List<String> svList = mds.svList;
 			Map<String, Svar> svMap =mds.svMap;
 			for (String svName: svList){
