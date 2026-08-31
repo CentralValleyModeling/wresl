@@ -213,6 +213,21 @@ public final class TimeOperations {
         }
     }
 
+    public static boolean range(int dataMonth, int mon1, int mon2) {
+        if (mon1 <= mon2) {
+            if (dataMonth >= mon1 && dataMonth <= mon2) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            if (dataMonth >= mon1 || dataMonth <= mon2) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
     public static ParallelVars findTime(String timeStep, int value, int year, int month, int day) {
         ParallelVars prvs = new ParallelVars();
         if (isMonthlyInterval(timeStep)) {

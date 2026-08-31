@@ -867,6 +867,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         // Default case name and condition
         goal.caseName.add(Param.defaultCaseName);
         goal.caseCondition.add(Param.always);
+        goal.caseConditionParseTrees = null;
 
         // Combine goal with slack surplus davr and associated weights from visiting the penalties
         List<WRESLComponent> returnData = new ArrayList<>(List.of(goal));
@@ -891,9 +892,12 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         ParseTree caseConditionTree;
         if (ctx.goalCaseCondition() != null) {
             caseCondition = getWreslText(ctx.goalCaseCondition().getChild(1));
-            caseConditionTree = ctx.goalCaseCondition().caseConditionExpression();
-        }
-        else {
+            if (caseCondition.equals(Param.always)) {
+                caseConditionTree = null;
+            } else {
+                caseConditionTree = ctx.goalCaseCondition().caseConditionExpression();
+            }
+        } else {
             caseCondition = Param.always;
             caseConditionTree = null;
         }

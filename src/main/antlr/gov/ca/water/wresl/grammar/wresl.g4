@@ -219,8 +219,8 @@ use: USE interpolation ;
 where: WHERE columnName EQUALS_SIGN expression (COMMA columnName EQUALS_SIGN expression)* ;
 interpolation
     : LINEAR
-    | MIN
-    | MAX
+    | F_MIN
+    | F_MAX
     | MAXIMUM
     | MINIMUM
     ;
@@ -284,8 +284,8 @@ preDefinedFunction
    | F_POWER
    | F_MODULUS
    | F_RANGE
-   | MIN
-   | MAX
+   | F_MIN
+   | F_MAX
    ;
 
 arguments
@@ -422,8 +422,8 @@ F_SQRT: 'sqrt';
 F_ROUND: 'round';
 F_POWER: 'pow';
 F_MODULUS: 'mod';
-MIN: 'min';
-MAX: 'max';
+F_MIN: 'min';
+F_MAX: 'max';
 // Keywords - operators (logic)
 GREATER_THAN: '>';
 LESS_THAN: '<';

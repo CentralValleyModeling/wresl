@@ -26,7 +26,7 @@ public class Timeseries extends WRESLComponent implements Serializable {
     public String convertToUnits = Param.undefined;
     public String timeStep = "";
     public Date startTime;
-    public int studyStartIndex = -1;
+    public int studyStartIndex = 0;
 
     public List<IntDouble> data = new ArrayList<>();
 
