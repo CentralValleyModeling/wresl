@@ -106,7 +106,10 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
     public Map<String, EvalConstraint> getConstraintMap() {
         Map<String, EvalConstraint> constraintMap = new HashMap<>();
         this.gMap.forEach((key, value) -> {
-            constraintMap.put(key, value.getSolverData());
+            EvalConstraint solverData = value.getSolverData();
+            if (solverData != null) {
+                constraintMap.put(key, solverData);
+            }
         });
         return constraintMap;
     }

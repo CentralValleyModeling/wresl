@@ -6,12 +6,14 @@ import java.util.LinkedHashMap;
 // --- CLASS TO HOLD GOAL DATA
 // ------------------------------------------------------------
 public class EvalConstraint {
-    private IntDouble constant = new IntDouble(0.0, false);
+    private IntDouble constant = null;
     private LinkedHashMap<String, IntDouble> multipliers = null;
     private String sign = "";
 
     // Constructor 1
-    public EvalConstraint() {}
+    public EvalConstraint() {
+        this.constant = new IntDouble(0.0, false);
+    }
 
     // Constructor 2
     public EvalConstraint(IntDouble constant) {
@@ -77,6 +79,28 @@ public class EvalConstraint {
                 multiplier.add(value);
             }
         });
+    }
+
+    // Multiply EvalConstraint with an IntDouble
+    public void multiply(IntDouble multValue) {
+        this.constant.multiply(multValue);
+        for (IntDouble multiplier : this.multipliers.values()) {
+            multiplier.multiply(multValue);
+        }
+    }
+
+    // Get a copy of the object
+    public EvalConstraint copyOf() {
+        EvalConstraint copy = new EvalConstraint();
+
+        copy.constant = this.constant.copyOf();
+        if (this.multipliers == null) return copy;
+
+        copy.multipliers = new LinkedHashMap<>();
+        for (IntDouble multiplier : this.multipliers.values()) {
+            copy.multipliers.put(multiplier.getArgName(), multiplier);
+        }
+        return copy;
     }
 
 }

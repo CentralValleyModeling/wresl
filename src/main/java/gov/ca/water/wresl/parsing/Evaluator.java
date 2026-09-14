@@ -6,6 +6,7 @@ import gov.ca.water.utilities.Param;
 import gov.ca.water.utilities.TimeOperations;
 import gov.ca.water.wresl.domain.*;
 import gov.ca.water.wresl.errors.EvaluationErrorException;
+import gov.ca.water.wresl.errors.SyntaxErrorException;
 import gov.ca.water.wresl.grammar.wreslBaseVisitor;
 import gov.ca.water.wresl.grammar.wreslLexer;
 import gov.ca.water.wresl.grammar.wreslParser;
@@ -315,7 +316,9 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                     }
                 }
                 if (index == -1) {
-                    throw new EvaluationErrorException(goal.fromWresl, goal.line, "Case conditions for time array GOAL " + goal.name + " did not yield a case!");
+                    // It is okay not to find a valid case to evaluate; simply continue to next loop item
+                    goal.setSolverData(null);
+                    continue;
                 }
 
                 // Process goal expression
@@ -340,7 +343,9 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 }
             }
             if (index == -1) {
-                throw new EvaluationErrorException(goal.fromWresl, goal.line, "Case conditions for GOAL " + goal.name + " did not yield a case!");
+                // It is okay not to find a case to evaluate; simply return
+                goal.setSolverData(null);
+                return;
             }
         }
 
@@ -1555,11 +1560,11 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // ------------------------------------------------------------
     // --- CLASS FOR PROCESSING OF GOALS (I.E. CONSTRAINTS)
     // ------------------------------------------------------------
-    private class GoalEvaluator extends wreslBaseVisitor<IntDouble> {
+    private class GoalEvaluator extends wreslBaseVisitor<EvalConstraint> {
         // GOAL data that will be built through visit methods below
-        private EvalConstraint constraintLeft = null;
-        private EvalConstraint constraintRight = null;
         private boolean isProcessingLeft = true;
+        private EvalConstraint leftOperand;
+        private EvalConstraint rightOperand;
 
         // Source file and line number for the GOAL for error messages
         private String goalName;
@@ -1570,62 +1575,66 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
         public EvalConstraint evaluate(String goalName, String fromWresl, int line, ParseTree expressionCtx) {
             // Initialize goal data
-            this.constraintLeft = new EvalConstraint();
-            this.constraintRight = new EvalConstraint();
             this.goalName = goalName;
             this.fromWresl = fromWresl;
             this.line = line;
 
             // Process; data will be accumulated in left and right common data fields
-            IntDouble dummy = visit(expressionCtx);
-
-            // Check for null values
-            if (this.constraintLeft.getMultipliers() == null) {
-                if (this.constraintRight.getMultipliers() == null) {
-                    return null;
-                }
-            }
+            EvalConstraint constraint = visit(expressionCtx);
 
             // Return compiled GOAL data
-            return this.constraintLeft;
+            return constraint;
         }
 
         @Override
         // expressionComparison
         // We will accumulate information into following form under the constraintLeft field:
         //  C1xD1 + C2xD2 + C3xD3 + ... + Cn = 0.0 (comaprison sign can also be <, <=, > or >=)
-        public IntDouble visitExpressionComparison(wreslParser.ExpressionComparisonContext ctx) {
+        public EvalConstraint visitExpressionComparison(wreslParser.ExpressionComparisonContext ctx) {
             // Process left and right of the sign
             this.isProcessingLeft = true;
-            IntDouble localLeft = visit(ctx.expression(0));
+            this.leftOperand = new EvalConstraint();
+            this.rightOperand = new EvalConstraint();
+            EvalConstraint constraintLeft = visit(ctx.expression(0));
             this.isProcessingLeft = false;
-            IntDouble localRight = visit(ctx.expression(1));
+            this.leftOperand = new EvalConstraint();
+            this.rightOperand = new EvalConstraint();
+            EvalConstraint constraintRight = visit(ctx.expression(1));
 
-            // Figure out left and right data format (multiplier/constant format or just constant format)
-            boolean isMultipConstLeft = true;
-            boolean isMultipConstRight = true;
-            if (this.constraintLeft.getMultipliers() == null) { isMultipConstLeft = false; }
-            if (this.constraintRight.getMultipliers() == null) { isMultipConstRight = false; }
-
-            // Check the format of accumulated left and right data for further processing
-            // Left is multiplier/constant format, right is constant
-            if (isMultipConstLeft) {
-                if (!isMultipConstRight) {
-                    // Shift right constant to left
-                    this.constraintLeft.getConstant().subtract(localRight);
-                // Left is multiplier/constant format, right is multiplier/constant format
+            // Proceed based on the type of constraintLeft and constraintRight operands
+            if (constraintLeft.isNumeric()) {
+                if (constraintRight.isNumeric()) {
+                    // Both left and right constraint expressions are values
+                    // -----------------------------------------------------
+                    throw new EvaluationErrorException(this.fromWresl, this.line, "No DVARs are referenced at GOAL " + this.goalName + "!");
                 } else {
-                    this.constraintLeft.subtract(this.constraintRight);
+                    // Left constraint is value, right constraint is multiplier/value
+                    // --------------------------------------------------------------
+                    constraintLeft.getConstant().subtract(constraintRight.getConstant());
+                    for (IntDouble rightMultiplier : constraintRight.getMultipliers().values()) {
+                        rightMultiplier.multiply(this.minusOne);
+                        constraintLeft.addMultiplier(rightMultiplier.getArgName(), rightMultiplier);
+                    }
                 }
             } else {
-                // Left is a constant and right is a constant
-                if (!isMultipConstRight) {
-                    this.constraintLeft.getConstant().add(localLeft);
-                    this.constraintLeft.getConstant().subtract(localRight);
-                // Left is a constant and right is multiplier/constant format
+                if (constraintRight.isNumeric()) {
+                    // Left constraint is multiplier/value, right constraint is numeric
+                    // ----------------------------------------------------------------
+                    constraintLeft.getConstant().subtract(constraintRight.getConstant());
                 } else {
-                    this.constraintLeft.getConstant().add(localLeft);
-                    this.constraintLeft.subtract(this.constraintRight);
+                    // Both left and right constraints are multiplier/value
+                    constraintLeft.getConstant().subtract(constraintRight.getConstant());
+                    for (IntDouble rightMultiplier : constraintRight.getMultipliers().values()) {
+
+                        String dvarName = rightMultiplier.getArgName();
+                        IntDouble leftMultiplier = constraintLeft.getMultiplier(dvarName);
+                        if (leftMultiplier == null) {
+                            rightMultiplier.multiply(this.minusOne);
+                            constraintLeft.addMultiplier(dvarName, rightMultiplier);
+                        } else {
+                            leftMultiplier.subtract(rightMultiplier);
+                        }
+                    }
                 }
             }
 
@@ -1633,163 +1642,306 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             int sign = ctx.opCompare().getStart().getType();
             if (sign == wreslLexer.NOT_EQUAL    ||
                 sign == wreslLexer.DOUBLE_EQUAL)  {
-                return null;
+                throw new EvaluationErrorException(this.fromWresl, this.line, "'" + sign + "' sign is not allowed in a GOAL statement!");
             }
-            this.constraintLeft.setSign(getWreslText(ctx.opCompare()));
+            constraintLeft.setSign(getWreslText(ctx.opCompare()));
 
-            // Dummy return data is null
-            return null;
+            // Return constraint
+            return constraintLeft;
+        }
+
+        @Override
+        // expressionSigned
+        public EvalConstraint visitExpressionSigned(wreslParser.ExpressionSignedContext ctx) {
+            // Evaluate expression
+            EvalConstraint returnData = visit(ctx.expression());
+
+            // Negative operation, if needed
+            if (ctx.MINUS() != null) {
+                returnData.multiply(this.minusOne);
+            }
+
+            return returnData;
         }
 
         @Override
         // expressionMultDiv
-        public IntDouble visitExpressionMultDiv(wreslParser.ExpressionMultDivContext ctx) {
+        public EvalConstraint visitExpressionMultDiv(wreslParser.ExpressionMultDivContext ctx) {
+            // Store existing left and right operands to be restored later
+            EvalConstraint leftOpStore = this.leftOperand;
+            EvalConstraint rightOpStore = this.rightOperand;
+
+            // Temporary data to be used for return value
+            EvalConstraint returnData;
+
             // Compute left and right side of the operation
-            IntDouble leftOp = visit(ctx.expression(0));
-            IntDouble rightOp = visit(ctx.expression(1));
+            this.isProcessingLeft = true;
+            this.leftOperand = new EvalConstraint();
+            this.leftOperand = visit(ctx.expression(0));
+            this.isProcessingLeft = false;
+            this.rightOperand = new EvalConstraint();
+            this.rightOperand = visit(ctx.expression(1));
 
             // Which operation?
             boolean isMultiplication = ctx.opMultiplicationDivision().MULT() != null;
 
             // Proceed based on the type of left operand
-            if (leftOp == null) {
-                multDivWhenLeftIsMultConst(rightOp, isMultiplication);
-                return null;
+            if (this.leftOperand .isNumeric()) {
+                if (this.rightOperand.isNumeric()) {
+                    // Both left and right operands are numbers
+                    // ----------------------------------------
+                    IntDouble rightVal = this.rightOperand.getConstant();
+                    if (isMultiplication) {
+                        // MULTIPLICATION
+                        this.leftOperand .getConstant().multiply(rightVal);
+                    } else {
+                        // DIVISION
+                        // No divide-by-zero
+                        if (rightVal.getValue().doubleValue() == 0.0) {
+                            throw new EvaluationErrorException(this.fromWresl, this.line, "Division-by-zero at GOAL " + this.goalName + "!");
+                        }
+                        this.leftOperand .getConstant().divide(rightVal);
+                    }
+                    returnData = this.leftOperand.copyOf();
+                    this.leftOperand = leftOpStore;
+                    this.rightOperand = rightOpStore;
+                    return returnData;
+                } else {
+                    // Left operand is number, right operand is multipliers/value
+                    // ----------------------------------------------------------
+                    IntDouble leftVal = this.leftOperand .getConstant();
+                    if (isMultiplication) {
+                        // MULTIPLICATION
+                        this.rightOperand.getConstant().multiply(leftVal);
+                        for (IntDouble rightMultiplier : this.rightOperand.getMultipliers().values()) {
+                            rightMultiplier.multiply(leftVal);
+                        }
+                    } else {
+                        // DIVISION
+                        // No divide-by-zero
+                        if (leftVal.getValue().doubleValue() == 0.0) {
+                            throw new EvaluationErrorException(this.fromWresl, this.line, "Division-by-zero at GOAL " + this.goalName + "!");
+                        }
+                        this.rightOperand.getConstant().divide(leftVal);
+                        for (IntDouble rightMultiplier : this.rightOperand.getMultipliers().values()) {
+                            rightMultiplier.divide(leftVal);
+                        }
+                    }
+                    returnData = this.rightOperand.copyOf();
+                    this.leftOperand = leftOpStore;
+                    this.rightOperand = rightOpStore;
+                    return returnData;
+                }
             } else {
-                return multDivWhenLeftIsDvarConst(leftOp, rightOp, isMultiplication);
+                if (this.rightOperand.isNumeric()) {
+                    // Left operand is multiplier/value, right operand is value
+                    // --------------------------------------------------------
+                    IntDouble rightVal = this.rightOperand.getConstant();
+                    if (isMultiplication) {
+                        // MULTIPLICATION
+                        this.leftOperand .getConstant().multiply(rightVal);
+                        for (IntDouble leftMultiplier : this.leftOperand .getMultipliers().values()) {
+                            leftMultiplier.multiply(rightVal);
+                        }
+                    } else {
+                        // DIVISION
+                        // No divide-by-zero
+                        if (rightVal.getValue().doubleValue() == 0.0) {
+                            throw new EvaluationErrorException(this.fromWresl, this.line, "Division-by-zero at GOAL " + this.goalName + "!");
+                        }
+                        this.leftOperand .getConstant().divide(rightVal);
+                        for (IntDouble leftMultiplier : this.leftOperand .getMultipliers().values()) {
+                            leftMultiplier.divide(rightVal);
+                        }
+                    }
+                    returnData = this.leftOperand.copyOf();
+                    this.leftOperand = leftOpStore;
+                    this.rightOperand = rightOpStore;
+                    return returnData;
+                } else {
+                    // Both left and right operands are multiplier/value
+                    // -------------------------------------------------
+                    throw new EvaluationErrorException(this.fromWresl, this.line, "Non-linearity detected at GOAL " + this.goalName + "!");
+                }
             }
         }
 
         @Override
         // expressionAddSub
-        public IntDouble visitExpressionAddSub(wreslParser.ExpressionAddSubContext ctx) {
+        public EvalConstraint visitExpressionAddSub(wreslParser.ExpressionAddSubContext ctx) {
+            // Store existing left and right operands to be restored later
+            EvalConstraint leftOpStore = this.leftOperand;
+            EvalConstraint rightOpStore = this.rightOperand;
+
+            // Temporary data to be used for return value
+            EvalConstraint returnData;
+
             // Compute left and right side of the operation
-            IntDouble leftOp = visit(ctx.expression(0));
-            IntDouble rightOp = visit(ctx.expression(1));
+            this.isProcessingLeft = true;
+            this.leftOperand = new EvalConstraint();
+            this.leftOperand = visit(ctx.expression(0));
+            this.isProcessingLeft = false;
+            this.rightOperand = new EvalConstraint();
+            this.rightOperand = visit(ctx.expression(1));
 
             // Which operation is this?
             boolean isAddition = ctx.opAdditionSubtraction().PLUS() != null;
 
-            // Proceed based on format of leftOp
-            if (leftOp == null) {
-                addSubWhenLeftIsMultConst(rightOp, isAddition);
-                return null;
+            // Proceed based on format of left and right operands
+            if (this.leftOperand.isNumeric()) {
+                if (this.rightOperand.isNumeric()) {
+                    // Both left and right operands are values
+                    // ---------------------------------------
+                    if (isAddition) {
+                        // ADDITION
+                        this.leftOperand.getConstant().add(this.rightOperand.getConstant());
+                    } else {
+                        // SUBTRACTION
+                        this.leftOperand.getConstant().subtract(this.rightOperand.getConstant());
+                    }
+                    returnData = this.leftOperand.copyOf();
+                    this.leftOperand = leftOpStore;
+                    this.rightOperand = rightOpStore;
+                    return returnData;
+                } else {
+                    // Left operand is value, right operand is multiplier/constant
+                    // -----------------------------------------------------------
+                    if (isAddition) {
+                        // ADDITION
+                        this.rightOperand.getConstant().add(this.leftOperand.getConstant());
+                    } else {
+                        // SUBTRACTION
+                        this.rightOperand.getConstant().multiply(this.minusOne);
+                        this.rightOperand.getConstant().add(this.leftOperand.getConstant());
+                        for (IntDouble rightMultiplier : this.rightOperand.getMultipliers().values()) {
+                            rightMultiplier.multiply(this.minusOne);
+                        }
+                    }
+                    returnData = this.rightOperand.copyOf();
+                    this.leftOperand = leftOpStore;
+                    this.rightOperand = rightOpStore;
+                    return returnData;
+                }
             } else {
-                return addSubLeftIsDvarConst(leftOp, rightOp, isAddition);
+                if (this.rightOperand.isNumeric()) {
+                    // Left operand is multiplier/value, right operand is value
+                    // --------------------------------------------------------
+                    if (isAddition) {
+                        // ADDITION
+                        this.leftOperand.getConstant().add(this.rightOperand.getConstant());
+                    } else {
+                        // SUBTRACTION
+                        this.leftOperand.getConstant().subtract(this.rightOperand.getConstant());
+                    }
+                    returnData = this.leftOperand.copyOf();
+                    this.leftOperand = leftOpStore;
+                    this.rightOperand = rightOpStore;
+                    return returnData;
+                } else {
+                    // Both left and right operands are multiplier/value
+                    // -------------------------------------------------
+                    if (isAddition) {
+                        // ADDITION
+                        this.leftOperand.getConstant().add(this.rightOperand.getConstant());
+                        for (IntDouble rightMultiplier : this.rightOperand.getMultipliers().values()) {
+                            String dvarName = rightMultiplier.getArgName();
+                            IntDouble leftMultiplier = this.leftOperand.getMultiplier(dvarName);
+                            if (leftMultiplier == null) {
+                                this.leftOperand.addMultiplier(dvarName, rightMultiplier);
+                            } else {
+                                leftMultiplier.add(rightMultiplier);
+                            }
+                        }
+                    } else {
+                        // SUBTRACTION
+                        this.leftOperand.getConstant().subtract(this.rightOperand.getConstant());
+                        for (IntDouble rightMultiplier : this.rightOperand.getMultipliers().values()) {
+                            String dvarName = rightMultiplier.getArgName();
+                            IntDouble leftMultiplier = this.leftOperand.getMultiplier(dvarName);
+                            if (leftMultiplier == null) {
+                                rightMultiplier.multiply(this.minusOne);
+                                this.leftOperand.addMultiplier(dvarName, rightMultiplier);
+                            } else {
+                                leftMultiplier.subtract(rightMultiplier);
+                            }
+                        }
+                    }
+                    returnData = this.leftOperand.copyOf();
+                    this.leftOperand = leftOpStore;
+                    this.rightOperand = rightOpStore;
+                    return returnData;
+                }
             }
+        }
 
-            //// Figure out if left and right operands are Dvars
-            //String leftOpArgName = leftOp.getArgName();
-            //String rightOpArgName = rightOp.getArgName();
-            //boolean isLeftOpDvar = !leftOpArgName.equals("");
-            //boolean isRightOpDvar = !rightOpArgName.equals("");
-//
-            //// Addition
-            //// --------------
-            //if (ctx.opAdditionSubtraction().PLUS() != null) {
-            //    // Both left and right operands are DVARs; do nothing since these were added to multiplier set in visitObjectReference method
-            //    if (isLeftOpDvar) {
-            //        if (isRightOpDvar) {
-            //            return null;
-            //        // If left operand is DVAR and right operand is a value, do nothing for DVAR and add value as a constant
-            //        } else {
-            //            if (this.isProcessingLeft) {
-            //                this.constraintLeft.sumConstant(leftOp);
-            //            } else {
-            //                this.constraintRight.sumConstant(leftOp);
-            //            }
-            //            return null;
-            //        }
-            //    } else {
-            //        // Left operand is a value and right operand is a DVAR, do nothing for DVAR and add value as a constant
-            //        if (isRightOpDvar) {
-            //            if (this.isProcessingLeft) {
-            //                this.constraintLeft.sumConstant(leftOp);
-            //            } else {
-            //                this.constraintRight.sumConstant(leftOp);
-            //            }
-            //            return null;
-            //        // Both left and right operands are values; combine them ad add them as constnat
-            //        } else {
-            //            leftOp.add(rightOp);
-            //            if (this.isProcessingLeft) {
-            //                this.constraintLeft.sumConstant(leftOp);
-            //            } else {
-            //                this.constraintRight.sumConstant(leftOp);
-            //            }
-            //            return null;
-            //        }
-            //    }
-            //// Subtraction
-            //// ------------
-            //} else {
-            //    IntDouble multiplier;
-            //    IntDouble minusOne = new IntDouble(-1.0, false);
-            //    // Both left and right operands are DVARs; do nothing for left operand, multiply right operand with -1.0
-            //    if (isLeftOpDvar) {
-            //        if (isRightOpDvar) {
-            //            if (this.isProcessingLeft) {
-            //                multiplier = this.constraintLeft.getMultiplier(rightOpArgName);
-            //                multiplier.multiply(minusOne);
-            //            } else {
-            //                multiplier = this.constraintRight.getMultiplier(rightOpArgName);
-            //                multiplier.multiply(minusOne);
-            //            }
-            //            return null;
-            //        // If left operand is DVAR and right operand is a value, do nothing for DVAR and subtract value as a constant
-            //        } else {
-            //            leftOp.multiply(minusOne);
-            //            if (this.isProcessingLeft) {
-            //                this.constraintLeft.sumConstant(leftOp);
-            //            } else {
-            //                this.constraintRight.sumConstant(leftOp);
-            //            }
-            //            return null;
-            //        }
-            //    } else {
-            //        // Left operand is a value and right operand is a DVAR, multiply DVAR with minus one and add value as a constant
-            //        if (isRightOpDvar) {
-            //            if (this.isProcessingLeft) {
-            //                multiplier = this.constraintLeft.getMultiplier(leftOpArgName);
-            //                multiplier.multiply(minusOne);
-            //                this.constraintLeft.sumConstant(leftOp);
-            //            } else {
-            //                multiplier = this.constraintRight.getMultiplier(leftOpArgName);
-            //                multiplier.multiply(minusOne);
-            //                this.constraintRight.sumConstant(leftOp);
-            //            }
-            //            return null;
-            //        // Both left and right operands are values; combine them and add them as constant
-            //        } else {
-            //            leftOp.subtract(rightOp);
-            //            if (this.isProcessingLeft) {
-            //                this.constraintLeft.sumConstant(leftOp);
-            //            } else {
-            //                this.constraintRight.sumConstant(leftOp);
-            //            }
-            //            return null;
-            //        }
-            //    }
-            //}
+        @Override
+        // expressionNot
+        public EvalConstraint visitExpressionNot(wreslParser.ExpressionNotContext ctx) {
+            throw new SyntaxErrorException(this.fromWresl, this.line, "Logical .NOT. operation is not allowed in GOAL statements!");
+        }
+
+        @Override
+        // expressionLogical
+        public EvalConstraint visitExpressionLogical(wreslParser.ExpressionLogicalContext ctx) {
+            throw new SyntaxErrorException(this.fromWresl, this.line, "Logical operations are not allowed in GOAL statements!");
+        }
+
+        @Override
+        // expressionSum
+        public EvalConstraint visitExpressionSum(wreslParser.ExpressionSumContext ctx) {
+            IntDouble data = Evaluator.this.visitExpressionSum(ctx);
+            return new EvalConstraint(data);
+        }
+
+        @Override
+        // expressionCall
+        public EvalConstraint visitExpressionCall(wreslParser.ExpressionCallContext ctx) {
+            IntDouble data = Evaluator.this.visitExpressionCall(ctx);
+            return new EvalConstraint(data);
+        }
+
+        @Override
+        public EvalConstraint visitExpressionSlice(wreslParser.ExpressionSliceContext ctx) {
+            throw new SyntaxErrorException(this.fromWresl, this.line, "Array slice operations are not allowed in GOAL statements!");
+        }
+
+        @Override
+        // expressionParen
+        public EvalConstraint visitExpressionParen(wreslParser.ExpressionParenContext ctx) {
+            return visit(ctx.expression());
         }
 
         @Override
         // expressionReference
-        public IntDouble visitExpressionReference(wreslParser.ExpressionReferenceContext ctx) {
+        public EvalConstraint visitExpressionReference(wreslParser.ExpressionReferenceContext ctx) {
             // If references objects, use GoalEvaluator's own visit method
             if (ctx.variableReference() instanceof wreslParser.ObjectReferenceContext objRef) {
                 return visit(objRef);
             // For everything else, revert back to visit methods of Evaluator class
             } else {
-                return Evaluator.this.visitExpressionReference(ctx);
+                IntDouble result = Evaluator.this.visitExpressionReference(ctx);
+                return new EvalConstraint(result);
             }
         }
 
         @Override
         // objectReference
-        public IntDouble visitObjectReference(wreslParser.ObjectReferenceContext ctx) {
+        public EvalConstraint visitObjectReference(wreslParser.ObjectReferenceContext ctx) {
             // Retrieve object name
             String varName = getWreslText(ctx.OBJECT_NAME());
+
+            // This is a DVAR
+            Dvar dvar = INSTANCE.currentModelDataSet.getDvar(varName);
+            if (dvar != null) {
+                IntDouble varData = new IntDouble(1.0, false, varName);
+                if (this.isProcessingLeft) {
+                    this.leftOperand.addMultiplier(varName, varData);
+                    return this.leftOperand;
+                } else {
+                    this.rightOperand.addMultiplier(varName, varData);
+                    return this.rightOperand;
+                }
+            }
 
             // This is an SVAR
             Svar var = INSTANCE.currentModelDataSet.getSvar(varName);                       // Is this an Svar?
@@ -1798,7 +1950,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 if (varData == null) {
                     throw new EvaluationErrorException("Variable " + varName + " is being used before its value is computed!");
                 }
-                return varData;
+                return new EvalConstraint(varData);
             }
 
             // This is a parameter
@@ -1808,7 +1960,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 if (varData == null) {
                     throw new EvaluationErrorException("Variable " + varName + " is being used before its value is computed!");
                 }
-                return varData;
+                return new EvalConstraint(varData);
             }
 
             // This is a TIMESERIES data
@@ -1830,18 +1982,16 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 IntDouble value;
                 value = tsVar.retrieveDataForTime(prvs);
                 if (value != null) {
-                    return value;
+                    return new EvalConstraint(value);
                 }
-
                 // If made it this far, timeseries did not extend back in time; try to retrieve from initial data
                 Timeseries svInit = INSTANCE.sds.getSVInitTimeseries(tsName);
                 if (svInit != null) {
                     value = svInit.retrieveDataForTime(prvs);
                     if (value != null) {
-                        return value;
+                        return new EvalConstraint(value);
                     }
                 }
-
                 // If made it this far, it means initial timeseries data was not read before; try reading it
                 svInit = tsVar.copyOf();
                 boolean success = svInit.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
@@ -1849,10 +1999,9 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                     value = svInit.retrieveDataForTime(prvs);
                     if (value != null) {
                         INSTANCE.sds.addSVInitTimeseries(svInit);
-                        return value;
+                        return new EvalConstraint(value);
                     }
                 }
-
                 // If made it this far, value was not found; generate error
                 throw new EvaluationErrorException(tsVar.fromWresl, tsVar.line, "Was not able to retrieve data from the timeseries data for the provided time index.");
             }
@@ -1873,7 +2022,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 IntDouble value;
                 value = asVar.retrieveDataForTime(prvs);
                 if (value != null) {
-                    return value;
+                    return new EvalConstraint(value);
                 }
 
                 // If made it this far, alias did not extend back in time; try to retrieve from initial data
@@ -1882,7 +2031,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 asVar.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
                 value = asVar.retrieveDataForTime(prvs);
                 if (value != null ) {
-                    return value;
+                    return new EvalConstraint(value);
                 }
 
                 // If made it this far, value was not found; generate error
@@ -1890,376 +2039,8 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
             }
 
-            // This is a DVAR
-            Dvar dvar = INSTANCE.currentModelDataSet.getDvar(varName);
-            if (dvar != null) {
-                IntDouble varData = new IntDouble(1.0, false, varName);
-                if (this.isProcessingLeft) {
-                    this.constraintLeft.addMultiplier(varName, varData);
-                } else {
-                    this.constraintRight.addMultiplier(varName, varData);
-                }
-                return varData;
-            }
-
             // If made it this far, variable was not found; generate error
             throw new EvaluationErrorException("Variable " + varName + " is not defined!");
-        }
-
-        // --- HELPER METHODS
-
-        // Multiply/divide when left operand is in multiplier/constant format
-        // LeftOp will be null in this case and data for it will be stored in this.constraintLeft or this.constraintRight
-        private void multDivWhenLeftIsMultConst(IntDouble rightOp, boolean isMultiplication) {
-            // Figure out what type of data rightOp is
-            boolean isRightMultConst = false;
-            boolean isRightDvar = false;
-            if (rightOp == null) {
-                isRightMultConst = true;
-            } else {
-                if (!rightOp.getArgName().equals("")) {isRightDvar = true; }
-            }
-
-            // Process based on type of rightOp
-            if (isRightMultConst) {
-                // Cannot multiply two multiplier/constant format data (i.e. no non-linearity)
-                throw new EvaluationErrorException(this.fromWresl, this.line, "Non-linearity detected at GOAL " + this.goalName + "!");
-            } else {
-                if (isRightDvar) {
-                    // rightOp is a Dvar; not allowed (i.e. no non-linearity)
-                    throw new EvaluationErrorException(this.fromWresl, this.line, "Non-linearity detected at GOAL " + this.goalName + "!");
-                } else {
-                    // rightOp is a value; operate on all components of leftOp
-                    if (isMultiplication) {
-                        // MULTIPLICATION
-                        if (this.isProcessingLeft) {
-                            this.constraintLeft.getConstant().multiply(rightOp);
-                            for (IntDouble value : this.constraintLeft.getMultipliers().values()) {
-                                value.multiply(rightOp);
-                            }
-                        } else {
-                            this.constraintRight.getConstant().multiply(rightOp);
-                            for (IntDouble value : this.constraintRight.getMultipliers().values()) {
-                                value.multiply(rightOp);
-                            }
-                        }
-                    } else {
-                        // DIVISION
-                        // No division by zero
-                        if (rightOp.getValue().doubleValue() == 0.0) {
-                            throw new EvaluationErrorException(this.fromWresl, this.line, "Division by zero at GOAL " + this.goalName + "!");
-                        }
-                        if (this.isProcessingLeft) {
-                            this.constraintLeft.getConstant().divide(rightOp);
-                            for (IntDouble value : this.constraintLeft.getMultipliers().values()) {
-                                value.divide(rightOp);
-                            }
-                        } else {
-                            this.constraintRight.getConstant().divide(rightOp);
-                            for (IntDouble value : this.constraintRight.getMultipliers().values()) {
-                                value.divide(rightOp);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Multiply/divide when right operand is in multiplier/constant format
-        // rightOp will be null in this case and data for it will be stored in this.constraintLeft or this.constraintRight
-        private void multDivWhenRightIsMultConst(IntDouble leftOp, boolean isMultiplication) {
-            // Figure out what type of data leftOp is
-            boolean isLeftMultConst = false;
-            boolean isLeftDvar = false;
-            if (leftOp == null) {
-                isLeftMultConst = true;
-            } else {
-                if (!leftOp.getArgName().equals("")) {isLeftDvar = true; }
-            }
-
-            // Process based on type of leftOp
-            if (isLeftMultConst) {
-                // Cannot multiply two multiplier/constant format data (i.e. no non-linearity)
-                throw new EvaluationErrorException(this.fromWresl, this.line, "Non-linearity detected at GOAL " + this.goalName + "!");
-            } else {
-                if (isLeftDvar) {
-                    // rightOp is a Dvar; not allowed (i.e. no non-linearity)
-                    throw new EvaluationErrorException(this.fromWresl, this.line, "Non-linearity detected at GOAL " + this.goalName + "!");
-                } else {
-                    // leftOp is a value; operate on all components of rightOp
-                    if (isMultiplication) {
-                        // MULTIPLICATION
-                        if (this.isProcessingLeft) {
-                            this.constraintLeft.getConstant().multiply(leftOp);
-                            for (IntDouble value : this.constraintLeft.getMultipliers().values()) {
-                                value.multiply(leftOp);
-                            }
-                        } else {
-                            this.constraintRight.getConstant().multiply(leftOp);
-                            for (IntDouble value : this.constraintRight.getMultipliers().values()) {
-                                value.multiply(leftOp);
-                            }
-                        }
-                    } else {
-                        // DIVISION is this case is not allowed
-                        throw new EvaluationErrorException(this.fromWresl, this.line, "Non-linearity detected at GOAL " + this.goalName + "!");
-                    }
-                }
-            }
-        }
-
-        // Multiply/divide when left operand is Dvar or constant
-        private IntDouble multDivWhenLeftIsDvarConst(IntDouble leftOp, IntDouble rightOp, boolean isMultiplication) {
-            // Figure out what type of data leftOp is
-            boolean isLeftDvar = false;
-            if (!leftOp.getArgName().equals("")) {
-                isLeftDvar = true;
-            }
-
-            // Figure out what type of data rightOp is
-            boolean isRightMultConst = false;
-            boolean isRightDvar = false;
-            if (rightOp == null) {
-                isRightMultConst = true;
-            } else {
-                if (!rightOp.getArgName().equals("")) {
-                    isRightDvar = true;
-                }
-            }
-
-            // Process based on type of leftOp and rightOp
-            if (isLeftDvar) {
-                // Left operand is Dvar
-                if (isRightMultConst) {
-                    // Left operand is Dvar, right operand is in multiplier/constant format
-                    multDivWhenRightIsMultConst(leftOp, isMultiplication);
-                    return null;
-                } else {
-                    if (isRightDvar) {
-                        // Left operand is Dvar, right operand is Dvar; not allowed (no non-linearity)
-                        throw new EvaluationErrorException(this.fromWresl, this.line, "Non-linearity detected at GOAL " + this.goalName + "!");
-                    } else {
-                        // Left operand is Dvar, right operand is constant
-                        if (isMultiplication) {
-                            // MULTIPLICATION
-                            leftOp.multiply(rightOp);
-                            return leftOp;
-                        } else {
-                            // DIVISION
-                            // No division by zero
-                            if (rightOp.getValue().doubleValue() == 0.0) {
-                                throw new EvaluationErrorException(this.fromWresl, this.line, "Division by zero at GOAL " + this.goalName + "!");
-                            }
-                            leftOp.divide(rightOp);
-                            return leftOp;
-                        }
-                    }
-                }
-            } else {
-                // Left operand is a constant
-                if (isRightMultConst) {
-                    // Left operand is constant, right operand is in multiplier/constant format
-                    multDivWhenRightIsMultConst(leftOp, isMultiplication);
-                    return null;
-                } else {
-                    if (isRightDvar) {
-                        // Left operand is constant, right operand is Dvar
-                        if (isMultiplication) {
-                            // MULTIPLICATION
-                            rightOp.multiply(leftOp);
-                            return rightOp;
-                        } else {
-                            // DIVISION; not allowed
-                            throw new EvaluationErrorException(this.fromWresl, this.line, "Non-linearity detected at GOAL " + this.goalName + "!");
-                        }
-                    } else {
-                        // Left operand is constant, right operand is constant
-                        if (isMultiplication) {
-                            leftOp.multiply(rightOp);
-                            return leftOp;
-                        } else {
-                            // DIVISION
-                            // No division by zero
-                            if (rightOp.getValue().doubleValue() == 0.0) {
-                                throw new EvaluationErrorException(this.fromWresl, this.line, "Division by zero at GOAL " + this.goalName + "!");
-                            }
-                            leftOp.divide(rightOp);
-                            return leftOp;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Add/subtract when left operand is in multiplier/constant format
-        private void addSubWhenLeftIsMultConst(IntDouble rightOp, boolean isAddition) {
-            // Figure out what type of data rightOp is
-            boolean isRightMultConst = false;
-            boolean isRightDvar = false;
-            if (rightOp == null) {
-                isRightMultConst = true;
-            } else {
-                if (!rightOp.getArgName().equals("")) {isRightDvar = true; }
-            }
-
-            // Proces based on the type of right operand
-            if (isRightMultConst) {
-                // Both left and right operands are in multplier/constant format; this case should not be possible so do nothing
-                // But take care of subtraction
-                if (!isAddition) {
-
-                }
-            } else {
-                if (isRightDvar) {
-                    // Right operand is Dvar; this case is already taken care of in visitObjectReference method; so nothing
-                } else {
-                    // Right is constant; add it to left
-                    if (this.isProcessingLeft) {
-                        if (isAddition) {
-                            this.constraintLeft.getConstant().add(rightOp);
-                        } else {
-                            this.constraintLeft.getConstant().subtract(rightOp);
-                        }
-                    } else {
-                        if (isAddition) {
-                            this.constraintRight.getConstant().add(rightOp);
-                        } else {
-                            this.constraintRight.getConstant().subtract(rightOp);
-                        }
-                    }
-                }
-            }
-        }
-
-        // Add/subtract when left operand is Dvar or constant
-        private IntDouble addSubLeftIsDvarConst(IntDouble leftOp, IntDouble rightOp, boolean isAddition) {
-            // Figure out what type of data leftOp is
-            boolean isLeftDvar = false;
-            if (!leftOp.getArgName().equals("")) {
-                isLeftDvar = true;
-            }
-
-            // Figure out what type of data rightOp is
-            boolean isRightMultConst = false;
-            boolean isRightDvar = false;
-            if (rightOp == null) {
-                isRightMultConst = true;
-            } else {
-                if (!rightOp.getArgName().equals("")) {
-                    isRightDvar = true;
-                }
-            }
-
-            // Process based on type of leftOp and rightOp
-            if (isLeftDvar) {
-                if (isRightMultConst) {
-                    // Right operand is in multiplier/constant format; this case should be taken care of in visitObjectRference method; do nothing
-                    // But take care of subtraction
-                    if (!isAddition) {
-                        if (this.isProcessingLeft) {
-                            this.constraintLeft.getConstant().multiply(this.minusOne);
-                            for (IntDouble value : this.constraintLeft.getMultipliers().values()) {
-                                value.multiply(this.minusOne);
-                            }
-                        } else {
-                            this.constraintRight.getConstant().multiply(this.minusOne);
-                            for (IntDouble value : this.constraintRight.getMultipliers().values()) {
-                                value.multiply(this.minusOne);
-                            }
-                        }
-                    }
-                    return null;
-                } else {
-                    if (isRightDvar) {
-                        // Right operand is in multiplier/constant format; this case should be taken care of in visitObjectRference method; do nothing
-                        // But if this is a subtraction, take care of it
-                        if (!isAddition) {
-                            if (this.isProcessingLeft) {
-                                this.constraintLeft.getMultiplier(rightOp.getArgName()).multiply(this.minusOne);
-                            } else {
-                                this.constraintRight.getMultiplier(rightOp.getArgName()).multiply(this.minusOne);
-                            }
-                        }
-                        return null;
-                    } else {
-                        // Left is Dvar, right is constant
-                        if (isAddition) {
-                            if (this.isProcessingLeft) {
-                                this.constraintLeft.getConstant().add(rightOp);
-                            } else {
-                                this.constraintRight.getConstant().add(rightOp);
-                            }
-                            return null;
-                        } else {
-                            if (this.isProcessingLeft) {
-                                this.constraintLeft.getConstant().subtract(rightOp);
-                            } else {
-                                this.constraintRight.getConstant().subtract(rightOp);
-                            }
-                            return null;
-                        }
-                    }
-                }
-            } else {
-                // Left is constant
-                if (isRightMultConst) {
-                    // Left is constant, right is multiplier/constnat format
-                    if (this.isProcessingLeft) {
-                        if (isAddition) {
-                            this.constraintLeft.getConstant().add(leftOp);
-                        } else {
-                            this.constraintLeft.getConstant().multiply(this.minusOne);
-                            this.constraintLeft.getConstant().add(leftOp);
-                            for (IntDouble value : this.constraintLeft.getMultipliers().values()) {
-                                value.multiply(this.minusOne);
-                            }
-                        }
-                        return null;
-                    } else {
-                        if (isAddition) {
-                            this.constraintRight.getConstant().add(leftOp);
-                        } else {
-                            this.constraintRight.getConstant().multiply(minusOne);
-                            this.constraintRight.getConstant().add(leftOp);
-                            for (IntDouble value : this.constraintRight.getMultipliers().values()) {
-                                value.multiply(this.minusOne);
-                            }
-                        }
-                        return null;
-                    }
-                } else {
-                    if (isRightDvar) {
-                        // Left is constant, right is Dvar
-                        if (this.isProcessingLeft) {
-                            if (isAddition) {
-                                this.constraintLeft.getConstant().add(leftOp);
-                            } else {
-                                this.constraintLeft.getConstant().multiply(this.minusOne);
-                                this.constraintLeft.getConstant().add(leftOp);
-                                this.constraintLeft.getMultiplier(rightOp.getArgName()).multiply(this.minusOne);
-                            }
-                            return null;
-                        } else {
-                            if (isAddition) {
-                                this.constraintRight.getConstant().add(leftOp);
-                            } else {
-                                this.constraintRight.getConstant().multiply(this.minusOne);
-                                this.constraintRight.getConstant().add(leftOp);
-                                this.constraintRight.getMultiplier(rightOp.getArgName()).multiply(this.minusOne);
-                            }
-                            return null;
-                        }
-                    } else {
-                        // Both left and right are constants
-                        if (isAddition) {
-                            leftOp.add(rightOp);
-                        } else {
-                            leftOp.subtract(rightOp);
-                        }
-                        return leftOp;
-                    }
-                }
-            }
         }
     }
 }
