@@ -12,7 +12,7 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
     // Timestep
     public String timeStep = Param.undefined;
 
-    // Weight table   // <objName,  <itemName, value>>
+    // Weight table
     public List<String> wtList = new ArrayList<>();
     public List<String> wtTimeArrayList = new ArrayList<>();
     public List<String> wtSlackSurplusList = new ArrayList<>();
@@ -73,6 +73,11 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
 
     public Map<String, WeightElement> getWeightSlackSurplusMap() { return this.wtSlackSurplusMap; }
 
+    public List<WeightElement> getWeightList() {
+        List<WeightElement> weights = new ArrayList<>(this.wtMap.values());
+        return weights;
+    }
+
     public Svar getSvar(String svarName) {
         return this.svMap.get(svarName);
     }
@@ -92,11 +97,21 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
 
     public Map<String, Dvar> getDvMap() { return this.dvMap; }
 
+    public Map<String, Dvar> getSolvedDvMap() {
+        Map<String, Dvar> solvedDvMap = new HashMap<>();
+        for (Dvar dvar : this.dvMap.values()) {
+            if (dvar.includedInSolution) {
+                solvedDvMap.put(dvar.getName(), dvar);
+            }
+        }
+        return solvedDvMap;
+    }
+
     public List<String> getTimeArrayDvList() { return this.timeArrayDvList; }
 
     public List<String> getDvTimeArrayList() { return this.dvTimeArrayList; }
 
-    public List<Goal> getGoals() {
+    public List<Goal> getGoalList() {
         List<Goal> goals = new ArrayList<>(this.gMap.values());
         return goals;
     }
@@ -199,5 +214,17 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
     // Assign a simulated DVAR value to DVAR
     public void assignDvarValue(String name, IntDouble data) {
         this.dvMap.get(name).addData(data);
+    }
+
+    // Reset the flags for DVARs to initially exclude all of them from solution
+    public void resetDvarsForSolution() {
+        for (Dvar dvar : this.dvMap.values()) {
+            dvar.excludeFromSolution();
+        }
+    }
+
+    // Mark a DVAR to be included in solution
+    public void includeDvarInSolution(String name) {
+        this.dvMap.get(name).includeInSolution();
     }
 }

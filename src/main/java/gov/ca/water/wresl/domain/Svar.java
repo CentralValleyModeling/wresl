@@ -81,11 +81,6 @@ public class Svar extends WRESLComponent implements Serializable {
         this.data = data;
     }
 
-    // Set name
-    public void setName(String name) {
-        this.name = name;
-    }
-
 
     // --------------------
     // --- GETTERS

@@ -52,7 +52,7 @@ public class SolverData {
 
 		// Retrieve DVAR data from  model and add them to SolverData
 		dvarMap = new ConcurrentHashMap<>();
-		Map<String, Dvar> dvMap = sds.getDvarMap(modelIndex);
+		Map<String, Dvar> dvMap = sds.getSolvedDvarMap(modelIndex);
 		dvarMap.putAll(dvMap);
 
 		// Retrieve WEIGHT data from  model and add them to SolverData

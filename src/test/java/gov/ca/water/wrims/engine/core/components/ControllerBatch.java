@@ -455,11 +455,11 @@ public class ControllerBatch {
                             e.printStackTrace();
                         }
 
-    //                    if (CbcSolver.intLog && ControlData.solverType == Param.SOLVER_CBC.intValue()) {
-    //                        CbcSolver.logIntCheck(sds);
-    //                    }
-//
-    //                    if (ControlData.solverType == Param.SOLVER_CBC1.intValue()||ControlData.solverType == Param.SOLVER_CBC.intValue()) { CbcSolver.resetModel();}
+                        if (CbcSolver.intLog && ControlData.solverType == Param.SOLVER_CBC.intValue()) {
+                            CbcSolver.logIntCheck(sds);
+                        }
+
+                        if (ControlData.solverType == Param.SOLVER_CBC1.intValue()||ControlData.solverType == Param.SOLVER_CBC.intValue()) { CbcSolver.resetModel();}
 
                         ControlData.currTimeStep.set(ControlData.currCycleIndex, ControlData.currTimeStep.get(ControlData.currCycleIndex)+1);
                         if (TimeOperations.isMonthlyInterval(ControlData.timeStep)) {

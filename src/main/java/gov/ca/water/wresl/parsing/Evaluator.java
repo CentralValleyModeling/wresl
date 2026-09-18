@@ -100,16 +100,22 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         INSTANCE.currentModelDataSet.clearFutureSvMap();
         INSTANCE.currentModelDataSet.clearFutureAsMap();
 
+        // Reset DVARs to be included in the solution
+        INSTANCE.currentModelDataSet.resetDvarsForSolution();
+
         // Process Svars
         INSTANCE.processSvars(null, INSTANCE.currentModelDataSet.svList, INSTANCE.currentModelDataSet.svMap, showRunTimeMessage);
         if (showRunTimeMessage) System.out.println("Completed Svar processing.");
 
-        // Process Dvars
-        INSTANCE.processDvars(nThreads);
-        if (showRunTimeMessage) System.out.println("Completed Dvar processing.");
-
         // Process Goals
         INSTANCE.processGoals(nThreads, showRunTimeMessage);
+
+        // Process Dvars
+        INSTANCE.processDvars(nThreads, showRunTimeMessage);
+        if (showRunTimeMessage) System.out.println("Completed Dvar processing.");
+
+            // Process Weights
+        INSTANCE.processWeights(nThreads, showRunTimeMessage);
 
         return true;
     }
@@ -125,7 +131,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         // Loop through aliases
         Map<String, Alias> asMap = INSTANCE.currentModelDataSet.getAliasMap();
         for (Alias as : asMap.values()) {
-            System.out.println("ALIAS:" + as.name);
             if (showRunTimeMessage) System.out.println("Processing alias " + as.name);
 
             // Process alias at current time
@@ -146,8 +151,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         for (String svName: svList) {
             if (showRunTimeMessage) System.out.println("Processing svar "+svName);
             Svar svar = svMap.get(svName);
-
-            System.out.println("SVAR: " + svName);
 
             // Process svar
             INSTANCE.futureArrayIndex = 0;
@@ -198,7 +201,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     }
 
     // Process Dvars
-    private void processDvars(int nThreads) {
+    private void processDvars(int nThreads, boolean showRunTimeMessage) {
 
         // Initialize
         List<String> timeArrayDvList = new ArrayList<>();
@@ -213,7 +216,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 0,
                 dvList.size(),
                 threshold,
-                item -> processDvar(item, timeArrayDvList, dvTimeArrayList)
+                item -> processDvar(item, timeArrayDvList, dvTimeArrayList, showRunTimeMessage)
         );
         pool.invoke(task);
 
@@ -223,8 +226,11 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     }
 
     // Process a single Dvar
-    private void processDvar(Dvar dvar, List<String> timeArrayDvList, List<String> dvTimeArrayList) {
-        System.out.println("DVAR: " + dvar.name);
+    private void processDvar(Dvar dvar, List<String> timeArrayDvList, List<String> dvTimeArrayList, boolean showRunTimeMessage) {
+        // Return if DVAR is not included in the solution
+        if (!dvar.includedInSolution) { return; }
+
+        if (showRunTimeMessage) System.out.println("Processing DVAR " + dvar.name);
 
         // Process lower bound
         if (dvar.lowerBoundExpressionParseTree != null) {
@@ -278,7 +284,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
     // Process Goals
     private void processGoals(int nThreads, boolean showRunTimeMessage) {
-        List<Goal> goalList = INSTANCE.currentModelDataSet.getGoals();
+        List<Goal> goalList = INSTANCE.currentModelDataSet.getGoalList();
         int threshold = (int) Math.ceil(goalList.size()/nThreads);
         ForkJoinPool pool = new ForkJoinPool(nThreads);
 
@@ -295,8 +301,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
     // Process a single Goal
     private void processGoal(Goal goal, boolean showRunTimeMessage) {
-        System.out.println("GOAL: " + goal.name);
-
         if (showRunTimeMessage) System.out.println("Processing constraint " + goal.name);
 
         // Process time array
@@ -316,7 +320,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                     }
                 }
                 if (index == -1) {
-                    // It is okay not to find a valid case to evaluate; simply continue to next loop item
+                    // It is okay not to find a valid case to evaluate; continue to next loop item
                     goal.setSolverData(null);
                     continue;
                 }
@@ -325,6 +329,11 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 GoalEvaluator goalEvaluator = new GoalEvaluator();
                 EvalConstraint constraint = goalEvaluator.evaluate(goal.name, goal.fromWresl, goal.line, goal.goalExpressionParseTrees.get(index));
                 goal.setSolverData(constraint);
+
+                // Include associated DVARs in the solution
+                for (String dvarName : constraint.getMultipliers().keySet()) {
+                    INSTANCE.currentModelDataSet.includeDvarInSolution(dvarName);
+                }
             }
         }
 
@@ -353,6 +362,49 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         GoalEvaluator goalBuilder = new GoalEvaluator();
         EvalConstraint constraint = goalBuilder.evaluate(goal.name, goal.fromWresl, goal.line, goal.goalExpressionParseTrees.get(index));
         goal.setSolverData(constraint);
+
+        // Include associated DVARs in the solution
+        for (String dvarName : constraint.getMultipliers().keySet()) {
+            INSTANCE.currentModelDataSet.includeDvarInSolution(dvarName);
+        }
+    }
+
+    // Process Weights
+    private void processWeights(int nThreads, boolean showRunTimeMessage) {
+        List<WeightElement> weightList = INSTANCE.currentModelDataSet.getWeightList();
+        int threshold = (int) Math.ceil(weightList.size()/nThreads);
+        ForkJoinPool pool = new ForkJoinPool(nThreads);
+
+        // Instantiate parallel work
+        ParallelAction<WeightElement> task = new ParallelAction<>(
+                weightList,
+                0,
+                weightList.size(),
+                threshold,
+                item -> processWeight(item, showRunTimeMessage)
+        );
+        pool.invoke(task);
+    }
+
+    // Process a single weight
+    private void processWeight(WeightElement weight, boolean showRunTimeMessage) {
+        if (showRunTimeMessage) System.out.println("Processing weight " + weight.getName());
+
+        // Process time array
+        if (weight.timeArraySizeParseTree != null) {
+            int timeArraySize = visit(weight.timeArraySizeParseTree).getValue().intValue();
+            for (int timeIndex=1; timeIndex<=timeArraySize; timeIndex++)  {
+                WeightElement newWeight = new WeightElement();
+                String newWeightName = weight.name + "__fut__" + timeArraySize;
+                newWeight.setName(newWeightName);
+            }
+        }
+
+        // Process weight itself (only if parser tree is not null; otherwise, its value has already been computed during initial parsing)
+        if (weight.weightParseTree != null) {
+            IntDouble data = INSTANCE.visit(weight.weightParseTree);
+            weight.setValue(data.getValue().doubleValue());
+        }
     }
 
 
@@ -961,7 +1013,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             if (value != null ) { return value; }
 
             // If made it this far, value was not found; generate error
-            throw new EvaluationErrorException(dvar.fromWresl, asVar.line, "Was not able to retrieve data for DVAR " + dvar.name + " for the provided time index.");
+            throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Was not able to retrieve data for DVAR " + dvar.name + " for the provided time index.");
         }
 
         // If made it this far, variable was not found; generate error
@@ -1933,14 +1985,42 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             // This is a DVAR
             Dvar dvar = INSTANCE.currentModelDataSet.getDvar(varName);
             if (dvar != null) {
-                IntDouble varData = new IntDouble(1.0, false, varName);
-                if (this.isProcessingLeft) {
-                    this.leftOperand.addMultiplier(varName, varData);
-                    return this.leftOperand;
-                } else {
-                    this.rightOperand.addMultiplier(varName, varData);
-                    return this.rightOperand;
+                // If there is no time offset return as a multiplier
+                if (ctx.timestepOffset() == null) {
+                    IntDouble varData = new IntDouble(1.0, false, varName);
+                    if (this.isProcessingLeft) {
+                        this.leftOperand.addMultiplier(varName, varData);
+                        return this.leftOperand;
+                    } else {
+                        this.rightOperand.addMultiplier(varName, varData);
+                        return this.rightOperand;
+                    }
                 }
+
+                // Otherwise, retrieve timestep offset and make sure it is an integer number
+                IntDouble temp = Evaluator.this.visit(ctx.timestepOffset().expression());
+                if (!temp.isInt()) {
+                    throw new EvaluationErrorException("Timeseries index for ALIAS" + varName + " must be an integer value.");
+                }
+                int timeOffset = temp.getValue().intValue();
+                String timeStep = currentModelDataSet.getTimeStep();
+                ParallelVars prvs = TimeOperations.findTime(timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+
+                // Retrieve timeseries data from Dvar
+                IntDouble value;
+                value = dvar.retrieveDataForTime(prvs);
+                if (value != null) { return new EvalConstraint(value); }
+
+                // If made it this far, dvar did not extend back in time; try to retrieve from initial data
+                dvar.setDssBPart(dvar.name);
+                dvar.setTimeStep(INSTANCE.currentModelDataSet.getTimeStep());
+                dvar.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+                value = dvar.retrieveDataForTime(prvs);
+                if (value != null ) { return new EvalConstraint(value); }
+
+                // If made it this far, evaluation was unsuccessful; generate error
+                throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Was not able to retrieve data for DVAR " + dvar.name + " for the provided time index.");
+
             }
 
             // This is an SVAR

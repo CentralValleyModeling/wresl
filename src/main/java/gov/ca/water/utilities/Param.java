@@ -7,6 +7,10 @@ public class Param {
     public static final String no =  "n";
     public static final String yes = "y";
 
+    public static final int always_i = 0;
+    public static final int conditional_i = 1;
+
+
     public static final String zero= "0";
     public static final String dv_std_lowerBound = "0";
     public static final String dv_std_upperBound= "1e38";

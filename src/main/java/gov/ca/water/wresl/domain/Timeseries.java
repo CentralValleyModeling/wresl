@@ -44,16 +44,12 @@ public class Timeseries extends WRESLComponent implements Serializable {
 
     public void setTimeStep(String timeStep) { this.timeStep = timeStep;}
 
-    public void setName(String name) { this.name = name; }
-
     public void setStartTime(Date startTime) { this.startTime = startTime; }
 
 
     // --------------------
     // --- GETTERS
     // --------------------
-    public String getName() { return this.name; }
-
     public String getKind() {
         return this.kind;
     }
@@ -244,7 +240,7 @@ public class Timeseries extends WRESLComponent implements Serializable {
         int index = timeSeriesIndex(prvs, this.startTime, this.timeStep);
         if (index >= 0) {
             if (index < this.data.size()) {
-                IntDouble value = this.data.get(index);
+                IntDouble value = this.data.get(index).copyOf();
                 if (value == null) { return null; }
                 Double doubleValue = value.getValue().doubleValue();
                 if (doubleValue == -901.0) { return null; }

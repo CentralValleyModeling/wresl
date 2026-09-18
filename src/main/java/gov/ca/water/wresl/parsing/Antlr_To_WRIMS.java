@@ -585,7 +585,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     public VisitorResult visitDvar(wreslParser.DvarContext ctx) {
         Dvar dvar = new Dvar();
         String errorMessage;
-
+        dvar.name = getWreslText(ctx.OBJECT_NAME());
         // Integer dvar, and bounds
         WRESLComponent data = visit(ctx.defineBoundLimits()).data().get(0);
         dvar = (Dvar)data;
@@ -1028,8 +1028,10 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                             dvar.name = slackDvar;
                             dvar.kind = "slack";
                             dvar.lowerBound = Param.zero;
+                            dvar.lowerBoundValue = 0.0;
                             dvar.upperBound = Param.upper_unbounded;
-                            dvar.condition = "conditional";
+                            dvar.upperBoundValue = Param.upper_unbounded_double;
+                            dvar.condition = Param.conditional_i;
                             dvar.fromWresl = this.currentFile;
                             dvar.line = ctx.penaltyLT().penaltyValue().PENALTY().getSymbol().getLine();
                             dvarSlackSurplusList.add(dvar);
@@ -1037,7 +1039,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                             weightElem.name = dvar.name;
                             weightElem.weight = weight;
                             weightElem.weightParseTree = generateExpressionParseTree(weight);
-                            weightElem.condition = "conditional";
+                            weightElem.condition = Param.conditional_i;
                             weightElem.timeArraySize = Param.zero;
                             weightElem.timeArraySizeParseTree = generateExpressionParseTree(Param.zero);
                             weightElem.fromWresl = this.currentFile;
@@ -1066,8 +1068,10 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                                 dvar.name = slackDvar;
                                 dvar.kind = "slack";
                                 dvar.lowerBound = Param.zero;
+                                dvar.lowerBoundValue = 0.0;
                                 dvar.upperBound = Param.upper_unbounded;
-                                dvar.condition = "conditional";
+                                dvar.upperBoundValue = Param.upper_unbounded_double;
+                                dvar.condition = Param.conditional_i;
                                 dvar.fromWresl = this.currentFile;
                                 dvar.line = ctx.penaltyLT().penaltyValue().PENALTY().getSymbol().getLine();
                                 dvarSlackSurplusList.add(dvar);
@@ -1075,7 +1079,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                                 weightElem.name = dvar.name;
                                 weightElem.weight = weight;
                                 weightElem.weightParseTree = generateExpressionParseTree(weight);
-                                weightElem.condition = "conditional";
+                                weightElem.condition = Param.conditional_i;
                                 weightElem.timeArraySize = Param.zero;
                                 weightElem.timeArraySizeParseTree = generateExpressionParseTree(Param.zero);
                                 weightElem.fromWresl = this.currentFile;
@@ -1094,8 +1098,10 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                             dvar.name = surplusDvar;
                             dvar.kind = "surplus";
                             dvar.lowerBound = Param.zero;
+                            dvar.lowerBoundValue = 0.0;
                             dvar.upperBound = Param.upper_unbounded;
-                            dvar.condition = "conditional";
+                            dvar.upperBoundValue = Param.upper_unbounded_double;
+                            dvar.condition = Param.conditional_i;
                             dvar.fromWresl = this.currentFile;
                             dvar.line = ctx.penaltyGT().penaltyValue().PENALTY().getSymbol().getLine();
                             dvarSlackSurplusList.add(dvar);
@@ -1103,7 +1109,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                             weightElem.name = dvar.name;
                             weightElem.weight = weight;
                             weightElem.weightParseTree = generateExpressionParseTree(weight);
-                            weightElem.condition = "conditional";
+                            weightElem.condition = Param.conditional_i;
                             weightElem.timeArraySize = Param.zero;
                             weightElem.timeArraySizeParseTree = generateExpressionParseTree(Param.zero);
                             weightElem.fromWresl = this.currentFile;
@@ -1120,8 +1126,10 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                                 dvar.name = surplusDvar;
                                 dvar.kind = "surplus";
                                 dvar.lowerBound = Param.zero;
+                                dvar.lowerBoundValue = 0.0;
                                 dvar.upperBound = Param.upper_unbounded;
-                                dvar.condition = "conditional";
+                                dvar.upperBoundValue = Param.upper_unbounded_double;
+                                dvar.condition = Param.conditional_i;
                                 dvar.fromWresl = this.currentFile;
                                 dvar.line = ctx.penaltyGT().penaltyValue().PENALTY().getSymbol().getLine();
                                 dvarSlackSurplusList.add(dvar);
@@ -1129,7 +1137,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                                 weightElem.name = dvar.name;
                                 weightElem.weight = weight;
                                 weightElem.weightParseTree = generateExpressionParseTree(weight);
-                                weightElem.condition = "conditional";
+                                weightElem.condition = Param.conditional_i;
                                 weightElem.timeArraySize = Param.zero;
                                 weightElem.timeArraySizeParseTree = generateExpressionParseTree(Param.zero);
                                 weightElem.fromWresl = this.currentFile;
@@ -1148,8 +1156,10 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                                 dvar.name = surplusDvar;
                                 dvar.kind = "surplus";
                                 dvar.lowerBound = Param.zero;
+                                dvar.lowerBoundValue =0.0;
                                 dvar.upperBound = Param.upper_unbounded;
-                                dvar.condition = "conditional";
+                                dvar.upperBoundValue = Param.upper_unbounded_double;
+                                dvar.condition = Param.conditional_i;
                                 dvar.fromWresl = this.currentFile;
                                 dvar.line = ctx.penaltyGT().penaltyValue().PENALTY().getSymbol().getLine();
                                 dvarSlackSurplusList.add(dvar);
@@ -1157,7 +1167,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                                 weightElem.name = dvar.name;
                                 weightElem.weight = surplusWeight;
                                 weightElem.weightParseTree = generateExpressionParseTree(surplusWeight);
-                                weightElem.condition = "conditional";
+                                weightElem.condition = Param.conditional_i;
                                 weightElem.timeArraySize = Param.zero;
                                 weightElem.timeArraySizeParseTree = generateExpressionParseTree(Param.zero);
                                 weightElem.fromWresl = this.currentFile;
@@ -1168,8 +1178,10 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                                 dvar.name = slackDvar;
                                 dvar.kind = "slack";
                                 dvar.lowerBound = Param.zero;
+                                dvar.lowerBoundValue =0.0;
                                 dvar.upperBound = Param.upper_unbounded;
-                                dvar.condition = "conditional";
+                                dvar.upperBoundValue = Param.upper_unbounded_double;
+                                dvar.condition = Param.conditional_i;
                                 dvar.fromWresl = this.currentFile;
                                 dvar.line = ctx.penaltyLT().penaltyValue().PENALTY().getSymbol().getLine();
                                 dvarSlackSurplusList.add(dvar);
@@ -1177,7 +1189,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                                 weightElem.name = dvar.name;
                                 weightElem.weight = slackWeight;
                                 weightElem.weightParseTree = generateExpressionParseTree(slackWeight);
-                                weightElem.condition = "conditional";
+                                weightElem.condition = Param.conditional_i;
                                 weightElem.timeArraySize = Param.zero;
                                 weightElem.timeArraySizeParseTree = generateExpressionParseTree(Param.zero);
                                 weightElem.fromWresl = this.currentFile;
@@ -1205,8 +1217,10 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         dvar.name = surplusDvar;
                         dvar.kind = "surplus";
                         dvar.lowerBound = Param.zero;
+                        dvar.lowerBoundValue = 0.0;
                         dvar.upperBound = Param.upper_unbounded;
-                        dvar.condition = "conditional";
+                        dvar.upperBoundValue = Param.upper_unbounded_double;
+                        dvar.condition = Param.conditional_i;
                         dvar.fromWresl = this.currentFile;
                         dvar.line = ctx.penaltyGT().penaltyValue().PENALTY().getSymbol().getLine();
                         dvarSlackSurplusList.add(dvar);
@@ -1214,7 +1228,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         weightElem.name = dvar.name;
                         weightElem.weight = weight;
                         weightElem.weightParseTree = generateExpressionParseTree(weight);
-                        weightElem.condition = "conditional";
+                        weightElem.condition = Param.conditional_i;
                         weightElem.timeArraySize = Param.zero;
                         weightElem.timeArraySizeParseTree = generateExpressionParseTree(Param.zero);
                         weightElem.fromWresl = this.currentFile;
@@ -1243,8 +1257,10 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         dvar.name = slackDvar;
                         dvar.kind = "slack";
                         dvar.lowerBound = Param.zero;
+                        dvar.lowerBoundValue = 0.0;
                         dvar.upperBound = Param.upper_unbounded;
-                        dvar.condition = "conditional";
+                        dvar.upperBoundValue = Param.upper_unbounded_double;
+                        dvar.condition = Param.conditional_i;
                         dvar.fromWresl = this.currentFile;
                         dvar.line = ctx.penaltyLT().penaltyValue().PENALTY().getSymbol().getLine();
                         dvarSlackSurplusList.add(dvar);
@@ -1252,7 +1268,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         weightElem.name = dvar.name;
                         weightElem.weight = weight;
                         weightElem.weightParseTree = generateExpressionParseTree(weight);
-                        weightElem.condition = "conditional";
+                        weightElem.condition = Param.conditional_i;
                         weightElem.timeArraySize = Param.zero;
                         weightElem.timeArraySizeParseTree = generateExpressionParseTree(Param.zero);
                         weightElem.fromWresl = this.currentFile;
@@ -1746,7 +1762,9 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                     dvar.kind = as.kind;
                     dvar.units = as.units;
                     dvar.lowerBound = Param.lower_unbounded;
+                    dvar.lowerBoundValue = Param.lower_unbounded_double;
                     dvar.upperBound = Param.upper_unbounded;
+                    dvar.upperBoundValue = Param.upper_unbounded_double;
                     dvar.timeArraySize = as.timeArraySize;
                     dvar.timeArraySizeExpressionParseTree = as.timeArraySizeParseTree;
 

@@ -28,8 +28,6 @@ public class Goal extends WRESLComponent implements Serializable {
     // ------------------------------------------------------------
     // --- SETTERS
     // ------------------------------------------------------------
-    public void setName(String name) { this.name = name; }
-
     public void setSolverData(EvalConstraint constraint) { this.solverData = constraint; }
 
 
@@ -37,8 +35,6 @@ public class Goal extends WRESLComponent implements Serializable {
     // --- GETTERS
     // ------------------------------------------------------------
     public EvalConstraint getSolverData() { return this.solverData; }
-
-    public String getName() { return this.name; }
 
     public LinkedHashMap<String, IntDouble> getMultipliers() { return this.solverData.getMultipliers(); }
 

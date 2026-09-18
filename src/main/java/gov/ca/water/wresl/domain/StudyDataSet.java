@@ -81,10 +81,6 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         return this.getModelDataSet(modelIndex).getWeightSlackSurplusMap();
     }
 
-    public Map<String, Goal> getGoalMap(int modelIndex) {
-        return this.getModelDataSet(modelIndex).getGoalMap();
-    }
-
     public Svar getParameter(String parameterName) {
         return this.parameterMap.get(parameterName);
     }
@@ -165,8 +161,8 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         return this.varCycleIndexList;
     }
 
-    public Map<String, Dvar> getDvarMap(int modelIndex) {
-        return this.getModelDataSet(modelIndex).getDvMap();
+    public Map<String, Dvar> getSolvedDvarMap(int modelIndex) {
+        return this.getModelDataSet(modelIndex).getSolvedDvMap();
     }
 
     public List<String> getDvarTimeArrayCycleIndexList(){

@@ -1265,6 +1265,7 @@ public class CbcSolver {
             for (int i = 0; i < dvBiMap.size(); i++) {
                 String dvName = dvBiMapArray.get(i);
                 Dvar dvObj = dvarMap.get(dvName);
+                if (dvObj == null) { continue; }
 
                 double w = 0;
                 if (wm1.keySet().contains(dvName)) {

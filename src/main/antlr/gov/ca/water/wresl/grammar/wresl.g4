@@ -460,7 +460,8 @@ fragment STRING_BODY: ~['"\r\n]+ ;
 
 // Numbers
 DOUBLE
-    : DIGITS? '.' DIGITS? ([e] [+-]? DIGITS)?
+    : DIGITS? '.' DIGITS? ([e][+-]? DIGITS)?
+    | DIGITS [e] [+-]? DIGITS
     ;
 INT: DIGITS ;  // references fragment only
 fragment DIGITS: [0-9]+ ;
