@@ -1698,6 +1698,9 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             }
             constraintLeft.setSign(getWreslText(ctx.opCompare()));
 
+            // Remove multipliers with a coeffcient of zero from the constraint
+            constraintLeft.getMultipliers().entrySet().removeIf(entry -> entry.getValue().getValue().doubleValue() == 0.0);
+
             // Return constraint
             return constraintLeft;
         }
@@ -1755,9 +1758,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                         this.leftOperand .getConstant().divide(rightVal);
                     }
                     returnData = this.leftOperand.copyOf();
-                    this.leftOperand = leftOpStore;
-                    this.rightOperand = rightOpStore;
-                    return returnData;
                 } else {
                     // Left operand is number, right operand is multipliers/value
                     // ----------------------------------------------------------
@@ -1780,9 +1780,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                         }
                     }
                     returnData = this.rightOperand.copyOf();
-                    this.leftOperand = leftOpStore;
-                    this.rightOperand = rightOpStore;
-                    return returnData;
                 }
             } else {
                 if (this.rightOperand.isNumeric()) {
@@ -1807,15 +1804,19 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                         }
                     }
                     returnData = this.leftOperand.copyOf();
-                    this.leftOperand = leftOpStore;
-                    this.rightOperand = rightOpStore;
-                    return returnData;
                 } else {
                     // Both left and right operands are multiplier/value
                     // -------------------------------------------------
                     throw new EvaluationErrorException(this.fromWresl, this.line, "Non-linearity detected at GOAL " + this.goalName + "!");
                 }
             }
+
+            // Restore original left and right operands
+            this.leftOperand = leftOpStore;
+            this.rightOperand = rightOpStore;
+
+            // Return data
+            return returnData;
         }
 
         @Override
@@ -1852,9 +1853,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                         this.leftOperand.getConstant().subtract(this.rightOperand.getConstant());
                     }
                     returnData = this.leftOperand.copyOf();
-                    this.leftOperand = leftOpStore;
-                    this.rightOperand = rightOpStore;
-                    return returnData;
                 } else {
                     // Left operand is value, right operand is multiplier/constant
                     // -----------------------------------------------------------
@@ -1870,9 +1868,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                         }
                     }
                     returnData = this.rightOperand.copyOf();
-                    this.leftOperand = leftOpStore;
-                    this.rightOperand = rightOpStore;
-                    return returnData;
                 }
             } else {
                 if (this.rightOperand.isNumeric()) {
@@ -1886,9 +1881,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                         this.leftOperand.getConstant().subtract(this.rightOperand.getConstant());
                     }
                     returnData = this.leftOperand.copyOf();
-                    this.leftOperand = leftOpStore;
-                    this.rightOperand = rightOpStore;
-                    return returnData;
                 } else {
                     // Both left and right operands are multiplier/value
                     // -------------------------------------------------
@@ -1919,11 +1911,15 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                         }
                     }
                     returnData = this.leftOperand.copyOf();
-                    this.leftOperand = leftOpStore;
-                    this.rightOperand = rightOpStore;
-                    return returnData;
                 }
             }
+
+            // Restore original left and right operands
+            this.leftOperand = leftOpStore;
+            this.rightOperand = rightOpStore;
+
+            // Return data
+            return returnData;
         }
 
         @Override
