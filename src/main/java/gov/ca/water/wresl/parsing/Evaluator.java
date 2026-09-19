@@ -2022,7 +2022,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             // This is an SVAR
             Svar var = INSTANCE.currentModelDataSet.getSvar(varName);                       // Is this an Svar?
             if (var != null) {
-                IntDouble varData = var.getData();
+                IntDouble varData = var.getData().copyOf();
                 if (varData == null) {
                     throw new EvaluationErrorException("Variable " + varName + " is being used before its value is computed!");
                 }
@@ -2032,7 +2032,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             // This is a parameter
             var = INSTANCE.sds.getParameter(varName);
             if (var != null) {
-                IntDouble varData = var.getData();
+                IntDouble varData = var.getData().copyOf();
                 if (varData == null) {
                     throw new EvaluationErrorException("Variable " + varName + " is being used before its value is computed!");
                 }

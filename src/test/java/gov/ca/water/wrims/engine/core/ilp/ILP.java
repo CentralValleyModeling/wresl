@@ -705,15 +705,15 @@ public class ILP {
 	private static Map<String, WeightElement> findActiveWeightMap() {
 	
 		Map<String, WeightElement> activeWeightMap = new HashMap<String, WeightElement>();
-		
-		for (String usedSlackSurplus: ControlData.currModelDataSet.usedWtSlackSurplusList){
-		
-			activeWeightMap.put(usedSlackSurplus, SolverData.getWeightSlackSurplusMap().get(usedSlackSurplus));	
-			
+
+		for (Dvar dvar : ControlData.currModelDataSet.dvMap.values()) {
+			if (dvar.includedInSolution) {
+				String dvName = dvar.getName();
+				WeightElement weight = SolverData.getWeightMap().get(dvName);
+				if (weight != null) { activeWeightMap.put(dvName, weight); }
+			}
 		}
 		
-		activeWeightMap.putAll(SolverData.getWeightMap());
-	
 		return activeWeightMap;
 	}
 
