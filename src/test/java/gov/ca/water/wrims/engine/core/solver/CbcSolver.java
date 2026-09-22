@@ -329,17 +329,21 @@ public class CbcSolver {
             logger.atDebug().setMessage("LP file loaded successfully").log();
 
         } else {
-            int sizeA = ControlData.currModelDataSet.dvList.size();
+            dvarMap = sds.getSolvedDvarMap(modelIndex);
+            wm2 = gov.ca.water.solverdata.SolverData.getWeightSlackSurplusMap();
+
             int sizeB = ControlData.currModelDataSet.dvTimeArrayList.size();
 
             logger.atDebug().setMessage("Configured to save warm start solution for this cycle").log();
 
-            for (int i = 0; i < sizeA; i++) {
-                dvBiMap.put(i, ControlData.currModelDataSet.dvList.get(i));
-                dvBiMapArray.add(ControlData.currModelDataSet.dvList.get(i));
+            int iCount = -1;
+            for (String dvarName : dvarMap.keySet()) {
+                iCount = iCount + 1;
+                dvBiMap.put(iCount, dvarName);
+                dvBiMapArray.add(dvarName);
             }
             for (int i = 0; i < sizeB; i++) {
-                dvBiMap.put(i + sizeA, ControlData.currModelDataSet.dvTimeArrayList.get(i));
+                dvBiMap.put(i + iCount, ControlData.currModelDataSet.dvTimeArrayList.get(i));
                 dvBiMapArray.add(ControlData.currModelDataSet.dvTimeArrayList.get(i));
             }
             dvBiMapInverse = dvBiMap.inverse();
@@ -349,8 +353,6 @@ public class CbcSolver {
             originalDvarKeys = new HashSet<String>(gov.ca.water.solverdata.SolverData.getDvarMap().keySet());
             logger.atDebug().setMessage("Original variable key set size: {}").addArgument(originalDvarKeys.size()).log();
 
-            dvarMap = gov.ca.water.solverdata.SolverData.getDvarMap();
-            wm2 = gov.ca.water.solverdata.SolverData.getWeightSlackSurplusMap();
 
             modelObject = jCbc.new_jCoinModel();
 
@@ -1265,7 +1267,6 @@ public class CbcSolver {
             for (int i = 0; i < dvBiMap.size(); i++) {
                 String dvName = dvBiMapArray.get(i);
                 Dvar dvObj = dvarMap.get(dvName);
-                if (dvObj == null) { continue; }
 
                 double w = 0;
                 if (wm1.keySet().contains(dvName)) {
