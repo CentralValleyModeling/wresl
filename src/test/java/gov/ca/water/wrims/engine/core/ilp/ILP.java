@@ -703,17 +703,17 @@ public class ILP {
 	}
 
 	private static Map<String, WeightElement> findActiveWeightMap() {
-	
+
 		Map<String, WeightElement> activeWeightMap = new HashMap<String, WeightElement>();
 
-		for (Dvar dvar : ControlData.currModelDataSet.dvMap.values()) {
-			if (dvar.includedInSolution) {
-				String dvName = dvar.getName();
-				WeightElement weight = SolverData.getWeightMap().get(dvName);
-				if (weight != null) { activeWeightMap.put(dvName, weight); }
-			}
+		for (String usedSlackSurplus: ControlData.currModelDataSet.usedWtSlackSurplusList){
+
+			activeWeightMap.put(usedSlackSurplus, SolverData.getWeightSlackSurplusMap().get(usedSlackSurplus));
+
 		}
-		
+
+		activeWeightMap.putAll(SolverData.getWeightMap());
+
 		return activeWeightMap;
 	}
 
@@ -1069,7 +1069,7 @@ public class ILP {
 	
 	private static void writeSvarValue(PrintWriter svarFile) {
 		
-		Map<String, Svar> svMap = ControlData.currSvMap;
+		Map<String, Svar> svMap = ControlData.currModelDataSet.getSvarMap();
 		
 		ArrayList<String> sortedTerm = new ArrayList<String>(svMap.keySet());
 		Collections.sort(sortedTerm);

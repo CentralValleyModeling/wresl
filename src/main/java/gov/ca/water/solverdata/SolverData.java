@@ -52,7 +52,7 @@ public class SolverData {
 
 		// Retrieve DVAR data from  model and add them to SolverData
 		dvarMap = new ConcurrentHashMap<>();
-		Map<String, Dvar> dvMap = sds.getSolvedDvarMap(modelIndex);
+		Map<String, Dvar> dvMap = sds.getDvarMap(modelIndex);
 		dvarMap.putAll(dvMap);
 
 		// Retrieve WEIGHT data from  model and add them to SolverData
@@ -62,7 +62,7 @@ public class SolverData {
 
 		// Retrieve slack/surplus WEIGHT data from  model and add them to SolverData
 		weightSlackSurplusMap = new ConcurrentHashMap<>();
-		Map<String, WeightElement> wtSlackSurplusMap = sds.getWeightSlackSurplusMap(modelIndex);
+		Map<String, WeightElement> wtSlackSurplusMap = sds.getUsedWeightSlackSurplusMap(modelIndex);
 		weightSlackSurplusMap.putAll(wtSlackSurplusMap);
 	}
 }

@@ -150,7 +150,7 @@ public class Timeseries extends WRESLComponent implements Serializable {
             }
         }
 
-        // Store data in timeseries
+        // Add to the existing data
         for (Double data : dataArray) {
             this.data.add(new IntDouble(data, false));
         }
@@ -226,6 +226,9 @@ public class Timeseries extends WRESLComponent implements Serializable {
 
     // Read initial data from INIT file
     public boolean readInitData(CondensedReferenceCacheAndRead.CondensedReferenceCache cacheInit, String partA, String partF_Init, int studyStartYear, int studyStartMonth, int studyStartDay) {
+        // Make sure timeseries data is empty
+        this.data = new ArrayList<>();
+
         boolean success;
         if (cacheInit != null) {
             success = this.readTimeseries_DSS(cacheInit, partA, partF_Init, studyStartYear, studyStartMonth, studyStartDay);

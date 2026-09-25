@@ -10,13 +10,12 @@ import java.util.Set;
 public class Dvar extends Timeseries implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    public boolean includedInSolution = true;
     public String integer = Param.no;
     public String lowerBound = Param.undefined;
     public ParseTree lowerBoundExpressionParseTree = null;
     public String upperBound = Param.undefined;
     public ParseTree upperBoundExpressionParseTree = null;
-    public int condition = Param.always_i;
+    public boolean conditional = false;
     public Number upperBoundValue = null;
     public Number lowerBoundValue = null;
     public String expression = Param.undefined;
@@ -39,20 +38,4 @@ public class Dvar extends Timeseries implements Serializable {
         return this.data.getLast();
     }
 
-    // ------------------------------------------------------------
-    // --- MISC. METHODS
-    // ------------------------------------------------------------
-    // Exclude a DVAR from solution (only if it is a "conditional" DVAR)
-    public void excludeFromSolution() {
-        if (this.condition == Param.conditional_i) {
-            this.includedInSolution = false;
-        }
-    }
-
-    // Include DVAR in the solution (only if it is a "conditional" DVAR)
-    public void includeInSolution() {
-        if (this.condition == Param.conditional_i) {
-            this.includedInSolution = true;
-        }
-    }
 }

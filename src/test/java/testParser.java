@@ -17,7 +17,7 @@ public class testParser {
         Study study = new Study();
         StudyDataSet sds = new StudyDataSet();
         try {
-            sds = study.compile(args[0]);
+            sds = study.compile(args[0], 0, 0, 0);
         }
         catch (SyntaxErrorException e) {
             System.err.println("WRESL+ syntax error(s) encountered in file "+e.getSourceFile());

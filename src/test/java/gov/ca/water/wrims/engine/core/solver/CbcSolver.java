@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.*;
 
 import gov.ca.water.io.DSS.DssOperations;
+import gov.ca.water.solverdata.SolverData;
 import gov.ca.water.utilities.Param;
 import gov.ca.water.wresl.domain.*;
 import gov.ca.water.wrims.engine.core.tools.InfeasibilityAnalysis;
@@ -329,30 +330,28 @@ public class CbcSolver {
             logger.atDebug().setMessage("LP file loaded successfully").log();
 
         } else {
-            dvarMap = sds.getSolvedDvarMap(modelIndex);
-            wm2 = gov.ca.water.solverdata.SolverData.getWeightSlackSurplusMap();
-
+            int sizeA = ControlData.currModelDataSet.dvList.size();
             int sizeB = ControlData.currModelDataSet.dvTimeArrayList.size();
 
             logger.atDebug().setMessage("Configured to save warm start solution for this cycle").log();
 
-            int iCount = -1;
-            for (String dvarName : dvarMap.keySet()) {
-                iCount = iCount + 1;
-                dvBiMap.put(iCount, dvarName);
-                dvBiMapArray.add(dvarName);
+            for (int i = 0; i < sizeA; i++) {
+                dvBiMap.put(i, ControlData.currModelDataSet.dvList.get(i));
+                dvBiMapArray.add(ControlData.currModelDataSet.dvList.get(i));
             }
             for (int i = 0; i < sizeB; i++) {
-                dvBiMap.put(i + iCount, ControlData.currModelDataSet.dvTimeArrayList.get(i));
+                dvBiMap.put(i + sizeA, ControlData.currModelDataSet.dvTimeArrayList.get(i));
                 dvBiMapArray.add(ControlData.currModelDataSet.dvTimeArrayList.get(i));
             }
             dvBiMapInverse = dvBiMap.inverse();
 
             logger.atDebug().setMessage("Variable mapping created: total variables={}").addArgument(dvBiMap.size()).log();
 
-            originalDvarKeys = new HashSet<String>(gov.ca.water.solverdata.SolverData.getDvarMap().keySet());
+            originalDvarKeys = new HashSet<String>(SolverData.getDvarMap().keySet());
             logger.atDebug().setMessage("Original variable key set size: {}").addArgument(originalDvarKeys.size()).log();
 
+            dvarMap = SolverData.getDvarMap();
+            wm2 = SolverData.getWeightSlackSurplusMap();
 
             modelObject = jCbc.new_jCoinModel();
 
@@ -1256,7 +1255,7 @@ public class CbcSolver {
         logger.atDebug().setMessage("CBC Solver: Setting up decision variables...").log();
 
         try {
-            Map<String, WeightElement> wm1 = gov.ca.water.solverdata.SolverData.getWeightMap();
+            Map<String, WeightElement> wm1 = SolverData.getWeightMap();
             String c = "quicklog version 1.0\n";
             int intVarCount = 0;
             int contVarCount = 0;

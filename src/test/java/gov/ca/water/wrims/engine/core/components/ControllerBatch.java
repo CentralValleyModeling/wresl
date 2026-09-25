@@ -55,10 +55,10 @@ public class ControllerBatch {
                 e.printStackTrace();
             }
         }
-        StudyDataSet sds = new StudyDataSet();
+        StudyDataSet sds;
         try {
             Study study = new Study();
-            sds = study.compile(FilePaths.fullMainPath);
+            sds = study.compile(FilePaths.fullMainPath, ControlData.startDay, ControlData.startMonth, ControlData.startYear);
             ControlData.cycWarmStart = sds.getCycWarmStart();
             ControlData.cycWarmStop = sds.getCycWarmStop();
             ControlData.cycWarmUse = sds.getCycWarmUse();

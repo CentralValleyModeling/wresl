@@ -71,16 +71,28 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
 
     public Map<String, WeightElement> getWeightMap() { return this.wtMap; }
 
-    public Map<String, WeightElement> getWeightSlackSurplusMap() { return this.wtSlackSurplusMap; }
+    public Map<String, WeightElement> getUsedWeightSlackSurplusMap() {
+        Map<String, WeightElement> usedWtMap = new HashMap<>();
+        for (String wtName : this.usedWtSlackSurplusList) {
+            usedWtMap.put(wtName, this.wtSlackSurplusMap.get(wtName));
+        }
+        return usedWtMap;
+    }
 
+    // Retrive weight list including both non-conditional and used weights
     public List<WeightElement> getWeightList() {
         List<WeightElement> weights = new ArrayList<>(this.wtMap.values());
+        for (String weightName : this.usedWtSlackSurplusList) {
+            weights.add(this.wtSlackSurplusMap.get(weightName));
+        }
         return weights;
     }
 
     public Svar getSvar(String svarName) {
         return this.svMap.get(svarName);
     }
+
+    public Map<String, Svar> getSvarMap() { return this.svMap; }
 
     public String getTimeStep() {
         return this.timeStep;
@@ -93,16 +105,23 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
         return dvars;
     }
 
-    public Dvar getDvar(String dvarName) { return this.dvMap.get(dvarName); }
+    public Dvar getDvar(String dvarName) {
+        Dvar dvar = this.dvMap.get(dvarName);
+        if (dvar == null) {
+            return this.dvSlackSurplusMap.get(dvarName);
+        } else {
+            return dvar;
+        }
+    }
 
     public Map<String, Dvar> getDvMap() { return this.dvMap; }
 
     public Map<String, Dvar> getSolvedDvMap() {
         Map<String, Dvar> solvedDvMap = new HashMap<>();
-        for (Dvar dvar : this.dvMap.values()) {
-            if (dvar.includedInSolution) {
-                solvedDvMap.put(dvar.getName(), dvar);
-            }
+        solvedDvMap.putAll(this.dvMap);
+        for (String dvarName : this.usedWtSlackSurplusDvList) {
+            solvedDvMap.put(dvarName, this.dvSlackSurplusMap.get(dvarName));
+
         }
         return solvedDvMap;
     }
@@ -131,6 +150,8 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
 
     public Map<String, Alias> getAliasMap() {return this.asMap; }
 
+    public List<String> getAliasList() { return this.asList; }
+
 
     // ------------------------------------------------------------
     // --- SETTERS
@@ -140,6 +161,23 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
     public void setTimeArrayDvList(List<String> timeArrayDvList) { this.timeArrayDvList = timeArrayDvList; }
 
     public void setDvTimeArrayList(List<String> dvTimeArrayList) { this.dvTimeArrayList = dvTimeArrayList; }
+
+    public void setTimeStepDvarsAliases() {
+        // Set it for regular DVARs
+        for (Dvar dvar : this.dvMap.values()) {
+            dvar.setTimeStep(this.timeStep);
+        }
+
+        // Set it for conditional DVARs
+        for (Dvar dvar : this.dvSlackSurplusMap.values()) {
+            dvar.setTimeStep(this.timeStep);
+        }
+
+        // Set it for ALIASes
+        for (Alias as : this.asMap.values()) {
+            as.setTimeStep(this.timeStep);
+        }
+    }
 
 
     // ------------------------------------------------------------
@@ -216,15 +254,19 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
         this.dvMap.get(name).addData(data);
     }
 
-    // Reset the flags for DVARs to initially exclude all of them from solution
-    public void resetDvarsForSolution() {
-        for (Dvar dvar : this.dvMap.values()) {
-            dvar.excludeFromSolution();
+    // Reset the flags for conditional DVARs to initially exclude all of them from solution
+    public void resetConditionalDvarsForSolution() {
+        this.usedWtSlackSurplusList = new CopyOnWriteArrayList<>();
+        this.usedWtSlackSurplusDvList = new CopyOnWriteArrayList<>();
+    }
+
+    // Mark a conditional (i.e. slack/surplus) DVAR to be included in solution
+    public void includeDvarInSolution(String name) {
+        Dvar dvar = this.dvSlackSurplusMap.get(name);
+        if (dvar != null) {
+            this.usedWtSlackSurplusDvList.add(name);
+            this.usedWtSlackSurplusList.add(name);
         }
     }
 
-    // Mark a DVAR to be included in solution
-    public void includeDvarInSolution(String name) {
-        this.dvMap.get(name).includeInSolution();
-    }
 }

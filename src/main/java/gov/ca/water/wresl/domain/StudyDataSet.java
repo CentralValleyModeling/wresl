@@ -20,6 +20,8 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
 
     private String absMainFilePath;
 
+    private ParallelVars studyStartDate = null;
+
     private List<String> parameterList = new ArrayList<>();
     private LinkedHashMap<String, Svar> parameterMap = new LinkedHashMap<>();
 
@@ -77,8 +79,8 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         return this.getModelDataSet(modelIndex).getWeightMap();
     }
 
-    public Map<String, WeightElement> getWeightSlackSurplusMap(int modelIndex) {
-        return this.getModelDataSet(modelIndex).getWeightSlackSurplusMap();
+    public Map<String, WeightElement> getUsedWeightSlackSurplusMap(int modelIndex) {
+        return this.getModelDataSet(modelIndex).getUsedWeightSlackSurplusMap();
     }
 
     public Svar getParameter(String parameterName) {
@@ -161,8 +163,8 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         return this.varCycleIndexList;
     }
 
-    public Map<String, Dvar> getSolvedDvarMap(int modelIndex) {
-        return this.getModelDataSet(modelIndex).getSolvedDvMap();
+    public Map<String, Dvar> getDvarMap(int modelIndex) {
+        return this.getModelDataSet(modelIndex).getDvMap();
     }
 
     public List<String> getDvarTimeArrayCycleIndexList(){
@@ -176,6 +178,8 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     public String getPartF() { return this.partF; }
 
     public String getPartF_Init() { return this.partF_Init; }
+
+    public ParallelVars getStudyStartDate() { return this.studyStartDate; }
 
 
     // ------------------------------------------------------------
@@ -197,6 +201,8 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     public void setAbsMainFilePath(String absMainFilePath) {
         this.absMainFilePath = absMainFilePath;
     }
+
+    public void setStudyStartDate(ParallelVars startDate) { this.studyStartDate = startDate; }
 
     public void setModelList(List<String> modelList) {
         this.modelList = modelList;

@@ -101,7 +101,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         INSTANCE.currentModelDataSet.clearFutureAsMap();
 
         // Reset DVARs to be included in the solution
-        INSTANCE.currentModelDataSet.resetDvarsForSolution();
+        INSTANCE.currentModelDataSet.resetConditionalDvarsForSolution();
 
         // Process Svars
         INSTANCE.processSvars(null, INSTANCE.currentModelDataSet.svList, INSTANCE.currentModelDataSet.svMap, showRunTimeMessage);
@@ -114,7 +114,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         INSTANCE.processDvars(nThreads, showRunTimeMessage);
         if (showRunTimeMessage) System.out.println("Completed Dvar processing.");
 
-            // Process Weights
+        // Process Weights
         INSTANCE.processWeights(nThreads, showRunTimeMessage);
 
         return true;
@@ -128,10 +128,12 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         // Retrieve model data
         INSTANCE.currentModelDataSet = sds.getModelDataSet(modelIndex);
 
-        // Loop through aliases
+        // Loop through ALIASes; they need to be processed in order that they were defined in WRESL
+        List<String> asList = INSTANCE.currentModelDataSet.getAliasList();
         Map<String, Alias> asMap = INSTANCE.currentModelDataSet.getAliasMap();
-        for (Alias as : asMap.values()) {
-            if (showRunTimeMessage) System.out.println("Processing alias " + as.name);
+        for (String asName : asList) {
+            Alias as = asMap.get(asName);
+            if (showRunTimeMessage) System.out.println("Processing alias " + asName);
 
             // Process alias at current time
             IntDouble data = INSTANCE.visit(as.expressionParseTree);
@@ -227,9 +229,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
     // Process a single Dvar
     private void processDvar(Dvar dvar, List<String> timeArrayDvList, List<String> dvTimeArrayList, boolean showRunTimeMessage) {
-        // Return if DVAR is not included in the solution
-        if (!dvar.includedInSolution) { return; }
-
         if (showRunTimeMessage) System.out.println("Processing DVAR " + dvar.name);
 
         // Process lower bound
@@ -371,6 +370,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
     // Process Weights
     private void processWeights(int nThreads, boolean showRunTimeMessage) {
+        // Non-conditional weights
         List<WeightElement> weightList = INSTANCE.currentModelDataSet.getWeightList();
         int threshold = (int) Math.ceil(weightList.size()/nThreads);
         ForkJoinPool pool = new ForkJoinPool(nThreads);
@@ -384,6 +384,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 item -> processWeight(item, showRunTimeMessage)
         );
         pool.invoke(task);
+
     }
 
     // Process a single weight
@@ -411,10 +412,13 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // ------------------------------------------------------------
     // --- EVALUATE AN EXPRESSION PROVIDED AS A PARSE TREE
     // ------------------------------------------------------------
-    public static IntDouble evaluateExpression(int currentDay, int currentMonth, int currentYear, ParseTree expression) {
+    public static IntDouble evaluateExpression(StudyDataSet sds, int modelIndex, int currentDay, int currentMonth, int currentYear, ParseTree expression) {
         INSTANCE.currentDay = currentDay;
         INSTANCE.currentMonth = currentMonth;
         INSTANCE.currentYear = currentYear;
+
+        INSTANCE.sds = sds;
+        INSTANCE.currentModelDataSet = sds.getModelDataSet(modelIndex);
 
         return INSTANCE.visit(expression);
     }
@@ -925,29 +929,28 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             }
             ParallelVars prvs = TimeOperations.findTime(tsVar.timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
 
-            // Retrieve data from Timeseries
             IntDouble value;
-            value = tsVar.retrieveDataForTime(prvs);
-            if (value != null) { return value; }
-
-            // If made it this far, timeseries did not extend back in time; try to retrieve from initial data
-            Timeseries svInit = INSTANCE.sds.getSVInitTimeseries(tsName);
-            if (svInit != null) {
-                value = svInit.retrieveDataForTime(prvs);
-                if (value != null) {
-                    return value;
+            if (prvs.isEarlierThan(INSTANCE.sds.getStudyStartDate())) {
+                // Retrieve from initial data
+                Timeseries svInit = INSTANCE.sds.getSVInitTimeseries(tsName);
+                if (svInit != null) {
+                    value = svInit.retrieveDataForTime(prvs);
+                    if (value != null) { return value; }
                 }
-            }
-
-            // If made it this far, it means initial timeseries data was not read before; try reading it
-            svInit = tsVar.copyOf();
-            boolean success = svInit.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
-            if (success) {
-                value = svInit.retrieveDataForTime(prvs);
-                if (value != null) {
-                    INSTANCE.sds.addSVInitTimeseries(svInit);
-                    return value;
+                // If made it this far, it means initial timeseries data was not read before; try reading it
+                svInit = tsVar.copyOf();
+                boolean success = svInit.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+                if (success) {
+                    value = svInit.retrieveDataForTime(prvs);
+                    if (value != null) {
+                        INSTANCE.sds.addSVInitTimeseries(svInit);
+                        return value;
+                    }
                 }
+            } else {
+                // Retrieve data from Timeseries
+                value = tsVar.retrieveDataForTime(prvs);
+                if (value != null) { return value; }
             }
 
             // If made it this far, value was not found; generate error
@@ -1937,14 +1940,14 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         @Override
         // expressionSum
         public EvalConstraint visitExpressionSum(wreslParser.ExpressionSumContext ctx) {
-            IntDouble data = Evaluator.this.visitExpressionSum(ctx);
+            IntDouble data = INSTANCE.visitExpressionSum(ctx);
             return new EvalConstraint(data);
         }
 
         @Override
         // expressionCall
         public EvalConstraint visitExpressionCall(wreslParser.ExpressionCallContext ctx) {
-            IntDouble data = Evaluator.this.visitExpressionCall(ctx);
+            IntDouble data = INSTANCE.visitExpressionCall(ctx);
             return new EvalConstraint(data);
         }
 
@@ -1967,7 +1970,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 return visit(objRef);
             // For everything else, revert back to visit methods of Evaluator class
             } else {
-                IntDouble result = Evaluator.this.visitExpressionReference(ctx);
+                IntDouble result = INSTANCE.visitExpressionReference(ctx);
                 return new EvalConstraint(result);
             }
         }
@@ -1994,7 +1997,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 }
 
                 // Otherwise, retrieve timestep offset and make sure it is an integer number
-                IntDouble temp = Evaluator.this.visit(ctx.timestepOffset().expression());
+                IntDouble temp = INSTANCE.visit(ctx.timestepOffset().expression());
                 if (!temp.isInt()) {
                     throw new EvaluationErrorException("Timeseries index for ALIAS" + varName + " must be an integer value.");
                 }
@@ -2054,30 +2057,30 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 }
                 ParallelVars prvs = TimeOperations.findTime(tsVar.timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
 
-                // Retrieve data from Timeseries
                 IntDouble value;
-                value = tsVar.retrieveDataForTime(prvs);
-                if (value != null) {
-                    return new EvalConstraint(value);
-                }
-                // If made it this far, timeseries did not extend back in time; try to retrieve from initial data
-                Timeseries svInit = INSTANCE.sds.getSVInitTimeseries(tsName);
-                if (svInit != null) {
-                    value = svInit.retrieveDataForTime(prvs);
-                    if (value != null) {
-                        return new EvalConstraint(value);
+                if (prvs.isEarlierThan(INSTANCE.sds.getStudyStartDate())) {
+                    // Retrieve from initial data
+                    Timeseries svInit = INSTANCE.sds.getSVInitTimeseries(tsName);
+                    if (svInit != null) {
+                        value = svInit.retrieveDataForTime(prvs);
+                        if (value != null) { return new EvalConstraint(value); }
                     }
-                }
-                // If made it this far, it means initial timeseries data was not read before; try reading it
-                svInit = tsVar.copyOf();
-                boolean success = svInit.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
-                if (success) {
-                    value = svInit.retrieveDataForTime(prvs);
-                    if (value != null) {
-                        INSTANCE.sds.addSVInitTimeseries(svInit);
-                        return new EvalConstraint(value);
+                    // If made it this far, it means initial timeseries data was not read before; try reading it
+                    svInit = tsVar.copyOf();
+                    boolean success = svInit.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+                    if (success) {
+                        value = svInit.retrieveDataForTime(prvs);
+                        if (value != null) {
+                            INSTANCE.sds.addSVInitTimeseries(svInit);
+                            return new EvalConstraint(value);
+                        }
                     }
+                } else {
+                    // Retrieve data from Timeseries
+                    value = tsVar.retrieveDataForTime(prvs);
+                    if (value != null) { return new EvalConstraint(value); }
                 }
+
                 // If made it this far, value was not found; generate error
                 throw new EvaluationErrorException(tsVar.fromWresl, tsVar.line, "Was not able to retrieve data from the timeseries data for the provided time index.");
             }

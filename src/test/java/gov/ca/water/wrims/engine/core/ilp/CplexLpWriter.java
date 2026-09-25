@@ -158,7 +158,7 @@ public class CplexLpWriter {
 	
 			if (dvarMap.get(key).integer.equalsIgnoreCase(Param.yes)) ILP.intList.add(key);
 			
-			if (lowerStr.equalsIgnoreCase(Param.lower_unbounded) && upperStr.equalsIgnoreCase(Param.upper_unbounded)) {
+			if (lowerStr.equalsIgnoreCase(Param.dv_lower_unbounded) && upperStr.equalsIgnoreCase(Param.dv_upper_unbounded)) {
 				freeList.add(key);  //TODO: test what happen if it's a free integer ???
 				continue;  
 			}
@@ -166,10 +166,10 @@ public class CplexLpWriter {
 				freeList.add(key);  //TODO: test what happen if it's a free integer ???
 				continue;  
 			}
-			else if (lowerStr.equalsIgnoreCase(Param.lower_unbounded) || lower<Param.lower_unbounded_double) {
+			else if (lowerStr.equalsIgnoreCase(Param.dv_lower_unbounded) || lower<Param.lower_unbounded_double) {
 				outFile.print(" -inf <= " + key + " <= " + upper + " \n");
 			}
-			else if (upperStr.equalsIgnoreCase(Param.upper_unbounded) || upper>Param.upper_unbounded_double){
+			else if (upperStr.equalsIgnoreCase(Param.dv_upper_unbounded) || upper>Param.upper_unbounded_double){
 
 				if (lower != 0) outFile.print(key + " >= " + lower + " \n");
 			}

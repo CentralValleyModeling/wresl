@@ -1,5 +1,6 @@
 package gov.ca.water.wresl.parsing;
 
+import gov.ca.water.utilities.ParallelVars;
 import gov.ca.water.wresl.domain.StudyDataSet;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.slf4j.Logger;
@@ -15,7 +16,7 @@ public class Study {
     // ------------------------------------------------------------
     // --- COMPILE WRIMS DATA FROM WRESL FILES
     // ------------------------------------------------------------
-    public StudyDataSet compile(String mainFile) {
+    public StudyDataSet compile(String mainFile, int startDay, int startMon, int startYear) {
         // Track time
         long start = System.currentTimeMillis();
 
@@ -38,6 +39,10 @@ public class Study {
         // Store study name and WRESl file details
         sds.fromWresl = mainFilePath.toString();
         sds.line = 1;
+
+        // Set study start date
+        ParallelVars startDate = new ParallelVars(startDay, startMon, startYear);
+        sds.setStudyStartDate(startDate);
 
         // Report total compile time
         long end = System.currentTimeMillis();

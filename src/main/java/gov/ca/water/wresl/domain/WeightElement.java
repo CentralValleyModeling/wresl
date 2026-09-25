@@ -9,7 +9,7 @@ public class WeightElement extends WRESLComponent implements Serializable  {
     private static final long serialVersionUID = 1L;
 
     public String weight = Param.zero;
-    public int condition = Param.always_i;
+    public boolean conditional = false;
     public ParseTree weightParseTree = null;
     public double value = 0.0;
 
