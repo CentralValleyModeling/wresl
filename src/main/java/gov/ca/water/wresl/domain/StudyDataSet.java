@@ -143,6 +143,10 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         return this.modelDataSetMap.get(this.modelList.get(modelIndex));
     }
 
+    public ModelDataSet getModelDataSet(String modelName) {
+        return this.modelDataSetMap.get(modelName);
+    }
+
     public Map<String, ModelDataSet> getModelDataSetMap() {
         return new HashMap<String, ModelDataSet>(this.modelDataSetMap);
     }

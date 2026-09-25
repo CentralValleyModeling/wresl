@@ -153,6 +153,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         for (String svName: svList) {
             if (showRunTimeMessage) System.out.println("Processing svar "+svName);
             Svar svar = svMap.get(svName);
+            System.out.println(svName);
 
             // Process svar
             INSTANCE.futureArrayIndex = 0;
@@ -894,6 +895,36 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
         IntDouble varData;
 
+        // If this is a DVAR or ALIAS from a previous cycle
+        if (ctx.scope() != null) {
+            ModelDataSet prevMds = null;
+            // Retrieve scope (i.e. cycle); ignore LOCAL and GLOBAL keywords
+            int scope = ctx.scope().scopeBody().getStart().getType();
+            if (!(scope == wreslLexer.GLOBAL || scope == wreslLexer.LOCAL)) {
+                String prevModel = getWreslText(ctx.scope().scopeBody().expression());
+                prevMds = INSTANCE.sds.getModelDataSet(prevModel);
+                if (prevMds == null) {
+                    throw new EvaluationErrorException(prevModel + " cannot be located in study!");
+                }
+            }
+
+            // Retrieve DVAR from previous model
+            Dvar dvar = prevMds.getDvar(varName);
+            if (dvar != null) {
+                // Retrieve data from DVAR
+                IntDouble value = retrieveDataFromDvar(dvar, ctx.timestepOffset());
+                return value;
+            }
+
+            // If made it this far, retrieve ALIAS from previous model
+            Alias as = prevMds.getAlias(varName);
+            if (as != null) {
+                // Retrieve data from DVAR
+                IntDouble value = retrieveDataFromAlias(as, ctx.timestepOffset());
+                return value;
+            }
+        }
+
         // This is an SVAR
         Svar var = INSTANCE.currentModelDataSet.getSvar(varName);                       // Is this an Svar?
         if (var != null) {
@@ -918,16 +949,8 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         String tsName = DssOperations.entryNameTS(varName, INSTANCE.currentModelDataSet.getTimeStep());
         Timeseries tsVar = INSTANCE.sds.getSVTimeseries(tsName);
         if (tsVar != null) {
-            // Retrieve timestep offset and make sure it is an integer number
-            int timeOffset = 0;
-            if (ctx.timestepOffset() != null) {
-                IntDouble temp = visit(ctx.timestepOffset().expression());
-                if (!temp.isInt()) {
-                    throw new EvaluationErrorException("Timeseries index for " + varName + " must be an integer value.");
-                }
-                timeOffset = temp.getValue().intValue();
-            }
-            ParallelVars prvs = TimeOperations.findTime(tsVar.timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+            // Retrieve timestep offset ParallelVars
+            ParallelVars prvs = retrieveTimeStepOffsetPRVS("TIMESERIES", varName, tsVar.getTimeStep(), ctx.timestepOffset());
 
             IntDouble value;
             if (prvs.isEarlierThan(INSTANCE.sds.getStudyStartDate())) {
@@ -960,63 +983,15 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         // This is an ALIAS
         Alias asVar = INSTANCE.currentModelDataSet.asMap.get(varName);
         if (asVar != null) {
-            // Retrieve timestep offset and make sure it is an integer number
-            int timeOffset = 0;
-            if (ctx.timestepOffset() != null) {
-                IntDouble temp = visit(ctx.timestepOffset().expression());
-                if (!temp.isInt()) {
-                    throw new EvaluationErrorException("Timeseries index for ALIAS" + varName + " must be an integer value.");
-                }
-                timeOffset = temp.getValue().intValue();
+            IntDouble value = retrieveDataFromAlias(asVar, ctx.timestepOffset());
+            return value;
             }
-            String timeStep = currentModelDataSet.getTimeStep();
-            ParallelVars prvs = TimeOperations.findTime(timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
-
-            // Retrieve data from Alias
-            IntDouble value;
-            value = asVar.retrieveDataForTime(prvs);
-            if (value != null) { return value; }
-
-            // If made it this far, alias did not extend back in time; try to retrieve from initial data
-            asVar.setDssBPart(asVar.name);
-            asVar.setTimeStep(INSTANCE.currentModelDataSet.getTimeStep());
-            asVar.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
-            value = asVar.retrieveDataForTime(prvs);
-            if (value != null ) { return value; }
-
-            // If made it this far, value was not found; generate error
-            throw new EvaluationErrorException(asVar.fromWresl, asVar.line, "Was not able to retrieve data for ALIAS " + asVar.name + " for the provided time index.");
-        }
 
         // This is a DVAR
         Dvar dvar = INSTANCE.currentModelDataSet.getDvar(varName);
         if (dvar != null) {
-            // Retrieve timestep offset and make sure it is an integer number
-            int timeOffset = 0;
-            if (ctx.timestepOffset() != null) {
-                IntDouble temp = visit(ctx.timestepOffset().expression());
-                if (!temp.isInt()) {
-                    throw new EvaluationErrorException("Timeseries index for ALIAS" + varName + " must be an integer value.");
-                }
-                timeOffset = temp.getValue().intValue();
-            }
-            String timeStep = currentModelDataSet.getTimeStep();
-            ParallelVars prvs = TimeOperations.findTime(timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
-
-            // Retrieve data from Dvar
-            IntDouble value;
-            value = dvar.retrieveDataForTime(prvs);
-            if (value != null) { return value; }
-
-            // If made it this far, dvar did not extend back in time; try to retrieve from initial data
-            dvar.setDssBPart(dvar.name);
-            dvar.setTimeStep(INSTANCE.currentModelDataSet.getTimeStep());
-            dvar.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
-            value = dvar.retrieveDataForTime(prvs);
-            if (value != null ) { return value; }
-
-            // If made it this far, value was not found; generate error
-            throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Was not able to retrieve data for DVAR " + dvar.name + " for the provided time index.");
+            IntDouble value = retrieveDataFromDvar(dvar, ctx.timestepOffset());
+            return value;
         }
 
         // If made it this far, variable was not found; generate error
@@ -1612,6 +1587,71 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         return al;
     }
 
+
+    // ------------------------------------------------------------
+    // --- HELPER METHODS TO RETRIEVE DATA FROM DIFFERENT WRESL OBJECTS
+    // ------------------------------------------------------------
+
+    // Retrieve timestep offset
+    private ParallelVars retrieveTimeStepOffsetPRVS(String varType, String varName, String timeStep, wreslParser.TimestepOffsetContext timestepOffsetCtx) {
+        int timeOffset = 0;
+        if (timestepOffsetCtx != null) {
+            IntDouble temp = visit(timestepOffsetCtx.expression());
+            if (!temp.isInt()) {
+                throw new EvaluationErrorException("Timeseries index for " + varType + " " + varName + " must be an integer value.");
+            }
+            timeOffset = temp.getValue().intValue();
+        }
+        ParallelVars prvs = TimeOperations.findTime(timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+
+        return prvs;
+    }
+
+    // Retrieve data from a DVAR
+    private IntDouble retrieveDataFromDvar(Dvar dvar, wreslParser.TimestepOffsetContext timestepOffsetCtx) {
+        // Retrieve timestep offset parallel vars
+        ParallelVars prvs = retrieveTimeStepOffsetPRVS("DVAR", dvar.getName(), dvar.getTimeStep(), timestepOffsetCtx);
+
+        // Retrieve data from Dvar
+        IntDouble value;
+        value = dvar.retrieveDataForTime(prvs);
+        if (value != null) { return value; }
+
+        // If made it this far, dvar did not extend back in time; try to retrieve from initial data
+        dvar.setDssBPart(dvar.getName());
+        dvar.setTimeStep(INSTANCE.currentModelDataSet.getTimeStep());
+        dvar.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+        value = dvar.retrieveDataForTime(prvs);
+        if (value != null ) { return value; }
+
+        // If made it this far, value was not found; generate error
+        throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Was not able to retrieve data for DVAR " + dvar.getName() + " for the provided time index.");
+
+    }
+
+    // Retrieve data from an ALIAS
+    private IntDouble retrieveDataFromAlias(Alias as, wreslParser.TimestepOffsetContext timestepOffsetCtx) {
+        // Retrieve timestep offset ParallelVars
+        ParallelVars prvs = retrieveTimeStepOffsetPRVS("ALIAS", as.getName(), as.getTimeStep(), timestepOffsetCtx);
+
+        // Retrieve data from Alias
+        IntDouble value;
+        value = as.retrieveDataForTime(prvs);
+        if (value != null) { return value; }
+
+        // If made it this far, alias did not extend back in time; try to retrieve from initial data
+        as.setDssBPart(as.getName());
+        as.setTimeStep(INSTANCE.currentModelDataSet.getTimeStep());
+        as.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+        value = as.retrieveDataForTime(prvs);
+        if (value != null ) { return value; }
+
+        // If made it this far, value was not found; generate error
+        throw new EvaluationErrorException(as.fromWresl, as.line, "Was not able to retrieve data for ALIAS " + as.name + " for the provided time index.");
+
+    }
+
+
     // ------------------------------------------------------------
     // --- CLASS FOR PROCESSING OF GOALS (I.E. CONSTRAINTS)
     // ------------------------------------------------------------
@@ -1996,29 +2036,10 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                     }
                 }
 
-                // Otherwise, retrieve timestep offset and make sure it is an integer number
-                IntDouble temp = INSTANCE.visit(ctx.timestepOffset().expression());
-                if (!temp.isInt()) {
-                    throw new EvaluationErrorException("Timeseries index for ALIAS" + varName + " must be an integer value.");
-                }
-                int timeOffset = temp.getValue().intValue();
-                String timeStep = currentModelDataSet.getTimeStep();
-                ParallelVars prvs = TimeOperations.findTime(timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
 
                 // Retrieve timeseries data from Dvar
-                IntDouble value;
-                value = dvar.retrieveDataForTime(prvs);
-                if (value != null) { return new EvalConstraint(value); }
-
-                // If made it this far, dvar did not extend back in time; try to retrieve from initial data
-                dvar.setDssBPart(dvar.name);
-                dvar.setTimeStep(INSTANCE.currentModelDataSet.getTimeStep());
-                dvar.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
-                value = dvar.retrieveDataForTime(prvs);
-                if (value != null ) { return new EvalConstraint(value); }
-
-                // If made it this far, evaluation was unsuccessful; generate error
-                throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Was not able to retrieve data for DVAR " + dvar.name + " for the provided time index.");
+                IntDouble value = retrieveDataFromDvar(dvar, ctx.timestepOffset());
+                return new EvalConstraint(value);
 
             }
 
@@ -2046,16 +2067,8 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             String tsName = DssOperations.entryNameTS(varName, INSTANCE.currentModelDataSet.getTimeStep());
             Timeseries tsVar = INSTANCE.sds.getSVTimeseries(tsName);
             if (tsVar != null) {
-                // Retrieve timestep offset and make sure it is an integer number
-                int timeOffset = 0;
-                if (ctx.timestepOffset() != null) {
-                    IntDouble temp = INSTANCE.visit(ctx.timestepOffset().expression());
-                    if (!temp.isInt()) {
-                        throw new EvaluationErrorException("Timeseries index for " + varName + " must be an integer value.");
-                    }
-                    timeOffset = temp.getValue().intValue();
-                }
-                ParallelVars prvs = TimeOperations.findTime(tsVar.timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+                // Retrieve timestep offset ParallelVars
+                ParallelVars prvs = retrieveTimeStepOffsetPRVS("TIMESERIES", tsName, tsVar.getTimeStep(), ctx.timestepOffset());
 
                 IntDouble value;
                 if (prvs.isEarlierThan(INSTANCE.sds.getStudyStartDate())) {
@@ -2098,24 +2111,8 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 ParallelVars prvs = TimeOperations.findTime(timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
 
                 // Retrieve data from Alias
-                IntDouble value;
-                value = asVar.retrieveDataForTime(prvs);
-                if (value != null) {
-                    return new EvalConstraint(value);
-                }
-
-                // If made it this far, alias did not extend back in time; try to retrieve from initial data
-                asVar.setDssBPart(asVar.name);
-                asVar.setTimeStep(INSTANCE.currentModelDataSet.getTimeStep());
-                asVar.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
-                value = asVar.retrieveDataForTime(prvs);
-                if (value != null ) {
-                    return new EvalConstraint(value);
-                }
-
-                // If made it this far, value was not found; generate error
-                throw new EvaluationErrorException(asVar.fromWresl, asVar.line, "Was not able to retrieve data for ALIAS " + asVar.name + " for the provided time index.");
-
+                IntDouble value = retrieveDataFromAlias(asVar, ctx.timestepOffset());
+                return new EvalConstraint(value);
             }
 
             // If made it this far, variable was not found; generate error
