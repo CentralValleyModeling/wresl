@@ -1,8 +1,5 @@
 package gov.ca.water.wresl.errors;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class EvaluationErrorException extends RuntimeException {
     private String sourceFile = "";
     private int line = -1;

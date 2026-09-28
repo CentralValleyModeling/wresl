@@ -126,29 +126,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                 svTSMap.put(svTSName, ts);
             });
             mds.clearTempTSMap();  // Clear memory for the temporary Timeseries map that we just utilized and now are done with
-
-            // Evaluate weights when possible (i.e. when they don't depend on some dynamic value such a taf-cfs)
-            for (String weightName : mds.wtList) {
-                WeightElement weight = mds.wtMap.get(weightName);
-                try {
-                    // Evaluate weight value and set parse tree to null to indicate this value is already evaluated
-                    weight.value = Evaluator.evaluateExpression(this.sds, modelIndex,0, 0, 0, weight.weightParseTree).getValue().doubleValue();
-                    weight.weightParseTree = null;
-                } catch (EvaluationErrorException | NullPointerException e) {
-                    // Do nothing at this point since this error is likely due to a dynamic variable within the expression
-                }
-            }
-            for (String weightName : mds.wtSlackSurplusList) {
-                WeightElement weight = mds.wtSlackSurplusMap.get(weightName);
-                try {
-                    // Evaluate weight value and set parse tree to null to indicate this value is already evaluated
-                    weight.value = Evaluator.evaluateExpression(this.sds, modelIndex,0, 0, 0, weight.weightParseTree).getValue().doubleValue();
-                    weight.weightParseTree = null;
-                } catch (EvaluationErrorException | NullPointerException e) {
-                    // Do nothing at this point since this error is likely due to a dynamic variable within the expression
-                }
-            }
-
+            
             // Convert ALIASes referenced in GOALs, and other ALIASes referenced from these ALIASes, to DVARs and GOALs
             convertAliasToGoal(mds);
 

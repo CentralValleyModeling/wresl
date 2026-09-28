@@ -153,7 +153,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         for (String svName: svList) {
             if (showRunTimeMessage) System.out.println("Processing svar "+svName);
             Svar svar = svMap.get(svName);
-            System.out.println(svName);
 
             // Process svar
             INSTANCE.futureArrayIndex = 0;
