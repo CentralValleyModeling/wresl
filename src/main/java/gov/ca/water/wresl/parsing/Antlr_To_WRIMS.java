@@ -126,7 +126,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                 svTSMap.put(svTSName, ts);
             });
             mds.clearTempTSMap();  // Clear memory for the temporary Timeseries map that we just utilized and now are done with
-            
+
             // Convert ALIASes referenced in GOALs, and other ALIASes referenced from these ALIASes, to DVARs and GOALs
             convertAliasToGoal(mds);
 

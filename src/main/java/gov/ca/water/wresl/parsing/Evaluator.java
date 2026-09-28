@@ -896,32 +896,8 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
         // If this is a DVAR or ALIAS from a previous cycle
         if (ctx.scope() != null) {
-            ModelDataSet prevMds = null;
-            // Retrieve scope (i.e. cycle); ignore LOCAL and GLOBAL keywords
-            int scope = ctx.scope().scopeBody().getStart().getType();
-            if (!(scope == wreslLexer.GLOBAL || scope == wreslLexer.LOCAL)) {
-                String prevModel = getWreslText(ctx.scope().scopeBody().expression());
-                prevMds = INSTANCE.sds.getModelDataSet(prevModel);
-                if (prevMds == null) {
-                    throw new EvaluationErrorException(prevModel + " cannot be located in study!");
-                }
-            }
-
-            // Retrieve DVAR from previous model
-            Dvar dvar = prevMds.getDvar(varName);
-            if (dvar != null) {
-                // Retrieve data from DVAR
-                IntDouble value = retrieveDataFromDvar(dvar, ctx.timestepOffset());
-                return value;
-            }
-
-            // If made it this far, retrieve ALIAS from previous model
-            Alias as = prevMds.getAlias(varName);
-            if (as != null) {
-                // Retrieve data from DVAR
-                IntDouble value = retrieveDataFromAlias(as, ctx.timestepOffset());
-                return value;
-            }
+            varData = retrieveDvarOrAliasFromPreviousCycle(varName, ctx);
+            return varData;
         }
 
         // This is an SVAR
@@ -1606,6 +1582,42 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         return prvs;
     }
 
+    // Retrieve data from DVAR or ALIAS object that belongs to a previous cycle
+    private IntDouble retrieveDvarOrAliasFromPreviousCycle(String varName, wreslParser.ObjectReferenceContext ctx) {
+        ModelDataSet prevMds = null;
+        String prevModel = "";
+        // Retrieve scope (i.e. cycle); ignore LOCAL and GLOBAL keywords
+        int scope = ctx.scope().scopeBody().getStart().getType();
+        if (!(scope == wreslLexer.GLOBAL || scope == wreslLexer.LOCAL)) {
+            prevModel = getWreslText(ctx.scope().scopeBody().expression());
+            prevMds = INSTANCE.sds.getModelDataSet(prevModel);
+            if (prevMds == null) {
+                throw new EvaluationErrorException(prevModel + " cannot be located in study!");
+            }
+        }
+
+        // Retrieve DVAR from previous model
+        Dvar dvar = prevMds.getDvar(varName);
+        if (dvar != null) {
+            // Retrieve data from DVAR
+            IntDouble value = retrieveDataFromDvar(dvar, ctx.timestepOffset());
+            return value;
+        }
+
+        // If made it this far, retrieve ALIAS from previous model
+        Alias as = prevMds.getAlias(varName);
+        if (as != null) {
+            // Retrieve data from DVAR
+            IntDouble value = retrieveDataFromAlias(as, ctx.timestepOffset());
+            return value;
+        }
+
+        // If made it this far, DVAR or ALIAS was not located in the previous cycle
+        String sourceFile = ctx.getStart().getInputStream().getSourceName();
+        int line = ctx.getStart().getLine();
+        throw new EvaluationErrorException(sourceFile, line, varName + " is not defined in cycle " + prevModel + "!");
+    }
+
     // Retrieve data from a DVAR
     private IntDouble retrieveDataFromDvar(Dvar dvar, wreslParser.TimestepOffsetContext timestepOffsetCtx) {
         // Retrieve timestep offset parallel vars
@@ -2019,6 +2031,12 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         public EvalConstraint visitObjectReference(wreslParser.ObjectReferenceContext ctx) {
             // Retrieve object name
             String varName = getWreslText(ctx.OBJECT_NAME());
+
+            // If this is a DVAR or ALIAS from a previous cycle
+            if (ctx.scope() != null) {
+                IntDouble result = INSTANCE.retrieveDvarOrAliasFromPreviousCycle(varName, ctx);
+                return new EvalConstraint(result);
+            }
 
             // This is a DVAR
             Dvar dvar = INSTANCE.currentModelDataSet.getDvar(varName);
