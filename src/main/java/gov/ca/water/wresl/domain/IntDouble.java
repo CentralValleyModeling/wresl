@@ -65,9 +65,9 @@ public class IntDouble {
 
     public IntDouble copyOf() {
         if (this.isInteger) {
-            return new IntDouble(this.data.intValue(), this.isInteger);
+            return new IntDouble(this.data.intValue(), this.isInteger, this.argName, this.index);
         } else {
-            return new IntDouble(this.data.doubleValue(), this.isInteger);
+            return new IntDouble(this.data.doubleValue(), this.isInteger, this.argName, this.index);
         }
     }
 

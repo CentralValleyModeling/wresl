@@ -81,19 +81,24 @@ public class Timeseries extends WRESLComponent implements Serializable {
     // --------------------
 
     // Create a copy of the Timeseries data
+    @Override
     public Timeseries copyOf() {
-        Timeseries tsCopy = new Timeseries();
-
-        tsCopy.dssBPart = this.dssBPart;
-        tsCopy.kind = this.kind;
-        tsCopy.units = this.units;
-        tsCopy.convertToUnits = this.convertToUnits;
-        tsCopy.timeStep = this.timeStep;
-        tsCopy.startTime = this.startTime;
-        tsCopy.studyStartIndex = this.studyStartIndex;
-        tsCopy.data = this.data;
-
-        return tsCopy;
+        try {
+            Timeseries tsCopy = (Timeseries) super.copyOf(); //this.getClass().getDeclaredConstructor().newInstance();
+            tsCopy.dssBPart = this.dssBPart;
+            tsCopy.kind = this.kind;
+            tsCopy.units = this.units;
+            tsCopy.convertToUnits = this.convertToUnits;
+            tsCopy.timeStep = this.timeStep;
+            tsCopy.startTime = this.startTime;
+            tsCopy.studyStartIndex = this.studyStartIndex;
+            if (this.data.size() > 0) {
+                tsCopy.data = new ArrayList<>(this.data);
+            }
+            return tsCopy;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to copy Timeseries object " + this.getName() + "!");
+        }
     }
 
     // Read timeseries data from DSS file

@@ -21,4 +21,20 @@ public abstract class WRESLComponent {
     // --- GETTERS
     // --------------------
     public String getName() { return this.name; }
+
+
+    // --------------------
+    // ---MISC. METHODS
+    // --------------------
+    public WRESLComponent copyOf() {
+        try {
+            WRESLComponent component = this.getClass().getDeclaredConstructor().newInstance();
+            component.name = this.name;
+            component.fromWresl = this.fromWresl;
+            component.line = this.line;
+            return component;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to make a copy of " + this.name + "!");
+        }
+    }
 }

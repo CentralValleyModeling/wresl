@@ -38,8 +38,9 @@ public class Svar extends WRESLComponent implements Serializable {
     // --------------------
 
     // Copy contents of an svar into another one
+    @Override
     public Svar copyOf() {
-        Svar svarCopy = new Svar();
+        Svar svarCopy = (Svar) super.copyOf();
 
         svarCopy.dependants = this.dependants;
         svarCopy.neededVarInCycleSet = this.neededVarInCycleSet;

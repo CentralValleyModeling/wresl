@@ -287,15 +287,15 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         if (dvar.conditional) {
                             // Conditional DVARs are slack/surplus DVARs
                             mds.dvSlackSurplusList.add(name);
-                            mds.dvSlackSurplusMap.put(name, dvar);
+                            mds.dvSlackSurplusMap.put(name, dvar.copyOf());
                         } else {
                             mds.dvList.add(name);
-                            mds.dvMap.put(name, dvar);
+                            mds.dvMap.put(name, dvar.copyOf());
                         }
                     }
                     case WeightElement weight -> {
                         if (weight.conditional) {
-                            // Conditional weights are for slcka/surpluas DVARs
+                            // Conditional weights are for slack/surplus DVARs
                             mds.wtSlackSurplusList.add(name);
                             mds.wtSlackSurplusMap.put(name, weight);
                         } else {
@@ -389,10 +389,10 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
                         if (dvar.conditional) {
                             // Conditional DVARs are slack/surplus DVARs
                             mds.dvSlackSurplusList.add(name);
-                            mds.dvSlackSurplusMap.put(name, dvar);
+                            mds.dvSlackSurplusMap.put(name, dvar.copyOf());
                         } else {
                             mds.dvList.add(name);
-                            mds.dvMap.put(name, dvar);
+                            mds.dvMap.put(name, dvar.copyOf());
                         }
                     }
                     case WeightElement weight -> {

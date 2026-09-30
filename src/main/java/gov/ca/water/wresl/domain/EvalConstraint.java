@@ -98,7 +98,7 @@ public class EvalConstraint {
 
         copy.multipliers = new LinkedHashMap<>();
         for (IntDouble multiplier : this.multipliers.values()) {
-            copy.multipliers.put(multiplier.getArgName(), multiplier);
+            copy.multipliers.put(multiplier.getArgName(), multiplier.copyOf());
         }
         return copy;
     }

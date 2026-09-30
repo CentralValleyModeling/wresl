@@ -38,4 +38,28 @@ public class Dvar extends Timeseries implements Serializable {
         return this.data.getLast();
     }
 
+
+    // ------------------------------------------------------------
+    // --- MISC. METHODS
+    // ------------------------------------------------------------
+    @Override
+    public Dvar copyOf() {
+        Dvar dvar;
+
+        dvar = (Dvar) super.copyOf();
+
+        dvar.integer                          = this.integer;
+        dvar.lowerBound                       = this.lowerBound;
+        dvar.lowerBoundExpressionParseTree    = this.lowerBoundExpressionParseTree;
+        dvar.upperBound                       = this.upperBound;
+        dvar.upperBoundExpressionParseTree    = this.upperBoundExpressionParseTree;
+        dvar.conditional                      = this.conditional;
+        dvar.upperBoundValue                  = this.upperBoundValue;
+        dvar.lowerBoundValue                  = this.lowerBoundValue;
+        dvar.expression                       = this.expression;
+        dvar.timeArraySize                    = this.timeArraySize;
+        dvar.timeArraySizeExpressionParseTree = this.timeArraySizeExpressionParseTree;
+
+        return dvar;
+    }
 }
