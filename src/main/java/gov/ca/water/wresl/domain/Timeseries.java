@@ -248,7 +248,7 @@ public class Timeseries extends WRESLComponent implements Serializable {
     public IntDouble retrieveDataForTime(ParallelVars prvs) {
         int index = timeSeriesIndex(prvs, this.startTime, this.timeStep);
         if (index >= 0) {
-            if (index < this.data.size()) {
+            if (index <= this.data.size()-1) {
                 IntDouble value = this.data.get(index).copyOf();
                 if (value == null) { return null; }
                 Double doubleValue = value.getValue().doubleValue();

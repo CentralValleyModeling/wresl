@@ -663,12 +663,20 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     @Override
     // expressionSum
     public IntDouble visitExpressionSum(wreslParser.ExpressionSumContext ctx) {
+        IntDouble data = visit(ctx.sumExpressionBody());
+        return data;
+    }
+
+    @Override
+    // sumExpressionBody
+    public IntDouble visitSumExpressionBody(wreslParser.SumExpressionBodyContext ctx) {
+        // Initialize
         int iBegin;
         int iEnd;
         int iStep = 1;
 
         // Retrieve SUM begin index
-        IntDouble indexBegin = visit(ctx.sumExpressionBody().sumBegin());
+        IntDouble indexBegin = visit(ctx.sumBegin());
         if (indexBegin == null) {
             return null;
         } else {
@@ -676,7 +684,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         }
 
         // Retrieve SUM end index
-        IntDouble indexEnd = visit(ctx.sumExpressionBody().sumEnd());
+        IntDouble indexEnd = visit(ctx.sumEnd());
         if (indexEnd == null) {
             return null;
         } else {
@@ -684,8 +692,8 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         }
 
         // Retrieve SUM step size
-        if (ctx.sumExpressionBody().sumStep() != null) {
-            IntDouble step = visit(ctx.sumExpressionBody().sumStep());
+        if (ctx.sumStep() != null) {
+            IntDouble step = visit(ctx.sumStep());
             if (step == null) {
                 return null;
             } else {
@@ -694,12 +702,12 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         }
 
         // Loop through SUM
-        String sumIndex = "(" + getWreslText(ctx.sumExpressionBody().OBJECT_NAME()) + ")";
+        String sumIndex = "(" + getWreslText(ctx.OBJECT_NAME()) + ")";
         double sum =0.0;
         IntDouble data;
         for (int i=iBegin; i<=iEnd; i++) {
             // Create a new parse tree for the accumulating expression with the index value specified
-            String accumExpression = getWreslText(ctx.sumExpressionBody().accumulatingExpression());
+            String accumExpression = getWreslText(ctx.accumulatingExpression());
             String accumExpressionMod = accumExpression.replace(sumIndex, "("+i+")");
             ParseTree accumParseTree = generateExpressionParseTree(accumExpressionMod);
 
@@ -897,7 +905,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
         // If this is a DVAR or ALIAS from a previous cycle
         if (ctx.scope() != null) {
-            varData = retrieveDvarOrAliasFromPreviousCycle(varName, ctx);
+            varData = retrieveDvarOrAliasOrSvarFromPreviousCycle(varName, ctx);
             return varData;
         }
 
@@ -959,15 +967,20 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         // This is an ALIAS
         Alias asVar = INSTANCE.currentModelDataSet.asMap.get(varName);
         if (asVar != null) {
-
-            IntDouble value = retrieveDataFromAlias(asVar, ctx.timestepOffset(), getSourceFile(ctx), getLine(ctx));
-            return value;
+            IntDouble value = retrieveDataFromAlias(asVar, ctx.timestepOffset());
+            if (value == null) {
+                throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Alias " + asVar.getName() + " is being referenced before its value is computed!");
             }
+            return value;
+        }
 
         // This is a DVAR
         Dvar dvar = INSTANCE.currentModelDataSet.getDvar(varName);
         if (dvar != null) {
-            IntDouble value = retrieveDataFromDvar(dvar, ctx.timestepOffset(), getSourceFile(ctx), getLine(ctx));
+            IntDouble value = retrieveDataFromDvar(dvar, ctx.timestepOffset());
+            if (value == null) {
+                throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Dvar " + dvar.getName() + " is being referenced before its value is computed!");
+            }
             return value;
         }
 
@@ -1584,46 +1597,63 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         return prvs;
     }
 
-    // Retrieve data from DVAR or ALIAS object that belongs to a previous cycle
-    private IntDouble retrieveDvarOrAliasFromPreviousCycle(String varName, wreslParser.ObjectReferenceContext ctx) {
+    // Retrieve data from DVAR or ALIAS or SVAR object that belongs to a previous cycle
+    private IntDouble retrieveDvarOrAliasOrSvarFromPreviousCycle(String varName, wreslParser.ObjectReferenceContext ctx) {
         ModelDataSet prevMds = null;
         String prevModel = "";
+        int modelIndex = -1;
+
         // Retrieve scope (i.e. cycle); ignore LOCAL and GLOBAL keywords
         int scope = ctx.scope().scopeBody().getStart().getType();
         if (!(scope == wreslLexer.GLOBAL || scope == wreslLexer.LOCAL)) {
             prevModel = getWreslText(ctx.scope().scopeBody().expression());
-            prevMds = INSTANCE.sds.getModelDataSet(prevModel);
-            if (prevMds == null) {
-                throw new EvaluationErrorException(prevModel + " cannot be located in study!");
+            modelIndex = this.sds.getModelIndex(prevModel);
+            if (modelIndex < 0) {
+                throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), prevModel + " cannot be located in the study!");
             }
         }
 
-        // Retrieve DVAR from previous model
-        Dvar dvar = prevMds.getDvar(varName);
-        if (dvar != null) {
-            // Retrieve data from DVAR
-            IntDouble value = retrieveDataFromDvar(dvar, ctx.timestepOffset(), getSourceFile(ctx), getLine(ctx));
-            return value;
+        // Loop backwards in cycles until we manage to retrieve the value of DVAR, ALIAS or SVAR; this is done in case the initially referenced cycle was skipped
+        for (int i=modelIndex; i>=0; i--) {
+            prevMds = INSTANCE.sds.getModelDataSet(i);
+
+            // Try retrieving data as DVAR
+            Dvar dvar = prevMds.getDvar(varName);
+            if (dvar != null) {
+
+                IntDouble value = retrieveDataFromDvar(dvar, ctx.timestepOffset());
+                if (value != null) {
+                    return value;
+                }
+            }
+
+            // If not, try it as ALIAS
+            Alias as = prevMds.getAlias(varName);
+            if (as != null) {
+                IntDouble value = retrieveDataFromAlias(as, ctx.timestepOffset());
+                if (value != null) {
+                    return value;
+                }
+            }
+
+            // Finally, try to retrieve it as an SVAR
+            Svar svar = prevMds.getSvar(varName);
+            if (svar != null) {
+                IntDouble value = svar.getData();
+                if (value != null) {
+                    return value;
+                }
+            }
         }
 
-        // If made it this far, retrieve ALIAS from previous model
-        Alias as = prevMds.getAlias(varName);
-        if (as != null) {
-            // Retrieve data from DVAR
-            IntDouble value = retrieveDataFromAlias(as, ctx.timestepOffset(), getSourceFile(ctx), getLine(ctx));
-            return value;
-        }
-
-        // If made it this far, DVAR or ALIAS was not located in the previous cycle
-        String sourceFile = ctx.getStart().getInputStream().getSourceName();
-        int line = ctx.getStart().getLine();
-        throw new EvaluationErrorException(sourceFile, line, varName + " is not defined in cycle " + prevModel + "!");
+        // If made it this far, DVAR or ALIAS or SVAR was not located in the previous cycle
+        throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), varName + " is not computed in cycle " + prevModel + " or previous cycles!");
     }
 
     // Retrieve data from a DVAR
-    private IntDouble retrieveDataFromDvar(Dvar dvar, wreslParser.TimestepOffsetContext timestepOffsetCtx, String sourceFile, int line) {
+    private IntDouble retrieveDataFromDvar(Dvar dvar, wreslParser.TimestepOffsetContext timestepOffsetCtx) {
         // Retrieve timestep offset parallel vars
-        ParallelVars prvs = retrieveTimeStepOffsetPRVS("DVAR", dvar.getName(), dvar.getTimeStep(), timestepOffsetCtx);
+        ParallelVars prvs = retrieveTimeStepOffsetPRVS("Dvar", dvar.getName(), dvar.getTimeStep(), timestepOffsetCtx);
 
         // Retrieve data from Dvar
         IntDouble value;
@@ -1632,7 +1662,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
         // If value is null, and there is no timestep offset, generate error
         if (timestepOffsetCtx == null) {
-            throw new EvaluationErrorException(sourceFile, line, dvar.getName() + " is being referenced before its value is computed!");
+            return null;
         }
 
         // If made it this far, dvar did not extend back in time; try to retrieve from initial data
@@ -1644,23 +1674,23 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
         // If made it this far, value was not found; generate error
         System.out.println(dvar.getName());
-        throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Was not able to retrieve data for DVAR " + dvar.getName() + " for the provided time index.");
+        throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Was not able to retrieve data for Dvar " + dvar.getName() + " for the provided time index.");
 
     }
 
     // Retrieve data from an ALIAS
-    private IntDouble retrieveDataFromAlias(Alias as, wreslParser.TimestepOffsetContext timestepOffsetCtx, String sourceFile, int line) {
+    private IntDouble retrieveDataFromAlias(Alias as, wreslParser.TimestepOffsetContext timestepOffsetCtx) {
         // Retrieve timestep offset ParallelVars
-        ParallelVars prvs = retrieveTimeStepOffsetPRVS("ALIAS", as.getName(), as.getTimeStep(), timestepOffsetCtx);
+        ParallelVars prvs = retrieveTimeStepOffsetPRVS("Alias", as.getName(), as.getTimeStep(), timestepOffsetCtx);
 
         // Retrieve data from Alias
         IntDouble value;
         value = as.retrieveDataForTime(prvs);
         if (value != null) { return value; }
 
-        // If value is null, and there is no timestep offset, generate error
+        // If value is null, and there is no timestep offset, return null
         if (timestepOffsetCtx == null) {
-            throw new EvaluationErrorException(sourceFile, line, "ALIAS " + as.getName() + " is being referenced before its value is computed!");
+            return null;
         }
 
         // If made it this far, alias did not extend back in time; try to retrieve from initial data
@@ -1671,7 +1701,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         if (value != null ) { return value; }
 
         // If made it this far, value was not found; generate error
-        throw new EvaluationErrorException(as.fromWresl, as.line, "Was not able to retrieve data for ALIAS " + as.name + " for the provided time index.");
+        throw new EvaluationErrorException(as.fromWresl, as.line, "Was not able to retrieve data for Alias " + as.name + " for the provided time index.");
 
     }
 
@@ -2047,7 +2077,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
             // If this is a DVAR or ALIAS from a previous cycle
             if (ctx.scope() != null) {
-                IntDouble result = INSTANCE.retrieveDvarOrAliasFromPreviousCycle(varName, ctx);
+                IntDouble result = INSTANCE.retrieveDvarOrAliasOrSvarFromPreviousCycle(varName, ctx);
                 return new EvalConstraint(result);
             }
 
@@ -2066,11 +2096,12 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                     }
                 }
 
-
                 // Retrieve timeseries data from Dvar
-                IntDouble value = retrieveDataFromDvar(dvar, ctx.timestepOffset(), getSourceFile(ctx), getLine(ctx));
+                IntDouble value = retrieveDataFromDvar(dvar, ctx.timestepOffset());
+                if (value == null) {
+                    throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Dvar " + dvar.getName() + " is being referenced before its value is computed!");
+                }
                 return new EvalConstraint(value);
-
             }
 
             // This is an SVAR
@@ -2131,7 +2162,10 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             // This is an ALIAS
             Alias asVar = INSTANCE.currentModelDataSet.asMap.get(varName);
             if (asVar != null) {
-                IntDouble value = retrieveDataFromAlias(asVar, ctx.timestepOffset(), getSourceFile(ctx), getLine(ctx));
+                IntDouble value = retrieveDataFromAlias(asVar, ctx.timestepOffset());
+                if (value == null) {
+                    throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Alias " + asVar.getName() + " is being referenced before its value is computed!");
+                }
                 return new EvalConstraint(value);
             }
 

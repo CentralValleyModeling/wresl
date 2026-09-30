@@ -131,6 +131,10 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         return timeStepList;
     }
 
+    public int getModelIndex(String modelName) {
+        return this.modelList.indexOf(modelName);
+    }
+
     public ParseTree getModelConditionParseTree(int modelIndex) {
         return this.modelConditionParseTrees.get(modelIndex);
     }
