@@ -7,6 +7,7 @@ import gov.ca.water.utilities.MiscUtilities;
 import gov.ca.water.utilities.ParallelVars;
 import gov.ca.water.utilities.Param;
 import gov.ca.water.utilities.TimeOperations;
+import gov.ca.water.wresl.errors.EvaluationErrorException;
 import hec.heclib.util.HecTime;
 import hec.io.TimeSeriesContainer;
 
@@ -295,8 +296,22 @@ public class Timeseries extends WRESLComponent implements Serializable {
     }
 
     // Add data
-    public void addData(IntDouble data){
-        this.data.add(data);
+    public void addData(ParallelVars prvs, IntDouble data) {
+        // Compute timeseries index to see if the data will be added or will overwrite an existing data
+        int index = timeSeriesIndex(prvs, this.startTime, this.timeStep);
+
+        // Based on the value of index either add data or replace data
+        int indexDiff = index - this.data.size() + 1;
+        if (indexDiff == 1) {
+            this.data.add(data);
+        } else if (indexDiff <= 0) {
+            this.data.set(index, data);
+        } else {
+            for (int i=1; i<indexDiff-1; i++) {
+                this.data.add(null);
+            }
+            this.data.add(data);
+        }
     }
 }
 

@@ -267,7 +267,17 @@ public class ControllerBatch {
                 VariableTimeStep.setCurrentDate(sds, ControlData.cycleStartDay, ControlData.cycleStartMonth, ControlData.cycleStartYear);
 
                 while (VariableTimeStep.checkEndDate(ControlData.currDay, ControlData.currMonth, ControlData.currYear, ControlData.cycleEndDay, ControlData.cycleEndMonth, ControlData.cycleEndYear)<0 && noError) {
-                    boolean modelProcessed = Evaluator.processModel(sds, i, ControlData.currDay, ControlData.currMonth, ControlData.currYear, ControlData.nThreads, ControlData.showRunTimeMessage);
+                    boolean modelProcessed = false;
+                    try {
+                        modelProcessed = Evaluator.processModel(sds, i, ControlData.currDay, ControlData.currMonth, ControlData.currYear, ControlData.nThreads, ControlData.showRunTimeMessage);
+                    } catch (EvaluationErrorException e) {
+                        System.out.println("");
+                        System.out.println(e.getErrorMessage());
+                        System.out.println("Error occurred in file '" + e.getSourceFile() + "' at line " + e.getLine());
+                        System.out.println("");
+                        noError = false;
+                        break time_marching;
+                    }
                     if (modelProcessed) {
                         // Compile solver data
                         SolverData.compile(sds, i);

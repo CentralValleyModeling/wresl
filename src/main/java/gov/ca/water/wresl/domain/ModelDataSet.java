@@ -1,5 +1,6 @@
 package gov.ca.water.wresl.domain;
 
+import gov.ca.water.utilities.ParallelVars;
 import gov.ca.water.utilities.Param;
 
 import java.io.Serializable;
@@ -115,6 +116,8 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
     }
 
     public Map<String, Dvar> getDvMap() { return this.dvMap; }
+
+    public Map<String, Dvar> getDvSlackSurplusMap() { return this.dvSlackSurplusMap; }
 
     public Map<String, Dvar> getSolvedDvMap() {
         Map<String, Dvar> solvedDvMap = new HashMap<>();
@@ -251,8 +254,10 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
     }
 
     // Assign a simulated DVAR value to DVAR
-    public void assignDvarValue(String name, IntDouble data) {
-        this.dvMap.get(name).addData(data);
+    public void assignDvarValue(ParallelVars prvs, String name, IntDouble data) {
+        Dvar dvar = this.dvMap.get(name);
+        if (dvar == null) { dvar = this.dvSlackSurplusMap.get(name); }
+        dvar.addData(prvs, data);
     }
 
     // Reset the flags for conditional DVARs to initially exclude all of them from solution

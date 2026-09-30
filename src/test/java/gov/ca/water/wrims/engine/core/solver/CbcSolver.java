@@ -5,6 +5,7 @@ import java.util.*;
 
 import gov.ca.water.io.DSS.DssOperations;
 import gov.ca.water.solverdata.SolverData;
+import gov.ca.water.utilities.ParallelVars;
 import gov.ca.water.utilities.Param;
 import gov.ca.water.wresl.domain.*;
 import gov.ca.water.wrims.engine.core.tools.InfeasibilityAnalysis;
@@ -2045,6 +2046,8 @@ logger.atTrace().setMessage("Integer variable (2021): name={}, value={} (rounded
 		HashSet<String> extraDv = new HashSet<String>(dvarMap.keySet());
 		extraDv.removeAll(varDoubleMap.keySet());
 
+        ParallelVars prvs = new ParallelVars(ControlData.currDay, ControlData.currMonth, ControlData.currYear);
+
         logger.atDebug().setMessage("Processing {} extra variables").addArgument(extraDv.size()).log();
 
         for (String dvName: extraDv) {
@@ -2056,7 +2059,7 @@ logger.atTrace().setMessage("Integer variable (2021): name={}, value={} (rounded
             }
 			varDoubleMap.put(dvName, value);
 			IntDouble id = new IntDouble(value, false);
-			dvar.addData(id);
+			dvar.addData(prvs, id);
 			if(dvarUsedByLaterCycle.contains(dvName)){
 				varCycleValueMap.get(dvName).put(modelName, id);
 			}else if (dvarTimeArrayUsedByLaterCycle.contains(dvName)){
@@ -2087,19 +2090,19 @@ logger.atTrace().setMessage("Integer variable (2021): name={}, value={} (rounded
         int assignedCount = 0;
         //TODO: weird bug. need to fix
 		for (String dvName: varDoubleMap.keySet()) {
-			double value=varDoubleMap.get(dvName);
+            double value=varDoubleMap.get(dvName);
 			IntDouble id=new IntDouble(value,false);
 
 			//TODO: weird bug. need to fix
 			try {
-                sds.assignDvarValue(dvName, id, modelIndex);
+                sds.assignDvarValue(prvs, dvName, id, modelIndex);
                 assignedCount++;
             } catch (Exception e) {
                 logger.atWarn().setMessage("CBC assignDvar fallback: creating new variable for {}").addArgument(dvName).setCause(e).log();
 				Dvar dvar=new Dvar();
 				dvar.upperBoundValue = maxValue;
 				dvar.lowerBoundValue = 0.0;
-				dvar.addData(id);
+				dvar.addData(prvs, id);
 				dvarMap.put(dvName, dvar);
                 assignedCount++;
             }

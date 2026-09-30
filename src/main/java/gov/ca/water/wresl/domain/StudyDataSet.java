@@ -373,9 +373,14 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
 
         // Loop through models
         for (ModelDataSet mds : this.modelDataSetMap.values()) {
-            // Loop through Dvars
+            // Loop through regular Dvars
             for (Dvar dvar : mds.getDvMap().values()) {
                 dvar.setStartTime(startTime);
+            }
+
+            // Loop through surplus/slack Dvars
+            for (Dvar slackSurplusDvar : mds.getDvSlackSurplusMap().values()) {
+                slackSurplusDvar.setStartTime(startTime);
             }
 
             // Loop through Aliases
@@ -386,8 +391,8 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     }
 
     // Add DVAR value to DVAR object in the specified model
-    public void assignDvarValue(String name, IntDouble data, int modelIndex) {
-        this.getModelDataSet(modelIndex).assignDvarValue(name, data);
+    public void assignDvarValue(ParallelVars prvs, String name, IntDouble data, int modelIndex) {
+        this.getModelDataSet(modelIndex).assignDvarValue(prvs, name, data);
     }
 
 

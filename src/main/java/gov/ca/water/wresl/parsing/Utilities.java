@@ -39,6 +39,28 @@ public final class Utilities {
         return tree.getText().toLowerCase();
     }
 
+    // ------------------------------------------------------------
+    // --- METHODS TO RETRIEVE SOURCE FILE AND LINE NUMBER OF A RULE FROM A RULE CONTEXT
+    // ------------------------------------------------------------
+
+    // Retrieve source file
+    public static String getSourceFile(ParserRuleContext ctx) {
+        if (ctx == null) {
+            return null;
+        } else {
+            return ctx.getStart().getInputStream().getSourceName();
+        }
+    }
+
+    // Retrieve line number
+    public static int getLine(ParserRuleContext ctx) {
+        if (ctx == null) {
+            return -1;
+        } else {
+            return ctx.getStart().getLine();
+        }
+    }
+
 
     // ------------------------------------------------------------
     // --- METHODS TO GENERATE PARSE TREES FROM TEXT

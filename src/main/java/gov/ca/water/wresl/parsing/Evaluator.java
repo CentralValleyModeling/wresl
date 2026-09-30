@@ -18,8 +18,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static gov.ca.water.wresl.parsing.Utilities.generateExpressionParseTree;
-import static gov.ca.water.wresl.parsing.Utilities.getWreslText;
+import static gov.ca.water.wresl.parsing.Utilities.*;
 
 // Package-private class
 public class Evaluator extends wreslBaseVisitor<IntDouble> {
@@ -90,7 +89,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
         // Check if condition to process model holds true
         ParseTree modelConditionParseTree = sds.getModelConditionParseTree(modelIndex);
-        boolean toBeProcessed = Evaluator.evaluateCondition(null, modelConditionParseTree);
+        boolean toBeProcessed = INSTANCE.evaluateCondition(null, modelConditionParseTree);
         if (!toBeProcessed) { return false; }
 
         // Retrieve ModelDataSet
@@ -128,6 +127,8 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         // Retrieve model data
         INSTANCE.currentModelDataSet = sds.getModelDataSet(modelIndex);
 
+        ParallelVars prvs = new ParallelVars(INSTANCE.currentDay, INSTANCE.currentMonth, INSTANCE.currentYear);
+
         // Loop through ALIASes; they need to be processed in order that they were defined in WRESL
         List<String> asList = INSTANCE.currentModelDataSet.getAliasList();
         Map<String, Alias> asMap = INSTANCE.currentModelDataSet.getAliasMap();
@@ -137,7 +138,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
             // Process alias at current time
             IntDouble data = INSTANCE.visit(as.expressionParseTree);
-            as.addData(data);
+            as.addData(prvs, data);
 
             // Process future-array alias
 
@@ -905,7 +906,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         if (var != null) {
             varData = var.getData();
             if (varData == null) {
-                throw new EvaluationErrorException("Variable " + varName + " is being used before its value is computed!");
+                throw new EvaluationErrorException("Variable " + varName + " is referenced before its value is computed!");
             }
             return varData;
         }
@@ -915,7 +916,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         if (var != null) {
             varData = var.getData();
             if (varData == null) {
-                throw new EvaluationErrorException("Variable " + varName + " is being used before its value is computed!");
+                throw new EvaluationErrorException("Variable " + varName + " is referenced before its value is computed!");
             }
             return varData;
         }
@@ -952,25 +953,26 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             }
 
             // If made it this far, value was not found; generate error
-            throw new EvaluationErrorException(tsVar.fromWresl, tsVar.line, "Was not able to retrieve data from the timeseries data for the provided time index.");
+            throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Was not able to retrieve data from the timeseries data for the provided time index.");
         }
 
         // This is an ALIAS
         Alias asVar = INSTANCE.currentModelDataSet.asMap.get(varName);
         if (asVar != null) {
-            IntDouble value = retrieveDataFromAlias(asVar, ctx.timestepOffset());
+
+            IntDouble value = retrieveDataFromAlias(asVar, ctx.timestepOffset(), getSourceFile(ctx), getLine(ctx));
             return value;
             }
 
         // This is a DVAR
         Dvar dvar = INSTANCE.currentModelDataSet.getDvar(varName);
         if (dvar != null) {
-            IntDouble value = retrieveDataFromDvar(dvar, ctx.timestepOffset());
+            IntDouble value = retrieveDataFromDvar(dvar, ctx.timestepOffset(), getSourceFile(ctx), getLine(ctx));
             return value;
         }
 
         // If made it this far, variable was not found; generate error
-        throw new EvaluationErrorException("Variable " + varName + " is not defined!");
+        throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Variable " + varName + " is not defined!");
     }
 
     @Override
@@ -1600,7 +1602,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         Dvar dvar = prevMds.getDvar(varName);
         if (dvar != null) {
             // Retrieve data from DVAR
-            IntDouble value = retrieveDataFromDvar(dvar, ctx.timestepOffset());
+            IntDouble value = retrieveDataFromDvar(dvar, ctx.timestepOffset(), getSourceFile(ctx), getLine(ctx));
             return value;
         }
 
@@ -1608,7 +1610,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         Alias as = prevMds.getAlias(varName);
         if (as != null) {
             // Retrieve data from DVAR
-            IntDouble value = retrieveDataFromAlias(as, ctx.timestepOffset());
+            IntDouble value = retrieveDataFromAlias(as, ctx.timestepOffset(), getSourceFile(ctx), getLine(ctx));
             return value;
         }
 
@@ -1619,7 +1621,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     }
 
     // Retrieve data from a DVAR
-    private IntDouble retrieveDataFromDvar(Dvar dvar, wreslParser.TimestepOffsetContext timestepOffsetCtx) {
+    private IntDouble retrieveDataFromDvar(Dvar dvar, wreslParser.TimestepOffsetContext timestepOffsetCtx, String sourceFile, int line) {
         // Retrieve timestep offset parallel vars
         ParallelVars prvs = retrieveTimeStepOffsetPRVS("DVAR", dvar.getName(), dvar.getTimeStep(), timestepOffsetCtx);
 
@@ -1627,6 +1629,11 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         IntDouble value;
         value = dvar.retrieveDataForTime(prvs);
         if (value != null) { return value; }
+
+        // If value is null, and there is no timestep offset, generate error
+        if (timestepOffsetCtx == null) {
+            throw new EvaluationErrorException(sourceFile, line, dvar.getName() + " is being referenced before its value is computed!");
+        }
 
         // If made it this far, dvar did not extend back in time; try to retrieve from initial data
         dvar.setDssBPart(dvar.getName());
@@ -1636,12 +1643,13 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         if (value != null ) { return value; }
 
         // If made it this far, value was not found; generate error
+        System.out.println(dvar.getName());
         throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Was not able to retrieve data for DVAR " + dvar.getName() + " for the provided time index.");
 
     }
 
     // Retrieve data from an ALIAS
-    private IntDouble retrieveDataFromAlias(Alias as, wreslParser.TimestepOffsetContext timestepOffsetCtx) {
+    private IntDouble retrieveDataFromAlias(Alias as, wreslParser.TimestepOffsetContext timestepOffsetCtx, String sourceFile, int line) {
         // Retrieve timestep offset ParallelVars
         ParallelVars prvs = retrieveTimeStepOffsetPRVS("ALIAS", as.getName(), as.getTimeStep(), timestepOffsetCtx);
 
@@ -1649,6 +1657,11 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         IntDouble value;
         value = as.retrieveDataForTime(prvs);
         if (value != null) { return value; }
+
+        // If value is null, and there is no timestep offset, generate error
+        if (timestepOffsetCtx == null) {
+            throw new EvaluationErrorException(sourceFile, line, "ALIAS " + as.getName() + " is being referenced before its value is computed!");
+        }
 
         // If made it this far, alias did not extend back in time; try to retrieve from initial data
         as.setDssBPart(as.getName());
@@ -2055,7 +2068,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
 
                 // Retrieve timeseries data from Dvar
-                IntDouble value = retrieveDataFromDvar(dvar, ctx.timestepOffset());
+                IntDouble value = retrieveDataFromDvar(dvar, ctx.timestepOffset(), getSourceFile(ctx), getLine(ctx));
                 return new EvalConstraint(value);
 
             }
@@ -2065,7 +2078,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             if (var != null) {
                 IntDouble varData = var.getData().copyOf();
                 if (varData == null) {
-                    throw new EvaluationErrorException("Variable " + varName + " is being used before its value is computed!");
+                    throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Variable " + varName + " is being used before its value is computed!");
                 }
                 return new EvalConstraint(varData);
             }
@@ -2075,7 +2088,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             if (var != null) {
                 IntDouble varData = var.getData().copyOf();
                 if (varData == null) {
-                    throw new EvaluationErrorException("Variable " + varName + " is being used before its value is computed!");
+                    throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Variable " + varName + " is being used before its value is computed!");
                 }
                 return new EvalConstraint(varData);
             }
@@ -2112,28 +2125,18 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 }
 
                 // If made it this far, value was not found; generate error
-                throw new EvaluationErrorException(tsVar.fromWresl, tsVar.line, "Was not able to retrieve data from the timeseries data for the provided time index.");
+                throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Was not able to retrieve data from the timeseries data for the provided time index.");
             }
 
             // This is an ALIAS
             Alias asVar = INSTANCE.currentModelDataSet.asMap.get(varName);
             if (asVar != null) {
-                // Retrieve timestep offset and make sure it is an integer number
-                IntDouble temp = INSTANCE.visit(ctx.timestepOffset().expression());
-                if (!temp.isInt()) {
-                    throw new EvaluationErrorException("Timeseries index for ALIAS" + varName + " must be an integer value.");
-                }
-                int timeOffset = temp.getValue().intValue();
-                String timeStep = currentModelDataSet.getTimeStep();
-                ParallelVars prvs = TimeOperations.findTime(timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
-
-                // Retrieve data from Alias
-                IntDouble value = retrieveDataFromAlias(asVar, ctx.timestepOffset());
+                IntDouble value = retrieveDataFromAlias(asVar, ctx.timestepOffset(), getSourceFile(ctx), getLine(ctx));
                 return new EvalConstraint(value);
             }
 
             // If made it this far, variable was not found; generate error
-            throw new EvaluationErrorException("Variable " + varName + " is not defined!");
+            throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Variable " + varName + " is not defined!");
         }
     }
 }

@@ -4,6 +4,7 @@ import java.util.*;
 
 import gov.ca.water.io.DSS.DssOperations;
 import gov.ca.water.solverdata.SolverData;
+import gov.ca.water.utilities.ParallelVars;
 import gov.ca.water.wresl.domain.Dvar;
 import gov.ca.water.wresl.domain.StudyDataSet;
 import gov.ca.water.wresl.domain.IntDouble;
@@ -180,7 +181,9 @@ public class LPSolveSolver {
 		Map<String, Dvar> dvarMap = SolverData.getDvarMap();
 		Set dvarCollection = dvarMap.keySet();
 		Iterator dvarIterator = dvarCollection.iterator();
-			
+
+		ParallelVars prvs = new ParallelVars(ControlData.currDay, ControlData.currMonth, ControlData.currYear);
+
 		while(dvarIterator.hasNext()){ 
 			String dvName=(String)dvarIterator.next();
 			Dvar dvar=dvarMap.get(dvName);
@@ -200,7 +203,7 @@ public class LPSolveSolver {
 				}
 			}
 			IntDouble id=new IntDouble(value,false);
-			sds.assignDvarValue(dvName, id, modelIndex);
+			sds.assignDvarValue(prvs, dvName, id, modelIndex);
 			if(dvarUsedByLaterCycle.contains(dvName)){
 				varCycleValueMap.get(dvName).put(model, id);
 			}else if (dvarTimeArrayUsedByLaterCycle.contains(dvName)){

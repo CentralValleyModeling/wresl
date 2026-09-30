@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.util.*;
 
 import gov.ca.water.io.DSS.DssOperations;
+import gov.ca.water.utilities.ParallelVars;
 import org.apache.commons.io.FilenameUtils;
 
 import gov.ca.water.wresl.domain.Dvar;
@@ -155,7 +156,9 @@ public class Clp0Solver {
 		Map<String, Dvar> dvarMap = gov.ca.water.solverdata.SolverData.getDvarMap();
 		Set dvarCollection = dvarMap.keySet();
 		Iterator dvarIterator = dvarCollection.iterator();
-			
+
+		ParallelVars prvs = new ParallelVars(ControlData.currDay, ControlData.currMonth, ControlData.currYear);
+
 		while(dvarIterator.hasNext()){ 
 			String dvName=(String)dvarIterator.next();
 
@@ -174,7 +177,7 @@ public class Clp0Solver {
 				
 			}
 			IntDouble id=new IntDouble(value,false);
-			sds.assignDvarValue(dvName, id, modelIndex);
+			sds.assignDvarValue(prvs, dvName, id, modelIndex);
 			if(dvarUsedByLaterCycle.contains(dvName)){
 				varCycleValueMap.get(dvName).put(model, id);
 			}else if (dvarTimeArrayUsedByLaterCycle.contains(dvName)){

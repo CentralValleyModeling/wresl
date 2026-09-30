@@ -4,6 +4,7 @@ import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import gov.ca.water.io.DSS.DssOperations;
+import gov.ca.water.utilities.ParallelVars;
 import gov.ca.water.wresl.domain.*;
 import gov.ca.water.utilities.Param;
 
@@ -104,12 +105,14 @@ public class Misc {
 		Map<String, Dvar> dvarMap = SolverData.getDvarMap();
 		Set dvarCollection = dvarMap.keySet();
 		Iterator dvarIterator = dvarCollection.iterator();
-			
+
+		ParallelVars prvs = new ParallelVars(ControlData.currDay, ControlData.currMonth, ControlData.currYear);
+
 		while(dvarIterator.hasNext()){ 
 			String dvName=(String)dvarIterator.next();
 			double value=solution.get(dvName);
 			IntDouble id=new IntDouble(value,false);
-			sds.assignDvarValue(dvName, id, modelIndex);
+			sds.assignDvarValue(prvs, dvName, id, modelIndex);
 			if(dvarUsedByLaterCycle.contains(dvName)){
 				varCycleValueMap.get(dvName).put(model, id);
 			}else if (dvarTimeArrayUsedByLaterCycle.contains(dvName)){
