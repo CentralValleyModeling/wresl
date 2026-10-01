@@ -58,6 +58,11 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     private int currentMonth;
     private int currentYear;
 
+    // Data for SUM expressions
+    private boolean isSumExpression;
+    private String sumIndex;
+    private int sumIndexValue;
+
     // Singleton constructor
     // This setup allows us to treat Evaluator class as if it is a static class (even though
     //   it cannot be static because it extends non-static wreslBaseVisitor class).
@@ -136,6 +141,8 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             Alias as = asMap.get(asName);
             if (showRunTimeMessage) System.out.println("Processing alias " + asName);
 
+            INSTANCE.isSumExpression = false;
+
             // Process alias at current time
             IntDouble data = INSTANCE.visit(as.expressionParseTree);
             as.addData(prvs, data);
@@ -176,6 +183,8 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
     // Process a single Svar
     private static void processSvar(Svar svar) throws EvaluationErrorException {
+        INSTANCE.isSumExpression = false;
+
         int index = -1;
         // Process case conditions and figure out which case expression to use
         if (svar.caseConditionParseTree == null) {
@@ -231,6 +240,8 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // Process a single Dvar
     private void processDvar(Dvar dvar, List<String> timeArrayDvList, List<String> dvTimeArrayList, boolean showRunTimeMessage) {
         if (showRunTimeMessage) System.out.println("Processing DVAR " + dvar.name);
+
+        INSTANCE.isSumExpression = false;
 
         // Process lower bound
         if (dvar.lowerBoundExpressionParseTree != null) {
@@ -302,6 +313,8 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // Process a single Goal
     private void processGoal(Goal goal, boolean showRunTimeMessage) {
         if (showRunTimeMessage) System.out.println("Processing constraint " + goal.name);
+
+        INSTANCE.isSumExpression = false;
 
         // Process time array
         if (goal.timeArraySizeParseTree != null) {
@@ -671,6 +684,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // sumExpressionBody
     public IntDouble visitSumExpressionBody(wreslParser.SumExpressionBodyContext ctx) {
         // Initialize
+        INSTANCE.isSumExpression = true;
         int iBegin;
         int iEnd;
         int iStep = 1;
@@ -702,17 +716,14 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         }
 
         // Loop through SUM
-        String sumIndex = "(" + getWreslText(ctx.OBJECT_NAME()) + ")";
-        double sum =0.0;
+        INSTANCE.sumIndex = getWreslText(ctx.OBJECT_NAME());
+        double sum = 0.0;
         IntDouble data;
-        for (int i=iBegin; i<=iEnd; i++) {
-            // Create a new parse tree for the accumulating expression with the index value specified
-            String accumExpression = getWreslText(ctx.accumulatingExpression());
-            String accumExpressionMod = accumExpression.replace(sumIndex, "("+i+")");
-            ParseTree accumParseTree = generateExpressionParseTree(accumExpressionMod);
+        for (int i=iBegin; i<=iEnd; i+=iStep) {
+            INSTANCE.sumIndexValue = i;
 
             // Retrieve value and add it to sum
-            data = visit(accumParseTree);
+            data = visit(ctx.accumulatingExpression());
             if (data == null) { return null; }
             sum = sum + data.getValue().doubleValue();
         }
@@ -902,6 +913,14 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         String varName = getWreslText(ctx.OBJECT_NAME());
 
         IntDouble varData;
+
+        // If we are working on a SUM expression, check if this is the sumIndex; if so, evaluate and return
+        if (INSTANCE.isSumExpression) {
+            if (varName.equals(INSTANCE.sumIndex)) {
+                varData = new IntDouble(INSTANCE.sumIndexValue, true);
+                return varData;
+            }
+        }
 
         // If this is a DVAR or ALIAS from a previous cycle
         if (ctx.scope() != null) {
