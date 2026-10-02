@@ -3,7 +3,7 @@ package gov.ca.water.wrims.engine.core.components;
 import gov.ca.water.utilities.TimeOperations;
 import gov.ca.water.wresl.domain.*;
 import gov.ca.water.io.DSS.CondensedReferenceCacheAndRead.CondensedReferenceCache;
-import gov.ca.water.wrims.engine.core.external.ExternalFunction;
+import wrimsv2.external.ExternalFunction;
 import gov.ca.water.wrims.engine.core.solver.ortools.OrToolsSolver;
 import hec.heclib.dss.HecDss;
 

@@ -11,6 +11,7 @@ import hec.heclib.dss.HecDss;
 import hec.heclib.util.HecTime;
 import hec.io.TimeSeriesContainer;
 import org.antlr.v4.runtime.tree.ParseTree;
+import wrimsv2.external.ExternalFunction;
 
 import java.io.*;
 import java.util.*;
@@ -59,6 +60,9 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     private String partA = "";
     private String partF = "";
     private String partF_Init = "";
+
+    // External functions
+    public Map<String, ExternalFunction> exMap = new HashMap<>();
 
 
     // ------------------------------------------------------------

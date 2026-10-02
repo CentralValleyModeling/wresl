@@ -11,6 +11,7 @@ import gov.ca.water.wresl.grammar.wreslBaseVisitor;
 import gov.ca.water.wresl.grammar.wreslLexer;
 import gov.ca.water.wresl.grammar.wreslParser;
 import org.antlr.v4.runtime.tree.ParseTree;
+import wrimsv2.external.ExternalFunction;
 
 import java.io.*;
 import java.util.*;
@@ -756,6 +757,14 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
     @Override
     public IntDouble visitExpressionCall(wreslParser.ExpressionCallContext ctx) throws EvaluationErrorException {
+        // Function name
+        String functionName;
+        if (ctx.preDefinedFunction() != null) {
+            functionName = getWreslText(ctx.preDefinedFunction());
+        } else {
+            functionName = getWreslText(ctx.OBJECT_NAME());
+        }
+
         // Retrieve arguments
         ArrayList<IntDouble> arguments = new ArrayList<>();
         if (ctx.arguments() != null) {
@@ -882,12 +891,43 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                     }
                 }
 
-                default -> { throw new EvaluationErrorException("Error in evaluating a function!"); }
+                default -> { throw new EvaluationErrorException("Error in evaluating function '" + functionName + "'."); }
             }
-        } else {
-            // Need to be implemented properly
-            return null;
         }
+
+        // This is an external function
+        if (this.currentModelDataSet.exList.contains(functionName)) {
+            Stack stack = new Stack();
+            for (IntDouble arg : arguments) {
+                if (arg.isInt()) {
+                    stack.push(arg.getValue().intValue());
+                } else {
+                    stack.push(arg.getValue().doubleValue());
+                }
+            }
+            try {
+                ExternalFunction ef = INSTANCE.sds.exMap.get(functionName);
+                if (ef == null) {
+                    Class function = Class.forName("wrimsv2.external.Function" + functionName);
+                    ef = (ExternalFunction) function.newInstance();
+                    INSTANCE.sds.exMap.put(functionName, ef);
+                }
+                ef.execute(stack);
+                String valueString = stack.pop().toString();
+                if (valueString.contains(".")) {
+                    return new IntDouble(Double.parseDouble(valueString), false);
+                } else {
+                    return new IntDouble(Integer.parseInt(valueString), true);
+                }
+            } catch (Exception e) {
+                throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Error in evaluating function '" + functionName + "'." + System.lineSeparator() + e.toString());
+            }
+
+        }
+
+        // If made this far, function is not defined
+        throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Function '" + functionName + "' is not defined.");
+
     }
 
     @Override
