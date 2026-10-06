@@ -71,25 +71,30 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
 
     // ------------------------------------------------------------
+    // --- SET STUDY DATA SET
+    // ------------------------------------------------------------
+    public static void setStudyDataSet(StudyDataSet sds) {
+        INSTANCE.sds = sds;
+    }
+
+
+    // ------------------------------------------------------------
     // --- PROCESS A MODEL
     // ------------------------------------------------------------
     // Gateway method to process a model stored in a ModelDataSet object
-    public static boolean processModel(StudyDataSet sds, int modelIndex, int currentDay, int currentMonth, int currentYear, int nThreads, boolean showRunTimeMessage) {
+    public static boolean processModel(int modelIndex, int currentDay, int currentMonth, int currentYear, int nThreads, boolean showRunTimeMessage) {
         // Set simulation time related parameters
         INSTANCE.currentDay = currentDay;
         INSTANCE.currentMonth = currentMonth;
         INSTANCE.currentYear = currentYear;
 
-        // Store StudyDataSet in common memory to be used by visitor methods
-        INSTANCE.sds = sds;
-
         // Check if condition to process model holds true
-        ParseTree modelConditionParseTree = sds.getModelConditionParseTree(modelIndex);
-        boolean toBeProcessed = INSTANCE.evaluateCondition(null, modelConditionParseTree);
+        ParseTree modelConditionParseTree = INSTANCE.sds.getModelConditionParseTree(modelIndex);
+        boolean toBeProcessed = INSTANCE.evaluateCondition(modelConditionParseTree);
         if (!toBeProcessed) { return false; }
 
         // Retrieve ModelDataSet
-        INSTANCE.currentModelDataSet = sds.getModelDataSet(modelIndex);
+        INSTANCE.currentModelDataSet = INSTANCE.sds.getModelDataSet(modelIndex);
 
         // Clear future arrays
         INSTANCE.currentModelDataSet.clearFutureSvMap();
@@ -99,7 +104,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         INSTANCE.currentModelDataSet.resetConditionalDvarsForSolution();
 
         // Process Svars
-        INSTANCE.processSvars(null, INSTANCE.currentModelDataSet.svList, INSTANCE.currentModelDataSet.svMap, showRunTimeMessage);
+        INSTANCE.processSvars(INSTANCE.currentModelDataSet.svList, INSTANCE.currentModelDataSet.svMap, showRunTimeMessage);
         if (showRunTimeMessage) System.out.println("Completed Svar processing.");
 
         // Process Goals
@@ -116,12 +121,9 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     }
 
     // Process Aliases
-    public static void processAliases(StudyDataSet sds, int modelIndex, boolean showRunTimeMessage) {
-        // Store StudyDataSet in common memory to be used by visitor methods
-        INSTANCE.sds = sds;
-
+    public static void processAliases(int modelIndex, boolean showRunTimeMessage) {
         // Retrieve model data
-        INSTANCE.currentModelDataSet = sds.getModelDataSet(modelIndex);
+        INSTANCE.currentModelDataSet = INSTANCE.sds.getModelDataSet(modelIndex);
 
         ParallelVars prvs = new ParallelVars(INSTANCE.currentDay, INSTANCE.currentMonth, INSTANCE.currentYear);
 
@@ -145,30 +147,11 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     }
 
     // Process Svars
-    public static void processSvars(StudyDataSet sds, List<String> svList, Map<String, Svar> svMap, boolean showRunTimeMessage) {
-        // Store sds in common data space so it can be used by all visitor methods
-        if (sds != null) INSTANCE.sds = sds;
-
+    public static void processSvars(List<String> svList, Map<String, Svar> svMap, boolean showRunTimeMessage) {
         for (String svName: svList) {
             if (showRunTimeMessage) System.out.println("Processing svar "+svName);
             Svar svar = svMap.get(svName);
-
-            // Process svar
-            INSTANCE.futureArrayIndex = 0;
             INSTANCE.processSvar(svar);
-
-            // If svar utilizes future arrays, process those arrays
-            if (svar.timeArraySizeParseTree != null) {
-                IntDouble futureArraySize = INSTANCE.visit(svar.timeArraySizeParseTree);
-                for (int indx=1; indx<=futureArraySize.getValue().intValue(); indx++) {
-                    Svar futureSvar = svar.copyOf();
-                    String futureSvName = svName + "__fut__" + indx;
-                    futureSvar.setName(futureSvName);
-                    INSTANCE.futureArrayIndex = indx;
-                    INSTANCE.processSvar(futureSvar);
-                    INSTANCE.currentModelDataSet.addFutureSvar(futureSvar);
-                }
-            }
         }
     }
 
@@ -176,31 +159,52 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     private static void processSvar(Svar svar) throws EvaluationErrorException {
         INSTANCE.isSumExpression = false;
 
-        int index = -1;
-        // Process case conditions and figure out which case expression to use
-        if (svar.caseConditionParseTree == null) {
-            index = 0;
-        } else {
-            for (int i = 0; i < svar.caseName.size(); i++) {
-                // Process case conditions until one of them turns true
-                ParseTree caseConditionParseTree = svar.caseConditionParseTree.get(i);
-                if (caseConditionParseTree == null) {
-                    index = i;
-                } else {
-                    if (INSTANCE.evaluateCondition(null, caseConditionParseTree)) {
-                        index = i;
-                        break;
+        // Retrieve maximum time index
+        int maxTimeIndex = 0;
+        if (svar.timeArraySizeParseTree != null) {
+            maxTimeIndex = INSTANCE.visit(svar.timeArraySizeParseTree).getValue().intValue();
+        }
+
+        // Loop through time indices
+        for (int timeIndex=0; timeIndex<=maxTimeIndex; timeIndex++) {
+            INSTANCE.futureArrayIndex = timeIndex;
+            int conditionIndex = -1;
+            // Process case conditions and figure out which case expression to use
+            if (svar.caseConditionParseTree == null) {
+                conditionIndex = 0;
+            } else {
+                for (int i = 0; i < svar.caseName.size(); i++) {
+                    // Process case conditions until one of them turns true
+                    ParseTree caseConditionParseTree = svar.caseConditionParseTree.get(i);
+                    if (caseConditionParseTree == null) {
+                        conditionIndex = i;
+                    } else {
+                        if (INSTANCE.evaluateCondition(caseConditionParseTree)) {
+                            conditionIndex = i;
+                            break;
+                        }
                     }
                 }
             }
+
+            // If index is still -1, case conditions were not defined properly; generate error
+            if (conditionIndex == -1) {
+                throw new EvaluationErrorException(svar.fromWresl, svar.line, "A viable condition cannot be found for Svar " + svar.getName() + " defined in file " + svar.fromWresl + " at line " + svar.line + "!");
+            }
+
+            // We know which expression to evaluate; evaluate caseExpression
+            IntDouble data = INSTANCE.visit(svar.caseExpressionParseTree.get(conditionIndex));
+
+            // Update Svar data
+            if (timeIndex == 0) {
+                svar.setData(data);
+            } else {
+                Svar newSvar = new Svar();
+                newSvar.setName(svar.getName()+"__fut__"+timeIndex);
+                newSvar.setData(data);
+                INSTANCE.currentModelDataSet.addFutureSvar(newSvar);
+            }
         }
-        // If index is still -1, case conditions were not defined properly; generate error
-        if (index == -1) {
-            throw new EvaluationErrorException(svar.fromWresl, svar.line, "A viable condition cannot be found for Svar " + svar.name + " defined in file " + svar.fromWresl + " at line " + svar.line + "!");
-        }
-        // We know which expression to evaluate; evaluate caseExpression
-        IntDouble data = INSTANCE.visit(svar.caseExpressionParseTree.get(index));
-        svar.setData(data);
     }
 
     // Process Dvars
@@ -318,7 +322,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 // Find the case for which we are going to compute goal
                 int index = -1;
                 for (int caseIndex=0; caseIndex<goal.caseConditionParseTrees.size(); caseIndex++) {
-                    if (INSTANCE.evaluateCondition(null,goal.caseConditionParseTrees.get(caseIndex))) {
+                    if (INSTANCE.evaluateCondition(goal.caseConditionParseTrees.get(caseIndex))) {
                         index = caseIndex;
                         break;
                     }
@@ -350,7 +354,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         } else {
             index = -1;
             for (int caseIndex = 0; caseIndex < goal.caseConditionParseTrees.size(); caseIndex++) {
-                if (INSTANCE.evaluateCondition(null, goal.caseConditionParseTrees.get(caseIndex))) {
+                if (INSTANCE.evaluateCondition(goal.caseConditionParseTrees.get(caseIndex))) {
                     index = caseIndex;
                     break;
                 }
@@ -417,29 +421,11 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
 
     // ------------------------------------------------------------
-    // --- EVALUATE AN EXPRESSION PROVIDED AS A PARSE TREE
-    // ------------------------------------------------------------
-    public static IntDouble evaluateExpression(StudyDataSet sds, int modelIndex, int currentDay, int currentMonth, int currentYear, ParseTree expression) {
-        INSTANCE.currentDay = currentDay;
-        INSTANCE.currentMonth = currentMonth;
-        INSTANCE.currentYear = currentYear;
-
-        INSTANCE.sds = sds;
-        INSTANCE.currentModelDataSet = sds.getModelDataSet(modelIndex);
-
-        return INSTANCE.visit(expression);
-    }
-
-
-    // ------------------------------------------------------------
     // --- EVALUATE A CONDITION
     // ------------------------------------------------------------
-    public static boolean evaluateCondition(StudyDataSet sds, ParseTree expCompareParseTree) {
+    public static boolean evaluateCondition(ParseTree expCompareParseTree) {
         // If null ParseTree; that means condition always evaluates to true
         if (expCompareParseTree == null) {return true; }
-
-        // Store StudyDataSet in common memory to be used by visitor methods
-        if (sds != null) INSTANCE.sds = sds;
 
         IntDouble condition = INSTANCE.visit(expCompareParseTree);
         if (condition.getValue().intValue() == Logical.TRUE.value) {

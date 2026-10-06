@@ -185,7 +185,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         }
 
         // Process parameters (Svars)
-        Evaluator.processSvars(this.sds, this.sds.getParameterList(), this.sds.getParameterMap(), false);
+        Evaluator.processSvars(this.sds.getParameterList(), this.sds.getParameterMap(), false);
 
         return null;
     }
@@ -1667,13 +1667,13 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         VisitorResult result;
 
         // Process first IF clause
-        if (Evaluator.evaluateCondition(this.sds, ctx.ifClause().expression())) {
+        if (Evaluator.evaluateCondition(ctx.ifClause().expression())) {
             return visit(ctx.ifClause().ifBlock());
         }
 
         // Process ELSE IF clauses
         for (int i=0; i<ctx.elseIfClause().size(); i++) {
-            if (Evaluator.evaluateCondition(this.sds, ctx.elseIfClause(i).expression())) {
+            if (Evaluator.evaluateCondition(ctx.elseIfClause(i).expression())) {
                 return visit(ctx.elseIfClause(i).ifBlock());
             }
         }

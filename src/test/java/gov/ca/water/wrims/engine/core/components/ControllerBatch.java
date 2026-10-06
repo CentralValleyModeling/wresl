@@ -269,7 +269,7 @@ public class ControllerBatch {
                 while (VariableTimeStep.checkEndDate(ControlData.currDay, ControlData.currMonth, ControlData.currYear, ControlData.cycleEndDay, ControlData.cycleEndMonth, ControlData.cycleEndYear)<0 && noError) {
                     boolean modelProcessed = false;
                     try {
-                        modelProcessed = Evaluator.processModel(sds, i, ControlData.currDay, ControlData.currMonth, ControlData.currYear, ControlData.nThreads, ControlData.showRunTimeMessage);
+                        modelProcessed = Evaluator.processModel(i, ControlData.currDay, ControlData.currMonth, ControlData.currYear, ControlData.nThreads, ControlData.showRunTimeMessage);
                     } catch (EvaluationErrorException e) {
                         System.out.println("");
                         System.out.println(e.getErrorMessage());
@@ -424,7 +424,7 @@ public class ControllerBatch {
                         if (ControlData.showRunTimeMessage) System.out.println("Solving Done.");
                         if (Error.error_solving.size()<1) {
                             ControlData.isPostProcessing=true;
-                            Evaluator.processAliases(sds, i, ControlData.showRunTimeMessage);
+                            Evaluator.processAliases(i, ControlData.showRunTimeMessage);
                             if (ControlData.showRunTimeMessage) System.out.println("Assign Alias Done.");
                         } else if (infeasCyclIndex==i) {
                             noError=false;

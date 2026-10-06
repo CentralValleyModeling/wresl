@@ -33,6 +33,7 @@ public class Study {
 
         // Parse WRESL input into WRIMS objects
         StudyDataSet sds = new StudyDataSet();
+        Evaluator.setStudyDataSet(sds);
         Antlr_To_WRIMS parse = new Antlr_To_WRIMS(mainFilePath, treesByFile, sds);
         VisitorResult study = parse.visit(studyTree);
 
