@@ -16,7 +16,7 @@ public class EvaluationErrorException extends RuntimeException {
     }
 
     public EvaluationErrorException(String errorMessage) {
-        this.errorMessage =  errorMessage;
+        this.errorMessage = errorMessage;
     }
 
 

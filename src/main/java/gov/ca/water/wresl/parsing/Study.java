@@ -32,9 +32,9 @@ public class Study {
         ParseTree studyTree = treesByFile.get(mainFilePath).getParseTree();
 
         // Parse WRESL input into WRIMS objects
-        Antlr_To_WRIMS parse = new Antlr_To_WRIMS(mainFilePath, treesByFile);
+        StudyDataSet sds = new StudyDataSet();
+        Antlr_To_WRIMS parse = new Antlr_To_WRIMS(mainFilePath, treesByFile, sds);
         VisitorResult study = parse.visit(studyTree);
-        StudyDataSet sds = (StudyDataSet) study.data().get(0);
 
         // Store study name and WRESl file details
         sds.fromWresl = mainFilePath.toString();

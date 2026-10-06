@@ -1,9 +1,11 @@
 package wrimsv2.external;
 
+import gov.ca.water.wresl.domain.ExternalFunction;
+
 import java.util.Calendar;
 import java.util.Stack;
 
-public class Functionannec extends ExternalFunction{
+public class Functionannec extends ExternalFunction {
 	private final boolean DEBUG = false;
 
 

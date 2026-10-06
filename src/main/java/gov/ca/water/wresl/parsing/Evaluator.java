@@ -11,7 +11,6 @@ import gov.ca.water.wresl.grammar.wreslBaseVisitor;
 import gov.ca.water.wresl.grammar.wreslLexer;
 import gov.ca.water.wresl.grammar.wreslParser;
 import org.antlr.v4.runtime.tree.ParseTree;
-import wrimsv2.external.ExternalFunction;
 
 import java.io.*;
 import java.util.*;
@@ -24,11 +23,10 @@ import static gov.ca.water.wresl.parsing.Utilities.*;
 // Package-private class
 public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
-    private static String absReferencePath = null;                            // Absolute path of the folder that the main WRESL file is located
     private final Map<String,LookUpTable> tableSeries = new HashMap<>();      // Map that stores lookup table data
 
     // Variables that are used for common data used by methods
-    private StudyDataSet sds = new StudyDataSet();                 // This holds all the information for the study
+    private StudyDataSet sds;                                      // This holds all the information for the study
     private ModelDataSet currentModelDataSet = new ModelDataSet(); // This holds the data for the current model we are working on
     private int futureArrayIndex = 0;                              // Future array index to be used when future arrays are utilized
 
@@ -70,14 +68,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     //   This way, client code call Evaluator methods as if they are utility methods.
     private Evaluator() {}
     private static final Evaluator INSTANCE = new Evaluator();
-
-
-    // ------------------------------------------------------------
-    // --- SET REFERENCE FOLDER (USED TO LOCATE LOOKUP TABLE FILES)
-    // ------------------------------------------------------------
-    public static void setReferencePath(String referenceFolder) {
-        INSTANCE.absReferencePath = referenceFolder;
-    }
 
 
     // ------------------------------------------------------------
@@ -372,14 +362,16 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             }
         }
 
-        // Process goal expression
+        // Process goal expression; if constraint is null, simply skip it
         GoalEvaluator goalBuilder = new GoalEvaluator();
         EvalConstraint constraint = goalBuilder.evaluate(goal.name, goal.fromWresl, goal.line, goal.goalExpressionParseTrees.get(index));
         goal.setSolverData(constraint);
 
         // Include associated DVARs in the solution
-        for (String dvarName : constraint.getMultipliers().keySet()) {
-            INSTANCE.currentModelDataSet.includeDvarInSolution(dvarName);
+        if (constraint != null) {
+            for (String dvarName : constraint.getMultipliers().keySet()) {
+                INSTANCE.currentModelDataSet.includeDvarInSolution(dvarName);
+            }
         }
     }
 
@@ -912,6 +904,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                     ef = (ExternalFunction) function.newInstance();
                     INSTANCE.sds.exMap.put(functionName, ef);
                 }
+                ef.setExternalDir(this.sds.getAbsMainFilePath()+File.separator+"external"+File.separator);
                 ef.execute(stack);
                 String valueString = stack.pop().toString();
                 if (valueString.contains(".")) {
@@ -1446,7 +1439,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // Store lookup data in memory
     private void cacheLookUpData(String tableName) throws EvaluationErrorException {
         // Lookup table filename and data
-        String absoluteTableFileName = INSTANCE.absReferencePath + File.separator + "lookup" + File.separator + tableName + ".table";
+        String absoluteTableFileName = INSTANCE.sds.getAbsMainFileFolder().toString() + File.separator + "lookup" + File.separator + tableName + ".table";
         LookUpTable lookupTable = new LookUpTable();
 
         // Set table name
@@ -1814,7 +1807,8 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 if (constraintRight.isNumeric()) {
                     // Both left and right constraint expressions are values
                     // -----------------------------------------------------
-                    throw new EvaluationErrorException(this.fromWresl, this.line, "No DVARs are referenced at GOAL " + this.goalName + "!");
+                    // Return null; this goal will not be sent to the solver
+                    return null;
                 } else {
                     // Left constraint is value, right constraint is multiplier/value
                     // --------------------------------------------------------------

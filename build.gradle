@@ -30,6 +30,8 @@ dependencies {
     implementation name: 'jcbc', version: '2021-12-27'
     implementation name: 'org-openide-util-lookup', version: 'RELEASE260'
     implementation name: 'jarhdf5', version: '2.11.0'
+    implementation name: 'libtensorflow', version: '1.15.0'
+    implementation name: 'calsurrogate', version: '2023.12.25'
 
     implementation 'com.google.flogger:flogger:0.7.4'
     runtimeOnly 'com.google.flogger:flogger-system-backend:0.7.4'

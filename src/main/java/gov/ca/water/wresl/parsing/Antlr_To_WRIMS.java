@@ -22,9 +22,8 @@ import static gov.ca.water.wresl.parsing.Utilities.*;
 // Package-private class
 class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     private static final Logger log = LoggerFactory.getLogger(Antlr_To_WRIMS.class);
-    // Main WRESL file, absolute folder that it resides, and list of WRESL files
-    private Path mainFilePath;
-    private Path absReferencePath;
+
+    // List of WRESL files
     private Map<Path, WRESLFile> wreslFilesMap;
 
     // Containers (data defined under INITIAL will be stored as "parameters" under sds
@@ -40,14 +39,14 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     // ------------------------------------------------------------
     // --- CONSTRUCTOR
     // ------------------------------------------------------------
-    public Antlr_To_WRIMS(Path mainFilePath, Map<Path, WRESLFile> wreslFilesMap) {
-        this.mainFilePath = mainFilePath;
-        this.absReferencePath = mainFilePath.getParent();
+    public Antlr_To_WRIMS(Path mainFilePath, Map<Path, WRESLFile> wreslFilesMap, StudyDataSet sds) {
         this.wreslFilesMap = wreslFilesMap;
 
         this.sequenceData = new HashMap<>();
         this.modelsAndGroups = new HashMap<>();
-        this.sds = new StudyDataSet();
+        this.sds = sds;
+
+        this.sds.setAbsMainFilePath(mainFilePath);
     }
 
 
@@ -66,13 +65,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     // ROOT VISITOR FOR THE MAIN FILE
     public VisitorResult visitMainStart(wreslParser.MainStartContext ctx) {
         // Current WRESL file we are working with
-        this.currentFile = this.mainFilePath.toString().toLowerCase();
-
-        // File related data
-        this.sds.setAbsMainFilePath(this.mainFilePath.toString());
-
-        // Instantiate Evaluator
-        Evaluator.setReferencePath(this.absReferencePath.toString());
+        this.currentFile = this.sds.getAbsMainFilePath().toString().toLowerCase();
 
         // Loop through Study children nodes
         for (int i = 0; i <= ctx.getChildCount(); i++) {

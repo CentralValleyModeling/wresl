@@ -11,15 +11,17 @@ import hec.heclib.dss.HecDss;
 import hec.heclib.util.HecTime;
 import hec.io.TimeSeriesContainer;
 import org.antlr.v4.runtime.tree.ParseTree;
-import wrimsv2.external.ExternalFunction;
 
 import java.io.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 public class StudyDataSet extends WRESLComponent implements Serializable  {
     private static final long serialVersionUID = 1L;
 
-    private String absMainFilePath;
+    private Path absMainFilePath = null;      // Full path of the main wresl file
+    private Path absMainFileFolder = null;    // Folder that the main wresl file is located in
 
     private ParallelVars studyStartDate = null;
 
@@ -107,9 +109,9 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         return this.svInitTimeseriesMap.get(tsName);
     }
 
-    public String getAbsMainFilePath() {
-        return new String(absMainFilePath);
-    }
+    public Path getAbsMainFilePath() { return this.absMainFilePath; }
+
+    public Path getAbsMainFileFolder() { return this.absMainFileFolder; }
 
     public List<String> getModelList() {
         return new ArrayList<String>(this.modelList);
@@ -210,8 +212,9 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         this.svTimeseriesMap = svTimeseriesMap;
     }
 
-    public void setAbsMainFilePath(String absMainFilePath) {
+    public void setAbsMainFilePath(Path absMainFilePath) {
         this.absMainFilePath = absMainFilePath;
+        this.absMainFileFolder = this.absMainFilePath.getParent();
     }
 
     public void setStudyStartDate(ParallelVars startDate) { this.studyStartDate = startDate; }

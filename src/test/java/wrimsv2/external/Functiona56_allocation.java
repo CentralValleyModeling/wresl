@@ -4,6 +4,8 @@
 
 package wrimsv2.external;
 
+import gov.ca.water.wresl.domain.ExternalFunction;
+
 import java.util.Stack;
 
 
