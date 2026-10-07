@@ -252,7 +252,8 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     // --- MISC. METHODS
     // ------------------------------------------------------------
     public void addSVInitTimeseries(Timeseries tsInit) {
-        this.svInitTimeseriesMap.put(tsInit.name, tsInit);
+        String svInitName = DssOperations.entryNameTS(tsInit.getName(), tsInit.getTimeStep());
+        this.svInitTimeseriesMap.put(svInitName, tsInit);
     }
 
     public void addParameter(Svar parameter) throws SyntaxErrorException {

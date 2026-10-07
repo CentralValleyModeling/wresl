@@ -196,7 +196,11 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
     }
 
     public void addFutureSvar(Svar svar) {
-        this.svFutMap.put(svar.name, svar);
+        this.svFutMap.put(svar.getName(), svar);
+    }
+
+    public void addFutureAlias(Alias as) {
+        this.asFutMap.put(as.getName(), as);
     }
 
     // Append data from another model

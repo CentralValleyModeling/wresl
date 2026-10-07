@@ -136,14 +136,34 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
             INSTANCE.isSumExpression = false;
 
-            // Process alias at current time
-            IntDouble data = INSTANCE.visit(as.expressionParseTree);
-            as.addData(prvs, data);
+            // Retrieve maximum time index
+            int maxTimeIndex = 0;
+            if (as.timeArraySizeParseTree != null) {
+                maxTimeIndex = INSTANCE.visit(as.timeArraySizeParseTree).getValue().intValue();
+            }
 
-            // Process future-array alias
+            // Loop through time indices
+            for (int timeIndex=0; timeIndex<=maxTimeIndex; timeIndex++) {
+                INSTANCE.futureArrayIndex = timeIndex;
 
+                // Process alias
+                IntDouble data = INSTANCE.visit(as.expressionParseTree);
+
+                // Store data in alias
+                if (timeIndex == 0) {
+                    as.addData(prvs, data);
+                } else {
+                    Alias newAlias = new Alias();
+                    newAlias.setName(as.getName()+"__fut__"+timeIndex);
+                    newAlias.setKind(as.getKind());
+                    newAlias.setUnits(as.getUnits());
+                    newAlias.setTimeStep(as.getTimeStep());
+                    newAlias.setStartTime(as.getStartTime());
+                    newAlias.addData(prvs, data);
+                    INSTANCE.currentModelDataSet.addFutureAlias(newAlias);
+                }
+            }
         }
-
     }
 
     // Process Svars
@@ -685,23 +705,45 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         }
 
         // Retrieve SUM step size
-        if (ctx.sumStep() != null) {
-            IntDouble step = visit(ctx.sumStep());
-            if (step == null) {
-                return null;
-            } else {
-                iStep = step.getValue().intValue();
+        if (iBegin != iEnd) {
+            if (ctx.sumStep() != null) {
+                IntDouble step = visit(ctx.sumStep());
+                if (step == null) {
+                    return null;
+                } else {
+                    iStep = step.getValue().intValue();
+                }
             }
         }
 
-        // Loop through SUM
+        // Loop through SUM; also check for inconsistencies in SUM parameters
         INSTANCE.sumIndex = getWreslText(ctx.OBJECT_NAME());
         double sum = 0.0;
         IntDouble data;
-        for (int i=iBegin; i<=iEnd; i+=iStep) {
-            INSTANCE.sumIndexValue = i;
-
-            // Retrieve value and add it to sum
+        if (iBegin > iEnd) {
+            if (iStep > 0) {
+                throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Step value for the SUM expression must be less than zero!");
+            } else {
+                for (int i=iBegin; i>=iEnd; i+=iStep) {
+                    INSTANCE.sumIndexValue = i;
+                    data = visit(ctx.accumulatingExpression());
+                    if (data == null) { return null; }
+                    sum = sum + data.getValue().doubleValue();
+                }
+            }
+        } else if (iBegin < iEnd) {
+            if (iStep < 0) {
+                throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Step value for the SUM expression must be greater than zero!");
+            } else {
+                for (int i=iBegin; i<=iEnd; i+=iStep) {
+                    INSTANCE.sumIndexValue = i;
+                    data = visit(ctx.accumulatingExpression());
+                    if (data == null) { return null; }
+                    sum = sum + data.getValue().doubleValue();
+                }
+            }
+        } else {
+            INSTANCE.sumIndexValue = iBegin;
             data = visit(ctx.accumulatingExpression());
             if (data == null) { return null; }
             sum = sum + data.getValue().doubleValue();
@@ -1711,8 +1753,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         if (value != null ) { return value; }
 
         // If made it this far, value was not found; generate error
-        System.out.println(dvar.getName());
-        throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Was not able to retrieve data for Dvar " + dvar.getName() + " for the provided time index.");
+        throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Was not able to retrieve data for Dvar '" + dvar.getName() + "' for " + prvs.parallelVarsToTimestamp() + "!");
 
     }
 

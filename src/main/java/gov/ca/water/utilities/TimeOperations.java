@@ -243,11 +243,7 @@ public final class TimeOperations {
                 prvs.dataYear = prvs.dataYear + 1;
             }
             int days = numberOfDays(prvs.dataMonth, prvs.dataYear);
-            if (day <= days) {
-                prvs.dataDay = day;
-            } else {
-                prvs.dataDay = days - numberOfDays(month, year) + day;
-            }
+            prvs.dataDay = days;
         } else if (timeStep.equals("1DAY")) {
             Date thisDate = new Date(year - 1900, month - 1, day);
             Calendar c = Calendar.getInstance();

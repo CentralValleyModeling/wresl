@@ -47,4 +47,10 @@ public class ParallelVars {
 			}
 		}
 	}
+
+	// Convert prvs data to time stamp
+	public String parallelVarsToTimestamp() {
+		String timeStamp = this.dataMonth + "/" + this.dataDay + "/" + this.dataYear;
+		return timeStamp;
+	}
 }
