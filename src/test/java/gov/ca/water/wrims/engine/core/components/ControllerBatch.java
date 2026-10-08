@@ -55,10 +55,12 @@ public class ControllerBatch {
                 e.printStackTrace();
             }
         }
+
+        Study study = new Study();
         StudyDataSet sds;
         try {
-            Study study = new Study();
-            sds = study.compile(FilePaths.fullMainPath, ControlData.startDay, ControlData.startMonth, ControlData.startYear);
+            study.parse(FilePaths.fullMainPath, ControlData.startDay, ControlData.startMonth, ControlData.startYear);
+            sds = study.getStudyDataSet();
             ControlData.cycWarmStart = sds.getCycWarmStart();
             ControlData.cycWarmStop = sds.getCycWarmStop();
             ControlData.cycWarmUse = sds.getCycWarmUse();
@@ -89,7 +91,7 @@ public class ControllerBatch {
         ILP.createNoteFile();
         ILP.setMaximumFractionDigits();
 
-        runModel(sds);
+        runModel(study, sds);
         if (ControlData.showTimeUsage) TimeUsage.showTimeUsage();
         long endTimeInMillis = Calendar.getInstance().getTimeInMillis();
         int runPeriod=(int) (endTimeInMillis-startTimeInMillis);
@@ -179,10 +181,10 @@ public class ControllerBatch {
     }
 
 
-    public void runModel(StudyDataSet sds){
+    public void runModel(Study study, StudyDataSet sds){
         System.out.println("==============Run Study Start============");
 
-        runModelILP(sds);
+        runModelILP(study, sds);
 
         WeightEval.outputWtTableAR();
 
@@ -195,7 +197,7 @@ public class ControllerBatch {
     }
 
 
-    public void runModelILP(StudyDataSet sds) {
+    public void runModelILP(Study study, StudyDataSet sds) {
 
         ILP.initializeIlp();
 
@@ -269,7 +271,7 @@ public class ControllerBatch {
                 while (VariableTimeStep.checkEndDate(ControlData.currDay, ControlData.currMonth, ControlData.currYear, ControlData.cycleEndDay, ControlData.cycleEndMonth, ControlData.cycleEndYear)<0 && noError) {
                     boolean modelProcessed = false;
                     try {
-                        modelProcessed = Evaluator.processModel(i, ControlData.currDay, ControlData.currMonth, ControlData.currYear, ControlData.nThreads, ControlData.showRunTimeMessage);
+                        modelProcessed = study.processModel(i, ControlData.currDay, ControlData.currMonth, ControlData.currYear, ControlData.nThreads, ControlData.showRunTimeMessage);
                     } catch (EvaluationErrorException e) {
                         System.out.println("");
                         System.out.println(e.getErrorMessage());
@@ -424,7 +426,7 @@ public class ControllerBatch {
                         if (ControlData.showRunTimeMessage) System.out.println("Solving Done.");
                         if (Error.error_solving.size()<1) {
                             ControlData.isPostProcessing=true;
-                            Evaluator.processAliases(i, ControlData.showRunTimeMessage);
+                            study.processAliases(i, ControlData.showRunTimeMessage);
                             if (ControlData.showRunTimeMessage) System.out.println("Assign Alias Done.");
                         } else if (infeasCyclIndex==i) {
                             noError=false;

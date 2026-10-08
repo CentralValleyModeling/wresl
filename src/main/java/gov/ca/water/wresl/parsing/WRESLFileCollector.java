@@ -16,8 +16,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
 
-// Package-private class
-class WRESLFileCollector {
+public class WRESLFileCollector {
     private static final Logger logger = LoggerFactory.getLogger(WRESLFileCollector.class);
 
     private final Map<Path, WRESLFile> mapStudyFiles;

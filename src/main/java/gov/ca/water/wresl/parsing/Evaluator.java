@@ -62,19 +62,19 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     private String sumIndex;
     private int sumIndexValue;
 
-    // Singleton constructor
-    // This setup allows us to treat Evaluator class as if it is a static class (even though
-    //   it cannot be static because it extends non-static wreslBaseVisitor class).
-    //   This way, client code call Evaluator methods as if they are utility methods.
-    private Evaluator() {}
-    private static final Evaluator INSTANCE = new Evaluator();
+    //// Singleton constructor
+    //// This setup allows us to treat Evaluator class as if it is a static class (even though
+    ////   it cannot be static because it extends non-static wreslBaseVisitor class).
+    ////   This way, client code call Evaluator methods as if they are utility methods.
+    //private Evaluator() {}
+    //private static final Evaluator INSTANCE = new Evaluator();
 
 
     // ------------------------------------------------------------
     // --- SET STUDY DATA SET
     // ------------------------------------------------------------
-    public static void setStudyDataSet(StudyDataSet sds) {
-        INSTANCE.sds = sds;
+    public void setStudyDataSet(StudyDataSet sds) {
+        this.sds = sds;
     }
 
 
@@ -82,72 +82,72 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // --- PROCESS A MODEL
     // ------------------------------------------------------------
     // Gateway method to process a model stored in a ModelDataSet object
-    public static boolean processModel(int modelIndex, int currentDay, int currentMonth, int currentYear, int nThreads, boolean showRunTimeMessage) {
+    public boolean processModel(int modelIndex, int currentDay, int currentMonth, int currentYear, int nThreads, boolean showRunTimeMessage) {
         // Set simulation time related parameters
-        INSTANCE.currentDay = currentDay;
-        INSTANCE.currentMonth = currentMonth;
-        INSTANCE.currentYear = currentYear;
+        this.currentDay = currentDay;
+        this.currentMonth = currentMonth;
+        this.currentYear = currentYear;
 
         // Check if condition to process model holds true
-        ParseTree modelConditionParseTree = INSTANCE.sds.getModelConditionParseTree(modelIndex);
-        boolean toBeProcessed = INSTANCE.evaluateCondition(modelConditionParseTree);
+        ParseTree modelConditionParseTree = this.sds.getModelConditionParseTree(modelIndex);
+        boolean toBeProcessed = this.evaluateCondition(modelConditionParseTree);
         if (!toBeProcessed) { return false; }
 
         // Retrieve ModelDataSet
-        INSTANCE.currentModelDataSet = INSTANCE.sds.getModelDataSet(modelIndex);
+        this.currentModelDataSet = this.sds.getModelDataSet(modelIndex);
 
         // Clear future arrays
-        INSTANCE.currentModelDataSet.clearFutureSvMap();
-        INSTANCE.currentModelDataSet.clearFutureAsMap();
+        this.currentModelDataSet.clearFutureSvMap();
+        this.currentModelDataSet.clearFutureAsMap();
 
         // Reset DVARs to be included in the solution
-        INSTANCE.currentModelDataSet.resetConditionalDvarsForSolution();
+        this.currentModelDataSet.resetConditionalDvarsForSolution();
 
         // Process Svars
-        INSTANCE.processSvars(INSTANCE.currentModelDataSet.svList, INSTANCE.currentModelDataSet.svMap, showRunTimeMessage);
+        this.processSvars(this.currentModelDataSet.svList, this.currentModelDataSet.svMap, showRunTimeMessage);
         if (showRunTimeMessage) System.out.println("Completed Svar processing.");
 
         // Process Goals
-        INSTANCE.processGoals(nThreads, showRunTimeMessage);
+        this.processGoals(nThreads, showRunTimeMessage);
 
         // Process Dvars
-        INSTANCE.processDvars(nThreads, showRunTimeMessage);
+        this.processDvars(nThreads, showRunTimeMessage);
         if (showRunTimeMessage) System.out.println("Completed Dvar processing.");
 
         // Process Weights
-        INSTANCE.processWeights(nThreads, showRunTimeMessage);
+        this.processWeights(nThreads, showRunTimeMessage);
 
         return true;
     }
 
     // Process Aliases
-    public static void processAliases(int modelIndex, boolean showRunTimeMessage) {
+    public void processAliases(int modelIndex, boolean showRunTimeMessage) {
         // Retrieve model data
-        INSTANCE.currentModelDataSet = INSTANCE.sds.getModelDataSet(modelIndex);
+        this.currentModelDataSet = this.sds.getModelDataSet(modelIndex);
 
-        ParallelVars prvs = new ParallelVars(INSTANCE.currentDay, INSTANCE.currentMonth, INSTANCE.currentYear);
+        ParallelVars prvs = new ParallelVars(this.currentDay, this.currentMonth, this.currentYear);
 
         // Loop through ALIASes; they need to be processed in order that they were defined in WRESL
-        List<String> asList = INSTANCE.currentModelDataSet.getAliasList();
-        Map<String, Alias> asMap = INSTANCE.currentModelDataSet.getAliasMap();
+        List<String> asList = this.currentModelDataSet.getAliasList();
+        Map<String, Alias> asMap = this.currentModelDataSet.getAliasMap();
         for (String asName : asList) {
             Alias as = asMap.get(asName);
             if (showRunTimeMessage) System.out.println("Processing alias " + asName);
 
-            INSTANCE.isSumExpression = false;
+            this.isSumExpression = false;
 
             // Retrieve maximum time index
             int maxTimeIndex = 0;
             if (as.timeArraySizeParseTree != null) {
-                maxTimeIndex = INSTANCE.visit(as.timeArraySizeParseTree).getValue().intValue();
+                maxTimeIndex = this.visit(as.timeArraySizeParseTree).getValue().intValue();
             }
 
             // Loop through time indices
             for (int timeIndex=0; timeIndex<=maxTimeIndex; timeIndex++) {
-                INSTANCE.futureArrayIndex = timeIndex;
+                this.futureArrayIndex = timeIndex;
 
                 // Process alias
-                IntDouble data = INSTANCE.visit(as.expressionParseTree);
+                IntDouble data = this.visit(as.expressionParseTree);
 
                 // Store data in alias
                 if (timeIndex == 0) {
@@ -160,34 +160,34 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                     newAlias.setTimeStep(as.getTimeStep());
                     newAlias.setStartTime(as.getStartTime());
                     newAlias.addData(prvs, data);
-                    INSTANCE.currentModelDataSet.addFutureAlias(newAlias);
+                    this.currentModelDataSet.addFutureAlias(newAlias);
                 }
             }
         }
     }
 
     // Process Svars
-    public static void processSvars(List<String> svList, Map<String, Svar> svMap, boolean showRunTimeMessage) {
+    public void processSvars(List<String> svList, Map<String, Svar> svMap, boolean showRunTimeMessage) {
         for (String svName: svList) {
             if (showRunTimeMessage) System.out.println("Processing svar "+svName);
             Svar svar = svMap.get(svName);
-            INSTANCE.processSvar(svar);
+            this.processSvar(svar);
         }
     }
 
     // Process a single Svar
-    private static void processSvar(Svar svar) throws EvaluationErrorException {
-        INSTANCE.isSumExpression = false;
+    private void processSvar(Svar svar) throws EvaluationErrorException {
+        this.isSumExpression = false;
 
         // Retrieve maximum time index
         int maxTimeIndex = 0;
         if (svar.timeArraySizeParseTree != null) {
-            maxTimeIndex = INSTANCE.visit(svar.timeArraySizeParseTree).getValue().intValue();
+            maxTimeIndex = this.visit(svar.timeArraySizeParseTree).getValue().intValue();
         }
 
         // Loop through time indices
         for (int timeIndex=0; timeIndex<=maxTimeIndex; timeIndex++) {
-            INSTANCE.futureArrayIndex = timeIndex;
+            this.futureArrayIndex = timeIndex;
             int conditionIndex = -1;
             // Process case conditions and figure out which case expression to use
             if (svar.caseConditionParseTree == null) {
@@ -199,7 +199,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                     if (caseConditionParseTree == null) {
                         conditionIndex = i;
                     } else {
-                        if (INSTANCE.evaluateCondition(caseConditionParseTree)) {
+                        if (this.evaluateCondition(caseConditionParseTree)) {
                             conditionIndex = i;
                             break;
                         }
@@ -213,7 +213,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             }
 
             // We know which expression to evaluate; evaluate caseExpression
-            IntDouble data = INSTANCE.visit(svar.caseExpressionParseTree.get(conditionIndex));
+            IntDouble data = this.visit(svar.caseExpressionParseTree.get(conditionIndex));
 
             // Update Svar data
             if (timeIndex == 0) {
@@ -222,7 +222,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 Svar newSvar = new Svar();
                 newSvar.setName(svar.getName()+"__fut__"+timeIndex);
                 newSvar.setData(data);
-                INSTANCE.currentModelDataSet.addFutureSvar(newSvar);
+                this.currentModelDataSet.addFutureSvar(newSvar);
             }
         }
     }
@@ -233,7 +233,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         // Initialize
         List<String> timeArrayDvList = new ArrayList<>();
         List<String> dvTimeArrayList = new ArrayList<>();
-        List<Dvar> dvList = INSTANCE.currentModelDataSet.getDvars();
+        List<Dvar> dvList = this.currentModelDataSet.getDvars();
         int threshold = (int) Math.ceil(dvList.size()/nThreads);
         ForkJoinPool pool = new ForkJoinPool(nThreads);
 
@@ -248,15 +248,15 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         pool.invoke(task);
 
         // Store time array related data
-        INSTANCE.currentModelDataSet.setTimeArrayDvList(timeArrayDvList);
-        INSTANCE.currentModelDataSet.setDvTimeArrayList(dvTimeArrayList);
+        this.currentModelDataSet.setTimeArrayDvList(timeArrayDvList);
+        this.currentModelDataSet.setDvTimeArrayList(dvTimeArrayList);
     }
 
     // Process a single Dvar
     private void processDvar(Dvar dvar, List<String> timeArrayDvList, List<String> dvTimeArrayList, boolean showRunTimeMessage) {
         if (showRunTimeMessage) System.out.println("Processing DVAR " + dvar.name);
 
-        INSTANCE.isSumExpression = false;
+        this.isSumExpression = false;
 
         // Process lower bound
         if (dvar.lowerBoundExpressionParseTree != null) {
@@ -310,7 +310,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
     // Process Goals
     private void processGoals(int nThreads, boolean showRunTimeMessage) {
-        List<Goal> goalList = INSTANCE.currentModelDataSet.getGoalList();
+        List<Goal> goalList = this.currentModelDataSet.getGoalList();
         int threshold = (int) Math.ceil(goalList.size()/nThreads);
         ForkJoinPool pool = new ForkJoinPool(nThreads);
 
@@ -329,7 +329,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     private void processGoal(Goal goal, boolean showRunTimeMessage) {
         if (showRunTimeMessage) System.out.println("Processing constraint " + goal.name);
 
-        INSTANCE.isSumExpression = false;
+        this.isSumExpression = false;
 
         // Process time array
         if (goal.timeArraySizeParseTree != null) {
@@ -342,7 +342,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 // Find the case for which we are going to compute goal
                 int index = -1;
                 for (int caseIndex=0; caseIndex<goal.caseConditionParseTrees.size(); caseIndex++) {
-                    if (INSTANCE.evaluateCondition(goal.caseConditionParseTrees.get(caseIndex))) {
+                    if (this.evaluateCondition(goal.caseConditionParseTrees.get(caseIndex))) {
                         index = caseIndex;
                         break;
                     }
@@ -360,7 +360,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
                 // Include associated DVARs in the solution
                 for (String dvarName : constraint.getMultipliers().keySet()) {
-                    INSTANCE.currentModelDataSet.includeDvarInSolution(dvarName);
+                    this.currentModelDataSet.includeDvarInSolution(dvarName);
                 }
             }
         }
@@ -374,7 +374,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         } else {
             index = -1;
             for (int caseIndex = 0; caseIndex < goal.caseConditionParseTrees.size(); caseIndex++) {
-                if (INSTANCE.evaluateCondition(goal.caseConditionParseTrees.get(caseIndex))) {
+                if (this.evaluateCondition(goal.caseConditionParseTrees.get(caseIndex))) {
                     index = caseIndex;
                     break;
                 }
@@ -394,7 +394,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         // Include associated DVARs in the solution
         if (constraint != null) {
             for (String dvarName : constraint.getMultipliers().keySet()) {
-                INSTANCE.currentModelDataSet.includeDvarInSolution(dvarName);
+                this.currentModelDataSet.includeDvarInSolution(dvarName);
             }
         }
     }
@@ -402,7 +402,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // Process Weights
     private void processWeights(int nThreads, boolean showRunTimeMessage) {
         // Non-conditional weights
-        List<WeightElement> weightList = INSTANCE.currentModelDataSet.getWeightList();
+        List<WeightElement> weightList = this.currentModelDataSet.getWeightList();
         int threshold = (int) Math.ceil(weightList.size()/nThreads);
         ForkJoinPool pool = new ForkJoinPool(nThreads);
 
@@ -434,7 +434,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
         // Process weight itself (only if parser tree is not null; otherwise, its value has already been computed during initial parsing)
         if (weight.weightParseTree != null) {
-            IntDouble data = INSTANCE.visit(weight.weightParseTree);
+            IntDouble data = this.visit(weight.weightParseTree);
             weight.setValue(data.getValue().doubleValue());
         }
     }
@@ -443,11 +443,11 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // ------------------------------------------------------------
     // --- EVALUATE A CONDITION
     // ------------------------------------------------------------
-    public static boolean evaluateCondition(ParseTree expCompareParseTree) {
+    public boolean evaluateCondition(ParseTree expCompareParseTree) {
         // If null ParseTree; that means condition always evaluates to true
         if (expCompareParseTree == null) {return true; }
 
-        IntDouble condition = INSTANCE.visit(expCompareParseTree);
+        IntDouble condition = this.visit(expCompareParseTree);
         if (condition.getValue().intValue() == Logical.TRUE.value) {
             return true;
         } else {
@@ -683,7 +683,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // sumExpressionBody
     public IntDouble visitSumExpressionBody(wreslParser.SumExpressionBodyContext ctx) {
         // Initialize
-        INSTANCE.isSumExpression = true;
+        this.isSumExpression = true;
         int iBegin;
         int iEnd;
         int iStep = 1;
@@ -717,7 +717,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         }
 
         // Loop through SUM; also check for inconsistencies in SUM parameters
-        INSTANCE.sumIndex = getWreslText(ctx.OBJECT_NAME());
+        this.sumIndex = getWreslText(ctx.OBJECT_NAME());
         double sum = 0.0;
         IntDouble data;
         if (iBegin > iEnd) {
@@ -725,7 +725,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Step value for the SUM expression must be less than zero!");
             } else {
                 for (int i=iBegin; i>=iEnd; i+=iStep) {
-                    INSTANCE.sumIndexValue = i;
+                    this.sumIndexValue = i;
                     data = visit(ctx.accumulatingExpression());
                     if (data == null) { return null; }
                     sum = sum + data.getValue().doubleValue();
@@ -736,14 +736,14 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Step value for the SUM expression must be greater than zero!");
             } else {
                 for (int i=iBegin; i<=iEnd; i+=iStep) {
-                    INSTANCE.sumIndexValue = i;
+                    this.sumIndexValue = i;
                     data = visit(ctx.accumulatingExpression());
                     if (data == null) { return null; }
                     sum = sum + data.getValue().doubleValue();
                 }
             }
         } else {
-            INSTANCE.sumIndexValue = iBegin;
+            this.sumIndexValue = iBegin;
             data = visit(ctx.accumulatingExpression());
             if (data == null) { return null; }
             sum = sum + data.getValue().doubleValue();
@@ -926,11 +926,11 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 }
             }
             try {
-                ExternalFunction ef = INSTANCE.sds.exMap.get(functionName);
+                ExternalFunction ef = this.sds.exMap.get(functionName);
                 if (ef == null) {
                     Class function = Class.forName("wrimsv2.external.Function" + functionName);
                     ef = (ExternalFunction) function.newInstance();
-                    INSTANCE.sds.exMap.put(functionName, ef);
+                    this.sds.exMap.put(functionName, ef);
                 }
                 ef.setExternalDir(this.sds.getAbsMainFilePath()+File.separator+"external"+File.separator);
                 ef.execute(stack);
@@ -976,9 +976,9 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         IntDouble varData;
 
         // If we are working on a SUM expression, check if this is the sumIndex; if so, evaluate and return
-        if (INSTANCE.isSumExpression) {
-            if (varName.equals(INSTANCE.sumIndex)) {
-                varData = new IntDouble(INSTANCE.sumIndexValue, true);
+        if (this.isSumExpression) {
+            if (varName.equals(this.sumIndex)) {
+                varData = new IntDouble(this.sumIndexValue, true);
                 return varData;
             }
         }
@@ -990,7 +990,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         }
 
         // This is an SVAR
-        Svar var = INSTANCE.currentModelDataSet.getSvar(varName);                       // Is this an Svar?
+        Svar var = this.currentModelDataSet.getSvar(varName);                       // Is this an Svar?
         if (var != null) {
             varData = var.getData();
             if (varData == null) {
@@ -1000,7 +1000,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         }
 
         // This is a parameter
-        var = INSTANCE.sds.getParameter(varName);
+        var = this.sds.getParameter(varName);
         if (var != null) {
             varData = var.getData();
             if (varData == null) {
@@ -1010,27 +1010,27 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         }
 
         // This is a TIMESERIES data
-        String tsName = DssOperations.entryNameTS(varName, INSTANCE.currentModelDataSet.getTimeStep());
-        Timeseries tsVar = INSTANCE.sds.getSVTimeseries(tsName);
+        String tsName = DssOperations.entryNameTS(varName, this.currentModelDataSet.getTimeStep());
+        Timeseries tsVar = this.sds.getSVTimeseries(tsName);
         if (tsVar != null) {
             // Retrieve timestep offset ParallelVars
             ParallelVars prvs = retrieveTimeStepOffsetPRVS("TIMESERIES", varName, tsVar.getTimeStep(), ctx.timestepOffset());
 
             IntDouble value;
-            if (prvs.isEarlierThan(INSTANCE.sds.getStudyStartDate())) {
+            if (prvs.isEarlierThan(this.sds.getStudyStartDate())) {
                 // Retrieve from initial data
-                Timeseries svInit = INSTANCE.sds.getSVInitTimeseries(tsName);
+                Timeseries svInit = this.sds.getSVInitTimeseries(tsName);
                 if (svInit != null) {
                     value = svInit.retrieveDataForTime(prvs);
                     if (value != null) { return value; }
                 }
                 // If made it this far, it means initial timeseries data was not read before; try reading it
                 svInit = tsVar.copyOf();
-                boolean success = svInit.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+                boolean success = svInit.readInitData(this.sds.getCacheInit(), this.sds.getPartA(), this.sds.getPartF_Init(), this.currentYear, this.currentMonth, this.currentDay);
                 if (success) {
                     value = svInit.retrieveDataForTime(prvs);
                     if (value != null) {
-                        INSTANCE.sds.addSVInitTimeseries(svInit);
+                        this.sds.addSVInitTimeseries(svInit);
                         return value;
                     }
                 }
@@ -1045,7 +1045,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         }
 
         // This is an ALIAS
-        Alias asVar = INSTANCE.currentModelDataSet.asMap.get(varName);
+        Alias asVar = this.currentModelDataSet.asMap.get(varName);
         if (asVar != null) {
             IntDouble value = retrieveDataFromAlias(asVar, ctx.timestepOffset());
             if (value == null) {
@@ -1055,7 +1055,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         }
 
         // This is a DVAR
-        Dvar dvar = INSTANCE.currentModelDataSet.getDvar(varName);
+        Dvar dvar = this.currentModelDataSet.getDvar(varName);
         if (dvar != null) {
             IntDouble value = retrieveDataFromDvar(dvar, ctx.timestepOffset());
             if (value == null) {
@@ -1071,8 +1071,8 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     @Override
     // daysInMonthReference
     public IntDouble visitDaysInMonthReference(wreslParser.DaysInMonthReferenceContext ctx) {
-        String monthName = TimeOperations.monthName(INSTANCE.currentMonth);
-        Number daysInMonth = Integer.valueOf(TimeOperations.numberOfDays(INSTANCE.currentMonth, INSTANCE.currentYear));
+        String monthName = TimeOperations.monthName(this.currentMonth);
+        Number daysInMonth = Integer.valueOf(TimeOperations.numberOfDays(this.currentMonth, this.currentYear));
         return new IntDouble(daysInMonth, true);
     }
 
@@ -1107,28 +1107,28 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     @Override
     // currentMonthReference
     // Always return value based on water year months (i.e. Oct = 1, Sep =12)
-    // INSTANCE.currentMonth is calendar month number
+    // this.currentMonth is calendar month number
     public IntDouble visitCurrentMonthReference(wreslParser.CurrentMonthReferenceContext ctx) {
-        String monthName = TimeOperations.monthName(INSTANCE.currentMonth);
+        String monthName = TimeOperations.monthName(this.currentMonth);
         Number intValue = Integer.valueOf(TimeOperations.waterYearMonthValue(monthName));
         return new IntDouble(intValue, true);
     }
 
     @Override
     public IntDouble visitWaterYearReference(wreslParser.WaterYearReferenceContext ctx) {
-        return new IntDouble(TimeOperations.waterYearValue(INSTANCE.currentMonth, INSTANCE.currentYear), true);
+        return new IntDouble(TimeOperations.waterYearValue(this.currentMonth, this.currentYear), true);
     }
 
     @Override
     // monthReference
     // Always return value based on water year months (i.e. Oct = 1, Sep =12)
-    // INSTANCE.currentMonth is calendar month number
+    // this.currentMonth is calendar month number
     public IntDouble visitMonthReference(wreslParser.MonthReferenceContext ctx) {
         String month = getWreslText(ctx.MONTH());
         if (month.contains("prev")) {
             // For "prev" month reference, it doesn't matter if we operate on calendar or water year months since returned value is relative to the current month
             month = month.substring(4);
-            int currentMonthValue = INSTANCE.currentMonth;
+            int currentMonthValue = this.currentMonth;
             int monthValue = TimeOperations.monthValue(month);
             if (currentMonthValue > monthValue) {
                 return new IntDouble(monthValue-currentMonthValue, true);
@@ -1144,7 +1144,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
     @Override
     public IntDouble visitFutureArrayIndexReference(wreslParser.FutureArrayIndexReferenceContext ctx) {
-        return new IntDouble(INSTANCE.futureArrayIndex, true);
+        return new IntDouble(this.futureArrayIndex, true);
     }
 
     @Override
@@ -1240,7 +1240,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // ------------------------------------------------------------
     private IntDouble flowUnitConversion(wreslParser.TimestepOffsetContext ctx, FlowConversion conversionType) {
         // If timestep is not known, return null
-        String timeStep = INSTANCE.currentModelDataSet.getTimeStep();
+        String timeStep = this.currentModelDataSet.getTimeStep();
         if (timeStep.equals(Param.undefined)) { return null; }
 
         // Retrieve time offset
@@ -1252,7 +1252,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         }
 
         // Compute month when time offset is used
-        ParallelVars prvs = TimeOperations.findTime(timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+        ParallelVars prvs = TimeOperations.findTime(timeStep, timeOffset, this.currentYear, this.currentMonth, this.currentDay);
 
         // Based on timestep, compute number of days
         int nDays;
@@ -1280,12 +1280,12 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     private IntDouble findDataInLookupTable(String tableName, String select, Map<String, Number> where, Map<String, Number> given, String use) throws EvaluationErrorException {
 
         // If table hasn't been copied into memory yet, do so
-        if (INSTANCE.tableSeries.get(tableName) == null) {
+        if (this.tableSeries.get(tableName) == null) {
             cacheLookUpData(tableName);
         }
 
         // Retrieve table data
-        LookUpTable lookupTable = INSTANCE.tableSeries.get(tableName);
+        LookUpTable lookupTable = this.tableSeries.get(tableName);
         List<Number[]> data = lookupTable.data;
         Map<String, Integer> field = lookupTable.field;
         int fieldSize = field.size();
@@ -1410,12 +1410,12 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // Given conditions (select, given, use), find/calculate a value based on data in a lookup table
     private IntDouble findDataInLookupTable(String tableName, String select, Map<String, Number> given, String use) throws EvaluationErrorException {
         // If table hasn't been copied into memory yet, do so
-        if (INSTANCE.tableSeries.get(tableName) == null) {
+        if (this.tableSeries.get(tableName) == null) {
             cacheLookUpData(tableName);
         }
 
         // Retrieve table data
-        LookUpTable lookupTable = INSTANCE.tableSeries.get(tableName);
+        LookUpTable lookupTable = this.tableSeries.get(tableName);
         List<Number[]> data = lookupTable.data;
         Map<String, Integer> field = lookupTable.field;
         int fieldSize = field.size();
@@ -1467,7 +1467,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
     // Store lookup data in memory
     private void cacheLookUpData(String tableName) throws EvaluationErrorException {
         // Lookup table filename and data
-        String absoluteTableFileName = INSTANCE.sds.getAbsMainFileFolder().toString() + File.separator + "lookup" + File.separator + tableName + ".table";
+        String absoluteTableFileName = this.sds.getAbsMainFileFolder().toString() + File.separator + "lookup" + File.separator + tableName + ".table";
         LookUpTable lookupTable = new LookUpTable();
 
         // Set table name
@@ -1533,7 +1533,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             }
 
             // Add table data to the map
-            INSTANCE.tableSeries.put(tableName,lookupTable);
+            this.tableSeries.put(tableName,lookupTable);
 
         }
         catch (IOException e) {
@@ -1672,7 +1672,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             }
             timeOffset = temp.getValue().intValue();
         }
-        ParallelVars prvs = TimeOperations.findTime(timeStep, timeOffset, INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+        ParallelVars prvs = TimeOperations.findTime(timeStep, timeOffset, this.currentYear, this.currentMonth, this.currentDay);
 
         return prvs;
     }
@@ -1695,7 +1695,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
         // Loop backwards in cycles until we manage to retrieve the value of DVAR, ALIAS or SVAR; this is done in case the initially referenced cycle was skipped
         for (int i=modelIndex; i>=0; i--) {
-            prevMds = INSTANCE.sds.getModelDataSet(i);
+            prevMds = this.sds.getModelDataSet(i);
 
             // Try retrieving data as DVAR
             Dvar dvar = prevMds.getDvar(varName);
@@ -1747,8 +1747,8 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
         // If made it this far, dvar did not extend back in time; try to retrieve from initial data
         dvar.setDssBPart(dvar.getName());
-        dvar.setTimeStep(INSTANCE.currentModelDataSet.getTimeStep());
-        dvar.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+        dvar.setTimeStep(this.currentModelDataSet.getTimeStep());
+        dvar.readInitData(this.sds.getCacheInit(), this.sds.getPartA(), this.sds.getPartF_Init(), this.currentYear, this.currentMonth, this.currentDay);
         value = dvar.retrieveDataForTime(prvs);
         if (value != null ) { return value; }
 
@@ -1774,8 +1774,8 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
         // If made it this far, alias did not extend back in time; try to retrieve from initial data
         as.setDssBPart(as.getName());
-        as.setTimeStep(INSTANCE.currentModelDataSet.getTimeStep());
-        as.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+        as.setTimeStep(this.currentModelDataSet.getTimeStep());
+        as.readInitData(this.sds.getCacheInit(), this.sds.getPartA(), this.sds.getPartF_Init(), this.currentYear, this.currentMonth, this.currentDay);
         value = as.retrieveDataForTime(prvs);
         if (value != null ) { return value; }
 
@@ -2114,14 +2114,14 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         @Override
         // expressionSum
         public EvalConstraint visitExpressionSum(wreslParser.ExpressionSumContext ctx) {
-            IntDouble data = INSTANCE.visitExpressionSum(ctx);
+            IntDouble data = Evaluator.this.visitExpressionSum(ctx);
             return new EvalConstraint(data);
         }
 
         @Override
         // expressionCall
         public EvalConstraint visitExpressionCall(wreslParser.ExpressionCallContext ctx) {
-            IntDouble data = INSTANCE.visitExpressionCall(ctx);
+            IntDouble data = Evaluator.this.visitExpressionCall(ctx);
             return new EvalConstraint(data);
         }
 
@@ -2144,7 +2144,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 return visit(objRef);
             // For everything else, revert back to visit methods of Evaluator class
             } else {
-                IntDouble result = INSTANCE.visitExpressionReference(ctx);
+                IntDouble result = Evaluator.this.visitExpressionReference(ctx);
                 return new EvalConstraint(result);
             }
         }
@@ -2157,12 +2157,12 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
 
             // If this is a DVAR or ALIAS from a previous cycle
             if (ctx.scope() != null) {
-                IntDouble result = INSTANCE.retrieveDvarOrAliasOrSvarFromPreviousCycle(varName, ctx);
+                IntDouble result = Evaluator.this.retrieveDvarOrAliasOrSvarFromPreviousCycle(varName, ctx);
                 return new EvalConstraint(result);
             }
 
             // This is a DVAR
-            Dvar dvar = INSTANCE.currentModelDataSet.getDvar(varName);
+            Dvar dvar = Evaluator.this.currentModelDataSet.getDvar(varName);
             if (dvar != null) {
                 // If there is no time offset return as a multiplier
                 if (ctx.timestepOffset() == null) {
@@ -2185,7 +2185,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             }
 
             // This is an SVAR
-            Svar var = INSTANCE.currentModelDataSet.getSvar(varName);                       // Is this an Svar?
+            Svar var = Evaluator.this.currentModelDataSet.getSvar(varName);                       // Is this an Svar?
             if (var != null) {
                 IntDouble varData = var.getData().copyOf();
                 if (varData == null) {
@@ -2195,7 +2195,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             }
 
             // This is a parameter
-            var = INSTANCE.sds.getParameter(varName);
+            var = Evaluator.this.sds.getParameter(varName);
             if (var != null) {
                 IntDouble varData = var.getData().copyOf();
                 if (varData == null) {
@@ -2205,27 +2205,27 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             }
 
             // This is a TIMESERIES data
-            String tsName = DssOperations.entryNameTS(varName, INSTANCE.currentModelDataSet.getTimeStep());
-            Timeseries tsVar = INSTANCE.sds.getSVTimeseries(tsName);
+            String tsName = DssOperations.entryNameTS(varName, Evaluator.this.currentModelDataSet.getTimeStep());
+            Timeseries tsVar = Evaluator.this.sds.getSVTimeseries(tsName);
             if (tsVar != null) {
                 // Retrieve timestep offset ParallelVars
                 ParallelVars prvs = retrieveTimeStepOffsetPRVS("TIMESERIES", tsName, tsVar.getTimeStep(), ctx.timestepOffset());
 
                 IntDouble value;
-                if (prvs.isEarlierThan(INSTANCE.sds.getStudyStartDate())) {
+                if (prvs.isEarlierThan(Evaluator.this.sds.getStudyStartDate())) {
                     // Retrieve from initial data
-                    Timeseries svInit = INSTANCE.sds.getSVInitTimeseries(tsName);
+                    Timeseries svInit = Evaluator.this.sds.getSVInitTimeseries(tsName);
                     if (svInit != null) {
                         value = svInit.retrieveDataForTime(prvs);
                         if (value != null) { return new EvalConstraint(value); }
                     }
                     // If made it this far, it means initial timeseries data was not read before; try reading it
                     svInit = tsVar.copyOf();
-                    boolean success = svInit.readInitData(INSTANCE.sds.getCacheInit(), INSTANCE.sds.getPartA(), INSTANCE.sds.getPartF_Init(), INSTANCE.currentYear, INSTANCE.currentMonth, INSTANCE.currentDay);
+                    boolean success = svInit.readInitData(Evaluator.this.sds.getCacheInit(), Evaluator.this.sds.getPartA(), Evaluator.this.sds.getPartF_Init(), Evaluator.this.currentYear, Evaluator.this.currentMonth, Evaluator.this.currentDay);
                     if (success) {
                         value = svInit.retrieveDataForTime(prvs);
                         if (value != null) {
-                            INSTANCE.sds.addSVInitTimeseries(svInit);
+                            Evaluator.this.sds.addSVInitTimeseries(svInit);
                             return new EvalConstraint(value);
                         }
                     }
@@ -2240,7 +2240,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             }
 
             // This is an ALIAS
-            Alias asVar = INSTANCE.currentModelDataSet.asMap.get(varName);
+            Alias asVar = Evaluator.this.currentModelDataSet.asMap.get(varName);
             if (asVar != null) {
                 IntDouble value = retrieveDataFromAlias(asVar, ctx.timestepOffset());
                 if (value == null) {

@@ -12,11 +12,12 @@ import java.util.Map;
 public class Study {
     private static final Logger logger = LoggerFactory.getLogger(Study.class);
 
+    private StudyDataSet sds;
+    private Evaluator evaluator;
 
-    // ------------------------------------------------------------
-    // --- COMPILE WRIMS DATA FROM WRESL FILES
-    // ------------------------------------------------------------
-    public StudyDataSet compile(String mainFile, int startDay, int startMon, int startYear) {
+
+    // Parse WRIMS data from WRESL files
+    public void parse(String mainFile, int startDay, int startMon, int startYear) {
         // Track time
         long start = System.currentTimeMillis();
 
@@ -32,18 +33,19 @@ public class Study {
         ParseTree studyTree = treesByFile.get(mainFilePath).getParseTree();
 
         // Parse WRESL input into WRIMS objects
-        StudyDataSet sds = new StudyDataSet();
-        Evaluator.setStudyDataSet(sds);
-        Antlr_To_WRIMS parse = new Antlr_To_WRIMS(mainFilePath, treesByFile, sds);
-        VisitorResult study = parse.visit(studyTree);
+        this.sds = new StudyDataSet();
+        this.evaluator = new Evaluator();
+        this.evaluator.setStudyDataSet(this.sds);
+        Antlr_To_WRIMS parse = new Antlr_To_WRIMS(mainFilePath, treesByFile, this.sds, this.evaluator);
+        VisitorResult dummy = parse.visit(studyTree);
 
         // Store study name and WRESl file details
-        sds.fromWresl = mainFilePath.toString();
-        sds.line = 1;
+        this.sds.fromWresl = mainFilePath.toString();
+        this.sds.line = 1;
 
         // Set study start date
         ParallelVars startDate = new ParallelVars(startDay, startMon, startYear);
-        sds.setStudyStartDate(startDate);
+        this.sds.setStudyStartDate(startDate);
 
         // Report total compile time
         long end = System.currentTimeMillis();
@@ -54,13 +56,27 @@ public class Study {
                 .log();
         //    logger.atInfo().setMessage("{}").addArgument(containers.sequences.get("CYCLE01")).log();
 
-        return sds;
     }
 
 
-    // ------------------------------------------------------------
-    // --- COLLECT STUDY WRESL FILES, COMPILE THEIR PARSE TREES AS WELL AS THEIR PARENT AND CHILD FILES
-    // ------------------------------------------------------------
+    // Retrieve study dataset
+    public StudyDataSet getStudyDataSet() {
+        return this.sds;
+    }
+
+
+    // Process a model
+    public boolean processModel(int modelIndex, int currentDay, int currentMonth, int currentYear, int nThreads, boolean showRunTimeMessage) {
+        return this.evaluator.processModel(modelIndex, currentDay, currentMonth, currentYear, nThreads, showRunTimeMessage);
+    }
+
+
+    // Process aliasses
+    public void processAliases(int modelIndex, boolean showRunTimeMessage) {
+        this.evaluator.processAliases(modelIndex, showRunTimeMessage);
+    }
+
+    // Collect study WRESL files, compile their parse trees as well as their parent and child files
     private static Map<Path, WRESLFile> collectTrees(Path entryFile) {
         // Begin by parsing all the files into separate trees
         long start = System.currentTimeMillis();

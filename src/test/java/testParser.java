@@ -1,11 +1,10 @@
+import gov.ca.water.wresl.parsing.Study;
 import gov.ca.water.wresl.domain.StudyDataSet;
-import gov.ca.water.wresl.parsing.*;
 import gov.ca.water.wresl.errors.EvaluationErrorException;
 import gov.ca.water.wresl.errors.SyntaxErrorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.file.Path;
 import java.util.List;
 
 public class testParser {
@@ -15,9 +14,9 @@ public class testParser {
     public static void main(String[] args) {
         logger.atInfo().setMessage("mainWresl={}").addArgument(args[0]).log();
         Study study = new Study();
-        StudyDataSet sds = new StudyDataSet();
+        StudyDataSet sds = study.getStudyDataSet();
         try {
-            sds = study.compile(args[0], 0, 0, 0);
+            study.parse(args[0], 0, 0, 0);
         }
         catch (SyntaxErrorException e) {
             System.err.println("WRESL+ syntax error(s) encountered in file "+e.getSourceFile());

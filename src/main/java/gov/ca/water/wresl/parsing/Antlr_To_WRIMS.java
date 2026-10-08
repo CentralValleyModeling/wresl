@@ -19,8 +19,7 @@ import java.util.*;
 
 import static gov.ca.water.wresl.parsing.Utilities.*;
 
-// Package-private class
-class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
+public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     private static final Logger log = LoggerFactory.getLogger(Antlr_To_WRIMS.class);
 
     // List of WRESL files
@@ -31,6 +30,9 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     private Map<String, ModelDataSet> modelsAndGroups;
     private StudyDataSet sds;
 
+    // Evaluator
+    private Evaluator evaluator;
+
     // Scratch memory used for data that needs to be access by multiple methods
     private String currentFile;                                   // WRESL file that's being parsed
     private String currentModelOrGroupName = "";                  // Name of model or group that is currently being parsed
@@ -39,7 +41,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
     // ------------------------------------------------------------
     // --- CONSTRUCTOR
     // ------------------------------------------------------------
-    public Antlr_To_WRIMS(Path mainFilePath, Map<Path, WRESLFile> wreslFilesMap, StudyDataSet sds) {
+    public Antlr_To_WRIMS(Path mainFilePath, Map<Path, WRESLFile> wreslFilesMap, StudyDataSet sds, Evaluator evaluator) {
         this.wreslFilesMap = wreslFilesMap;
 
         this.sequenceData = new HashMap<>();
@@ -47,6 +49,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         this.sds = sds;
 
         this.sds.setAbsMainFilePath(mainFilePath);
+        this.evaluator = evaluator;
     }
 
 
@@ -185,7 +188,7 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         }
 
         // Process parameters (Svars)
-        Evaluator.processSvars(this.sds.getParameterList(), this.sds.getParameterMap(), false);
+        this.evaluator.processSvars(this.sds.getParameterList(), this.sds.getParameterMap(), false);
 
         return null;
     }
@@ -1667,13 +1670,13 @@ class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
         VisitorResult result;
 
         // Process first IF clause
-        if (Evaluator.evaluateCondition(ctx.ifClause().expression())) {
+        if (this.evaluator.evaluateCondition(ctx.ifClause().expression())) {
             return visit(ctx.ifClause().ifBlock());
         }
 
         // Process ELSE IF clauses
         for (int i=0; i<ctx.elseIfClause().size(); i++) {
-            if (Evaluator.evaluateCondition(ctx.elseIfClause(i).expression())) {
+            if (this.evaluator.evaluateCondition(ctx.elseIfClause(i).expression())) {
                 return visit(ctx.elseIfClause(i).ifBlock());
             }
         }

@@ -7,7 +7,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 // Package-private class
-class WRESLFile  {
+public class WRESLFile  {
     private ParseTree parseTree;
     private Set<Path> parentFiles;
     private Set<Path> childFiles;
