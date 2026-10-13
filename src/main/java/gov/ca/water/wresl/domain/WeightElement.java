@@ -38,4 +38,26 @@ public class WeightElement extends WRESLComponent implements Serializable  {
         return this.value;
     }
 
+    // ------------------------------------------------------------
+    // --- MISC. METHODS
+    // ------------------------------------------------------------
+    public WeightElement copyOf() {
+        WeightElement newWeight = new WeightElement();
+
+        newWeight = (WeightElement) super.copyOf();
+
+        newWeight.weight = this.weight;
+        newWeight.name = this.name;
+        newWeight.conditional = this.conditional;
+        newWeight.weightParseTree = this.weightParseTree;
+        newWeight.value = this.value;
+        newWeight.timeArraySize = this.timeArraySize;
+        newWeight.timeArraySizeParseTree = this.timeArraySizeParseTree;
+        newWeight.min = this.min;
+        newWeight.max = this.max;
+        newWeight.minTC = this.minTC;
+        newWeight.maxTC = this.maxTC;
+
+        return newWeight;
+    }
 }

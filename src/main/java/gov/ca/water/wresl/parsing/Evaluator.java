@@ -933,6 +933,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                     this.sds.exMap.put(functionName, ef);
                 }
                 ef.setExternalDir(this.sds.getAbsMainFilePath()+File.separator+"external"+File.separator);
+                ef.setMainFileDir(this.sds.getAbsMainFileFolder().toString());
                 ef.execute(stack);
                 String valueString = stack.pop().toString();
                 if (valueString.contains(".")) {
@@ -1753,7 +1754,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         if (value != null ) { return value; }
 
         // If made it this far, value was not found; generate error
-        throw new EvaluationErrorException(dvar.fromWresl, dvar.line, "Was not able to retrieve data for Dvar '" + dvar.getName() + "' for " + prvs.parallelVarsToTimestamp() + "!");
+        throw new EvaluationErrorException(getSourceFile(timestepOffsetCtx), getLine(timestepOffsetCtx), "Was not able to retrieve data for Dvar '" + dvar.getName() + "' for " + prvs.parallelVarsToTimestamp() + "!");
 
     }
 

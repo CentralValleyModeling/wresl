@@ -1378,7 +1378,6 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
         // Is this a future array?
         if (ctx.arraySizeDefinition() != null) {
-            as.needVarFromEarlierCycle = true;
             VisitorResult result = visit(ctx.arraySizeDefinition());
             as.timeArraySize = visitorResultToString(result);
             as.timeArraySizeParseTree = generateExpressionParseTree(as.timeArraySize);

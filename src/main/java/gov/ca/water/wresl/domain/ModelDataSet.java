@@ -210,8 +210,16 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
         this.wtSlackSurplusList.addAll(mds.wtSlackSurplusList);
         this.usedWtSlackSurplusList.addAll(mds.usedWtSlackSurplusList);
         this.usedWtSlackSurplusDvList.addAll(mds.usedWtSlackSurplusDvList);
-        this.wtMap.putAll(mds.wtMap);
-        this.wtSlackSurplusMap.putAll(mds.wtSlackSurplusMap);
+        // Make a deep copy so computed weights stay unique to each model
+        for (Map.Entry<String, WeightElement> entry : mds.wtMap.entrySet()) {
+            WeightElement addWeight = mds.wtMap.get(entry.getKey()).copyOf();
+            this.wtMap.put(entry.getKey(), addWeight);
+        }
+        // Make a deep copy so computed surplus/slack weights stay unique to each model
+        for (Map.Entry<String, WeightElement> entry : mds.wtSlackSurplusMap.entrySet()) {
+            WeightElement addWeight = mds.wtSlackSurplusMap.get(entry.getKey()).copyOf();
+            this.wtSlackSurplusMap.put(entry.getKey(), addWeight);
+        }
 
         this.exList.addAll(mds.exList);
         this.exMap.putAll(mds.exMap);
@@ -229,12 +237,24 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
         this.dvTimeArrayList.addAll(mds.dvTimeArrayList);
         this.timeArrayDvList.addAll(mds.timeArrayDvList);
         this.dvSlackSurplusList.addAll(mds.dvSlackSurplusList);
-        this.dvMap.putAll(mds.dvMap);
-        this.dvSlackSurplusMap.putAll(mds.dvSlackSurplusMap);
+        // Make a deep copy so computed dvars stay unique to each model
+        for (Map.Entry<String, Dvar> entry : mds.dvMap.entrySet()) {
+            Dvar addDvar = mds.dvMap.get(entry.getKey()).copyOf();
+            this.dvMap.put(entry.getKey(), addDvar);
+        }
+        // Make a deep copy so computed slack/surplus dvars stay unique to each model
+        for (Map.Entry<String, Dvar> entry : mds.dvSlackSurplusMap.entrySet()) {
+            Dvar addDvar = mds.dvSlackSurplusMap.get(entry.getKey()).copyOf();
+            this.dvSlackSurplusMap.put(entry.getKey(), addDvar);
+        }
 
         this.asSet_unknown.addAll(mds.asSet_unknown);
         this.asList.addAll(mds.asList);
-        this.asMap.putAll(mds.asMap);
+        // Make a deep copy so computed aliases stay unique to each model
+        for (Map.Entry<String, Alias> entry : mds.asMap.entrySet()) {
+            Alias addAlias = mds.asMap.get(entry.getKey()).copyOf();
+            this.asMap.put(entry.getKey(), addAlias);
+        }
         this.asFutMap.putAll(mds.asFutMap);
 
         this.gList.addAll(mds.gList);

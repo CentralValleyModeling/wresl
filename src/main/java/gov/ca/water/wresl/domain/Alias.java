@@ -12,13 +12,24 @@ public class Alias extends Timeseries implements Serializable {
 
     public String expression = null;
     public ParseTree expressionParseTree = null;
-    public Set<String> dependants = new HashSet<>();
-    public Set<String> neededVarInCycleSet = new HashSet<>();
-    public boolean needVarFromEarlierCycle = false;
     public boolean noSolver = false;
 
     // Time array; default is zero
     public String timeArraySize = Param.zero;
     public ParseTree timeArraySizeParseTree = null;
 
+
+    public Alias copyOf() {
+        Alias newAlias = new Alias();
+
+        newAlias = (Alias) super.copyOf();
+
+        newAlias.expression = this.expression;
+        newAlias.expressionParseTree = this.expressionParseTree;
+        newAlias.noSolver = this.noSolver;
+        newAlias.timeArraySize = this.timeArraySize;
+        newAlias.timeArraySizeParseTree = this.timeArraySizeParseTree;
+
+        return newAlias;
+    }
 }
