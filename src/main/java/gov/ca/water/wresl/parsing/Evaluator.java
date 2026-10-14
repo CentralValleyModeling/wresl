@@ -984,7 +984,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             }
         }
 
-        // If this is a DVAR or ALIAS from a previous cycle
+        // If this is a DVAR or ALIAS or SVAR from a previous cycle
         if (ctx.scope() != null) {
             varData = retrieveDvarOrAliasOrSvarFromPreviousCycle(varName, ctx);
             return varData;
@@ -1018,31 +1018,32 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             ParallelVars prvs = retrieveTimeStepOffsetPRVS("TIMESERIES", varName, tsVar.getTimeStep(), ctx.timestepOffset());
 
             IntDouble value;
-            if (prvs.isEarlierThan(this.sds.getStudyStartDate())) {
-                // Retrieve from initial data
-                Timeseries svInit = this.sds.getSVInitTimeseries(tsName);
-                if (svInit != null) {
-                    value = svInit.retrieveDataForTime(prvs);
-                    if (value != null) { return value; }
-                }
-                // If made it this far, it means initial timeseries data was not read before; try reading it
-                svInit = tsVar.copyOf();
-                boolean success = svInit.readInitData(this.sds.getCacheInit(), this.sds.getPartA(), this.sds.getPartF_Init(), this.currentYear, this.currentMonth, this.currentDay);
-                if (success) {
-                    value = svInit.retrieveDataForTime(prvs);
-                    if (value != null) {
-                        this.sds.addSVInitTimeseries(svInit);
-                        return value;
-                    }
-                }
-            } else {
-                // Retrieve data from Timeseries
-                value = tsVar.retrieveDataForTime(prvs);
+
+            // Try retrieving data from the regular TS data
+            value = tsVar.retrieveDataForTime(prvs);
+            if (value != null) { return value; }
+
+            // Otherwise, try retrieving it from initial data
+            Timeseries svInit = this.sds.getSVInitTimeseries(tsName);
+            if (svInit != null) {
+                value = svInit.retrieveDataForTime(prvs);
                 if (value != null) { return value; }
             }
 
+            // If made it this far, it means initial timeseries data was not read before; try reading it
+            svInit = tsVar.copyOf();
+            ParallelVars studyStartDate = this.sds.getStudyStartDate();
+            boolean success = svInit.readInitData(this.sds.getCacheInit(), this.sds.getPartA(), this.sds.getPartF_Init(), studyStartDate.dataYear, studyStartDate.dataMonth, studyStartDate.dataDay);
+            if (success) {
+                value = svInit.retrieveDataForTime(prvs);
+                if (value != null) {
+                    this.sds.addSVInitTimeseries(svInit);
+                    return value;
+                }
+            }
+
             // If made it this far, value was not found; generate error
-            throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Was not able to retrieve data from the timeseries data for the provided time index.");
+            throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Was not able to retrieve data for variable '"+varName+"' for "+prvs.parallelVarsToTimestamp()+"!");
         }
 
         // This is an ALIAS
@@ -1701,7 +1702,6 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             // Try retrieving data as DVAR
             Dvar dvar = prevMds.getDvar(varName);
             if (dvar != null) {
-
                 IntDouble value = retrieveDataFromDvar(dvar, ctx.timestepOffset());
                 if (value != null) {
                     return value;
@@ -1741,15 +1741,23 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         value = dvar.retrieveDataForTime(prvs);
         if (value != null) { return value; }
 
-        // If value is null, and there is no timestep offset, generate error
-        if (timestepOffsetCtx == null) {
-            return null;
+        // If value is null, and there is no timestep offset, return null
+        if (timestepOffsetCtx == null) { return null; }
+
+        // If made it this far, we are referring to the final value (whichever cycle computed it last) of the DVAR from the previous tiemstep
+        for (int modelIndex=this.sds.getModelList().size()-1; modelIndex>=0; modelIndex--) {
+            ModelDataSet lastMds = this.sds.getModelDataSet(modelIndex);
+            Dvar lastDvar = lastMds.getDvar(dvar.getName());
+            if (lastDvar == null) { continue; }
+            value = lastDvar.retrieveDataForTime(prvs);
+            if (value != null) { return value; }
         }
 
         // If made it this far, dvar did not extend back in time; try to retrieve from initial data
+        ParallelVars studyStartDate = this.sds.getStudyStartDate();
         dvar.setDssBPart(dvar.getName());
         dvar.setTimeStep(this.currentModelDataSet.getTimeStep());
-        dvar.readInitData(this.sds.getCacheInit(), this.sds.getPartA(), this.sds.getPartF_Init(), this.currentYear, this.currentMonth, this.currentDay);
+        dvar.readInitData(this.sds.getCacheInit(), this.sds.getPartA(), this.sds.getPartF_Init(), studyStartDate.dataYear, studyStartDate.dataMonth, studyStartDate.dataDay);
         value = dvar.retrieveDataForTime(prvs);
         if (value != null ) { return value; }
 
@@ -1774,9 +1782,10 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         }
 
         // If made it this far, alias did not extend back in time; try to retrieve from initial data
+        ParallelVars studyStartDate = this.sds.getStudyStartDate();
         as.setDssBPart(as.getName());
         as.setTimeStep(this.currentModelDataSet.getTimeStep());
-        as.readInitData(this.sds.getCacheInit(), this.sds.getPartA(), this.sds.getPartF_Init(), this.currentYear, this.currentMonth, this.currentDay);
+        as.readInitData(this.sds.getCacheInit(), this.sds.getPartA(), this.sds.getPartF_Init(), studyStartDate.dataYear, studyStartDate.dataMonth, studyStartDate.dataDay);
         value = as.retrieveDataForTime(prvs);
         if (value != null ) { return value; }
 
@@ -2213,31 +2222,31 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 ParallelVars prvs = retrieveTimeStepOffsetPRVS("TIMESERIES", tsName, tsVar.getTimeStep(), ctx.timestepOffset());
 
                 IntDouble value;
-                if (prvs.isEarlierThan(Evaluator.this.sds.getStudyStartDate())) {
-                    // Retrieve from initial data
-                    Timeseries svInit = Evaluator.this.sds.getSVInitTimeseries(tsName);
-                    if (svInit != null) {
-                        value = svInit.retrieveDataForTime(prvs);
-                        if (value != null) { return new EvalConstraint(value); }
-                    }
-                    // If made it this far, it means initial timeseries data was not read before; try reading it
-                    svInit = tsVar.copyOf();
-                    boolean success = svInit.readInitData(Evaluator.this.sds.getCacheInit(), Evaluator.this.sds.getPartA(), Evaluator.this.sds.getPartF_Init(), Evaluator.this.currentYear, Evaluator.this.currentMonth, Evaluator.this.currentDay);
-                    if (success) {
-                        value = svInit.retrieveDataForTime(prvs);
-                        if (value != null) {
-                            Evaluator.this.sds.addSVInitTimeseries(svInit);
-                            return new EvalConstraint(value);
-                        }
-                    }
-                } else {
-                    // Retrieve data from Timeseries
-                    value = tsVar.retrieveDataForTime(prvs);
+                // Try retrieving data from the regular TS data
+                value = tsVar.retrieveDataForTime(prvs);
+                if (value != null) { return new EvalConstraint(value); }
+
+                // Otherwise, try retrieving it from initial data
+                Timeseries svInit = Evaluator.this.sds.getSVInitTimeseries(tsName);
+                if (svInit != null) {
+                    value = svInit.retrieveDataForTime(prvs);
                     if (value != null) { return new EvalConstraint(value); }
                 }
 
+                // If made it this far, it means initial timeseries data was not read before; try reading it
+                svInit = tsVar.copyOf();
+                ParallelVars studyStartDate = Evaluator.this.sds.getStudyStartDate();
+                boolean success = svInit.readInitData(Evaluator.this.sds.getCacheInit(), Evaluator.this.sds.getPartA(), Evaluator.this.sds.getPartF_Init(), studyStartDate.dataYear, studyStartDate.dataMonth, studyStartDate.dataDay);
+                if (success) {
+                    value = svInit.retrieveDataForTime(prvs);
+                    if (value != null) {
+                        Evaluator.this.sds.addSVInitTimeseries(svInit);
+                        return new EvalConstraint(value);
+                    }
+                }
+
                 // If made it this far, value was not found; generate error
-                throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Was not able to retrieve data from the timeseries data for the provided time index.");
+                throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Was not able to retrieve data for variable '"+varName+"' for " + prvs.parallelVarsToTimestamp() + "!");
             }
 
             // This is an ALIAS
