@@ -426,7 +426,16 @@ public class ControllerBatch {
                         if (ControlData.showRunTimeMessage) System.out.println("Solving Done.");
                         if (Error.error_solving.size()<1) {
                             ControlData.isPostProcessing=true;
-                            study.processAliases(i, ControlData.showRunTimeMessage);
+                            try {
+                                study.processAliases(i, ControlData.showRunTimeMessage);
+                            } catch (EvaluationErrorException e) {
+                                System.out.println("");
+                                System.out.println(e.getErrorMessage());
+                                System.out.println("Error occurred in file '" + e.getSourceFile() + "' at line " + e.getLine());
+                                System.out.println("");
+                                noError = false;
+                                break time_marching;
+                            }
                             if (ControlData.showRunTimeMessage) System.out.println("Assign Alias Done.");
                         } else if (infeasCyclIndex==i) {
                             noError=false;

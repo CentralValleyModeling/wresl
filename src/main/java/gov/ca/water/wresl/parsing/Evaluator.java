@@ -722,25 +722,25 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         IntDouble data;
         if (iBegin > iEnd) {
             if (iStep > 0) {
-                throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Step value for the SUM expression must be less than zero!");
-            } else {
-                for (int i=iBegin; i>=iEnd; i+=iStep) {
-                    this.sumIndexValue = i;
-                    data = visit(ctx.accumulatingExpression());
-                    if (data == null) { return null; }
-                    sum = sum + data.getValue().doubleValue();
-                }
+                // Multiply iStep by -1 to properly perform loop
+                iStep = -iStep;
+            }
+            for (int i=iBegin; i>=iEnd; i+=iStep) {
+                this.sumIndexValue = i;
+                data = visit(ctx.accumulatingExpression());
+                if (data == null) { return null; }
+                sum = sum + data.getValue().doubleValue();
             }
         } else if (iBegin < iEnd) {
             if (iStep < 0) {
-                throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Step value for the SUM expression must be greater than zero!");
-            } else {
-                for (int i=iBegin; i<=iEnd; i+=iStep) {
-                    this.sumIndexValue = i;
-                    data = visit(ctx.accumulatingExpression());
-                    if (data == null) { return null; }
-                    sum = sum + data.getValue().doubleValue();
-                }
+                // Multiply iStep by -1 to properly perform loop
+                iStep = -iStep;
+            }
+            for (int i=iBegin; i<=iEnd; i+=iStep) {
+                this.sumIndexValue = i;
+                data = visit(ctx.accumulatingExpression());
+                if (data == null) { return null; }
+                sum = sum + data.getValue().doubleValue();
             }
         } else {
             this.sumIndexValue = iBegin;
@@ -1777,11 +1777,17 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         if (value != null) { return value; }
 
         // If value is null, and there is no timestep offset, return null
-        if (timestepOffsetCtx == null) {
-            return null;
-        }
+        if (timestepOffsetCtx == null) { return null; }
 
-        // If made it this far, alias did not extend back in time; try to retrieve from initial data
+        // If made it this far, we are referring to the final value (whichever cycle computed it last) of the ALIAS from the previous tiemstep
+        for (int modelIndex=this.sds.getModelList().size()-1; modelIndex>=0; modelIndex--) {
+            ModelDataSet lastMds = this.sds.getModelDataSet(modelIndex);
+            Alias lastAlias = lastMds.getAlias(as.getName());
+            if (lastAlias == null) { continue; }
+            value = lastAlias.retrieveDataForTime(prvs);
+            if (value != null) { return value; }
+        }
+        // If made it this far, ALIAS did not extend back in time; try to retrieve from initial data
         ParallelVars studyStartDate = this.sds.getStudyStartDate();
         as.setDssBPart(as.getName());
         as.setTimeStep(this.currentModelDataSet.getTimeStep());
@@ -1790,7 +1796,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         if (value != null ) { return value; }
 
         // If made it this far, value was not found; generate error
-        throw new EvaluationErrorException(as.fromWresl, as.line, "Was not able to retrieve data for Alias " + as.name + " for the provided time index.");
+        throw new EvaluationErrorException(getSourceFile(timestepOffsetCtx), getLine(timestepOffsetCtx), "Was not able to retrieve data for Alias '" + as.getName() + "' for " + prvs.parallelVarsToTimestamp() + "!");
 
     }
 
@@ -1928,21 +1934,26 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             boolean isMultiplication = ctx.opMultiplicationDivision().MULT() != null;
 
             // Proceed based on the type of left operand
-            if (this.leftOperand .isNumeric()) {
+            if (this.leftOperand.isNumeric()) {
                 if (this.rightOperand.isNumeric()) {
                     // Both left and right operands are numbers
                     // ----------------------------------------
                     IntDouble rightVal = this.rightOperand.getConstant();
                     if (isMultiplication) {
                         // MULTIPLICATION
-                        this.leftOperand .getConstant().multiply(rightVal);
+                        this.leftOperand.getConstant().multiply(rightVal);
                     } else {
                         // DIVISION
-                        // No divide-by-zero
+                        // No divide-by-zero; but allow zero-divided-by-zero per original WRIMS code
                         if (rightVal.getValue().doubleValue() == 0.0) {
-                            throw new EvaluationErrorException(this.fromWresl, this.line, "Division-by-zero at GOAL " + this.goalName + "!");
+                            if (this.leftOperand.getConstant().getValue().doubleValue() != 0.0) {
+                                throw new EvaluationErrorException(this.fromWresl, this.line, "Division-by-zero at GOAL " + this.goalName + "!");
+                            } else {
+                                // Do nothing; leftOperand constant is already zero which is the value we want to return
+                            }
+                        } else {
+                            this.leftOperand.getConstant().divide(rightVal);
                         }
-                        this.leftOperand .getConstant().divide(rightVal);
                     }
                     returnData = this.leftOperand.copyOf();
                 } else {

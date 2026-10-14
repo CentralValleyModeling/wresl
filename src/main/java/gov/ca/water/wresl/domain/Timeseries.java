@@ -313,7 +313,7 @@ public class Timeseries extends WRESLComponent implements Serializable {
         } else if (indexDiff <= 0) {
             this.data.set(index, data);
         } else {
-            for (int i=1; i<indexDiff-1; i++) {
+            for (int i=1; i<=indexDiff-1; i++) {
                 this.data.add(null);
             }
             this.data.add(data);
