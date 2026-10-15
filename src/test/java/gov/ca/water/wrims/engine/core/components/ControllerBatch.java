@@ -7,10 +7,8 @@ import gov.ca.water.wresl.domain.ModelDataSet;
 import gov.ca.water.wresl.domain.StudyDataSet;
 import gov.ca.water.wresl.errors.EvaluationErrorException;
 import gov.ca.water.wresl.errors.SyntaxErrorException;
-import gov.ca.water.wresl.parsing.Evaluator;
 import gov.ca.water.wresl.parsing.Study;
 import gov.ca.water.wrims.engine.core.config.ConfigUtils;
-import gov.ca.water.wrims.engine.core.evaluator.AssignPastCycleVariable;
 import gov.ca.water.wrims.engine.core.evaluator.DssOperation;
 import gov.ca.water.wrims.engine.core.evaluator.WeightEval;
 import gov.ca.water.wrims.engine.core.fromWrims2.ErrorCheck;
@@ -495,7 +493,6 @@ public class ControllerBatch {
                             }
                         }
                         System.out.println("Cycle "+cycleI+" in "+ControlData.currYear+"/"+ControlData.currMonth+"/"+ControlData.currDay+" Skipped. ("+model+")");
-                        new AssignPastCycleVariable();
                         ControlData.currTimeStep.set(ControlData.currCycleIndex, ControlData.currTimeStep.get(ControlData.currCycleIndex)+1);
                         if (TimeOperations.isMonthlyInterval(ControlData.timeStep)) {
                             VariableTimeStep.currTimeAddOneMonth();
@@ -510,11 +507,9 @@ public class ControllerBatch {
             Date date2= new Date(ControlData.outputYear-1900, ControlData.outputMonth-1, ControlData.outputDay);
             Date date3= new Date(ControlData.endYear-1900, ControlData.endMonth-1, ControlData.endDay);
             if (ControlData.yearOutputSection>0 && (date1.after(date2) || date1.after(date3))){
-                if (ControlData.writeInitToDVOutput && sectionI==0){
-                    DssOperation.writeInitDvarAliasToDSS();
-                }
                 sectionI++;
-                DssOperation.writeDVAliasToDSS();
+                int t = study.printDVAlias(ControlData.vHecLib, ControlData.dvDss);
+                ControlData.t_writeDss = ControlData.t_writeDss + t;
                 ControlData.setMemDate();
                 DssOperation.shiftData();
                 ControlData.setOutputDate();
@@ -536,8 +531,10 @@ public class ControllerBatch {
             ControlData.xasolver.close();
         }
 
-        if (ControlData.yearOutputSection<0 && ControlData.writeInitToDVOutput) DssOperation.writeInitDvarAliasToDSS();
-        if (ControlData.yearOutputSection<0) study.printDVAlias(ControlData.vHecLib, ControlData.dvDss);
+        if (ControlData.yearOutputSection<0) {
+            int t = study.printDVAlias(ControlData.vHecLib, ControlData.dvDss);
+            ControlData.t_writeDss = ControlData.t_writeDss + t;
+        }
         ControlData.dvDss.close();
         if (ControlData.outputType==1) {
             HDF5Writer.createDvarAliasLookup();

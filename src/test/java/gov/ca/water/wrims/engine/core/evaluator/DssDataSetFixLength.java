@@ -14,12 +14,6 @@ public class DssDataSetFixLength {
 
 	}
 
-	public DssDataSetFixLength(int size){
-		data=new double[size];
-		for (int i=0; i<size; i++){
-			data[i]=-901.0;
-		}
-	}
 
 	public void setData(double[] data){
 		this.data=data;
@@ -45,10 +39,7 @@ public class DssDataSetFixLength {
 		return timeStep;
 	}
 	
-	public boolean fromDssFile(){
-		return fromDssFile;
-	}
-	
+
 	public void setFromDssFile(boolean fromDssFile){
 		this.fromDssFile=fromDssFile;
 	}

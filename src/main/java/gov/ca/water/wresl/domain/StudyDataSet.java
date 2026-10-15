@@ -546,7 +546,10 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     // ------------------------------------------------------------
     // --- DATA WRITERS
     // ------------------------------------------------------------
-    public void printDVAlias(int vHeclib, HecDss dssFile) {
+    public int printDVAlias(int vHeclib, HecDss dssFile) {
+        long t1 = Calendar.getInstance().getTimeInMillis();
+        System.out.println("writing dvar and alias to dv dss");
+
         // Loop through dvars and print their last values
         for (Timeseries tsData : this.allDVMap.values()) {
             DssOperations.printTimeseriesData(vHeclib,
@@ -577,6 +580,9 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
                     tsData.getData());
         }
 
+        System.out.println("dvar and alias written to dv dss");
+        long t2 = Calendar.getInstance().getTimeInMillis();
+        return (int) (t2-t1);
     }
 
 

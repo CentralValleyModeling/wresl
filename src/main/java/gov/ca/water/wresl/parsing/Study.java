@@ -76,9 +76,9 @@ public class Study {
         this.evaluator.processAliases(modelIndex, showRunTimeMessage);
     }
 
-    // Print dvars and aliases to DSS output file
-    public void printDVAlias(int vHeclib, HecDss dssFile) {
-        this.sds.printDVAlias(vHeclib, dssFile);
+    // Print dvars and aliases to DSS output file; returns time that took to execute the method
+    public int printDVAlias(int vHeclib, HecDss dssFile) {
+        return this.sds.printDVAlias(vHeclib, dssFile);
     }
 
     // Collect study WRESL files, compile their parse trees as well as their parent and child files

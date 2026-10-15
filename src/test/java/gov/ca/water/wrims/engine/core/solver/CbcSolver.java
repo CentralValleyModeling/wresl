@@ -2030,104 +2030,15 @@ logger.atTrace().setMessage("Integer variable (2021): name={}, value={} (rounded
 
         logger.atInfo().setMessage("CBC Solver: Assigning variable values...").log();
 
-		Map<String, Map<String, IntDouble>> varCycleValueMap=ControlData.currStudyDataSet.getVarCycleValueMap();
-		Map<String, Map<String, IntDouble>> varTimeArrayCycleValueMap=ControlData.currStudyDataSet.getVarTimeArrayCycleValueMap();
-		Set<String> dvarUsedByLaterCycle = ControlData.currModelDataSet.dvarUsedByLaterCycle;
-		Set<String> dvarTimeArrayUsedByLaterCycle = ControlData.currModelDataSet.dvarTimeArrayUsedByLaterCycle;
-		List<String> timeArrayDvList = ControlData.currModelDataSet.timeArrayDvList;
-		String modelName=ControlData.currCycleName;
+	    ParallelVars prvs = new ParallelVars(ControlData.currDay, ControlData.currMonth, ControlData.currYear);
 
-		List<String> varCycleIndexList = sds.getVarCycleIndexList();
-		List<String> dvarTimeArrayCycleIndexList = sds.getDvarTimeArrayCycleIndexList();
-		Map<String, Map<String, IntDouble>> varCycleIndexValueMap = sds.getVarCycleIndexValueMap();
-
-		Map<String, Dvar> dvarMap = gov.ca.water.solverdata.SolverData.getDvarMap();
-
-		HashSet<String> extraDv = new HashSet<String>(dvarMap.keySet());
-		extraDv.removeAll(varDoubleMap.keySet());
-
-        ParallelVars prvs = new ParallelVars(ControlData.currDay, ControlData.currMonth, ControlData.currYear);
-
-        logger.atDebug().setMessage("Processing {} extra variables").addArgument(extraDv.size()).log();
-
-        for (String dvName: extraDv) {
-			Dvar dvar = dvarMap.get(dvName);
-			double value=0;
-			if (dvar.lowerBoundValue.doubleValue()>0) {
-                value = dvar.lowerBoundValue.doubleValue();
-                logger.atTrace().setMessage("Extra variable using lower bound: name={}, value={}").addArgument(dvName).addArgument(value).log();
-            }
-			varDoubleMap.put(dvName, value);
-			IntDouble id = new IntDouble(value, false);
-			dvar.addData(prvs, id);
-			if(dvarUsedByLaterCycle.contains(dvName)){
-				varCycleValueMap.get(dvName).put(modelName, id);
-			}else if (dvarTimeArrayUsedByLaterCycle.contains(dvName)){
-				if (varTimeArrayCycleValueMap.containsKey(dvName)){
-					varTimeArrayCycleValueMap.get(dvName).put(modelName, id);
-				}else{
-					Map<String, IntDouble> cycleValue = new HashMap<String, IntDouble>();
-					cycleValue.put(modelName, id);
-					varTimeArrayCycleValueMap.put(dvName, cycleValue);
-				}
-			}
-			if (varCycleIndexList.contains(dvName) || dvarTimeArrayCycleIndexList.contains(dvName)){
-				if (varCycleIndexValueMap.containsKey(dvName)){
-					varCycleIndexValueMap.get(dvName).put(modelName, id);
-				}else{
-					Map<String, IntDouble> cycleValue = new HashMap<String, IntDouble>();
-					cycleValue.put(modelName, id);
-					varCycleIndexValueMap.put(dvName, cycleValue);
-				}
-			}
-			String entryNameTS=DssOperations.entryNameTS(dvName, ControlData.timeStep);
-			DataTimeSeries.saveDataToTimeSeries(dvName, entryNameTS, value, dvar);
-			if (timeArrayDvList.contains(dvName)){
-				entryNameTS= DssOperations.entryNameTS(dvName+"__fut__0", ControlData.timeStep);
-				DataTimeSeries.saveDataToTimeSeries(entryNameTS, value, dvar, 0);
-			}
-		}
         int assignedCount = 0;
-        //TODO: weird bug. need to fix
-		for (String dvName: varDoubleMap.keySet()) {
+        for (String dvName: varDoubleMap.keySet()) {
             double value=varDoubleMap.get(dvName);
 			IntDouble id=new IntDouble(value,false);
-
-			//TODO: weird bug. need to fix
-			try {
-                sds.assignDvarValue(prvs, dvName, id, modelIndex);
-                assignedCount++;
-            } catch (Exception e) {
-                logger.atWarn().setMessage("CBC assignDvar fallback: creating new variable for {}").addArgument(dvName).setCause(e).log();
-				Dvar dvar=new Dvar();
-				dvar.upperBoundValue = maxValue;
-				dvar.lowerBoundValue = 0.0;
-				dvar.addData(prvs, id);
-				dvarMap.put(dvName, dvar);
-                assignedCount++;
-            }
-
-			if(dvarUsedByLaterCycle.contains(dvName)){
-				varCycleValueMap.get(dvName).put(modelName, id);
-			}else if (dvarTimeArrayUsedByLaterCycle.contains(dvName)){
-				if (varTimeArrayCycleValueMap.containsKey(dvName)){
-					varTimeArrayCycleValueMap.get(dvName).put(modelName, id);
-				} else {
-					Map<String, IntDouble> cycleValue = new HashMap<String, IntDouble>();
-					cycleValue.put(modelName, id);
-					varTimeArrayCycleValueMap.put(dvName, cycleValue);
-				}
-			}
-			if (varCycleIndexList.contains(dvName) || dvarTimeArrayCycleIndexList.contains(dvName)){
-				if (varCycleIndexValueMap.containsKey(dvName)){
-					varCycleIndexValueMap.get(dvName).put(modelName, id);
-				} else {
-					Map<String, IntDouble> cycleValue = new HashMap<String, IntDouble>();
-					cycleValue.put(modelName, id);
-					varCycleIndexValueMap.put(dvName, cycleValue);
-				}
-			}
-		}
+            sds.assignDvarValue(prvs, dvName, id, modelIndex);
+            assignedCount++;
+    	}
 
         if (assignedCount % 1000 == 0) {
             logger.atDebug().setMessage("Assigned {} variables").addArgument(assignedCount).log();
