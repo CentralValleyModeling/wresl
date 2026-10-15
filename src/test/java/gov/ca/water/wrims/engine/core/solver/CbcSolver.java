@@ -904,7 +904,9 @@ public class CbcSolver {
         logger.atDebug().setMessage("CBC Solver: Setting up constraints...").log();
 
         try {
-		    Map<String, EvalConstraint> constraintMap = gov.ca.water.solverdata.SolverData.getConstraintDataMap();
+        //    ControlData.currModelDataSet.gList.sort(Comparator.naturalOrder());
+        //    Map<String, EvalConstraint> constraintMap = new TreeMap<>(SolverData.getConstraintDataMap());
+            Map<String, EvalConstraint> constraintMap = SolverData.getConstraintDataMap();
 		    String c="quicklog version 1.0\n";
 		    int rowCounter=0; // row index
             int equalityCount = 0;
@@ -969,6 +971,7 @@ public class CbcSolver {
                     }
 
                     LinkedHashMap<String, IntDouble> multMap = ec.getMultipliers();
+                    if (multMap == null) { multMap = new LinkedHashMap<>(); }
                     Set multCollection = multMap.keySet();
                     Iterator multIterator = multCollection.iterator();
 
@@ -996,7 +999,10 @@ public class CbcSolver {
     					j++;
     				}
 
-				    jCbc.addRow(modelObject,multMap.keySet().size(), index, elements, GT, LT, constraintName);
+                    //if (ControlData.currCycleIndex == 8) {
+                    //    System.out.println(multMap.keySet().size()+" "+ Arrays.toString(index)+" "+ Arrays.toString(elements) + " " + GT +" "+ LT + " "+ constraintName);
+                    //}
+                    jCbc.addRow(modelObject,multMap.keySet().size(), index, elements, GT, LT, constraintName);
 
                     if (isNoteCbc) {
                         c = c + constraintName + "," + GT + "," + LT + "," + multMap.keySet().size() + ","
@@ -1022,6 +1028,7 @@ public class CbcSolver {
         } finally {
             timer.stop();
         }
+    //    if (ControlData.currCycleIndex == 8) { System.exit(0); }
     }
 
 	private static void setConstraintsSkip(String skipThisConstraint) {

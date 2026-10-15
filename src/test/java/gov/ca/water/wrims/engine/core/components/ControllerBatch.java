@@ -59,9 +59,9 @@ public class ControllerBatch {
         try {
             study.parse(FilePaths.fullMainPath, ControlData.startDay, ControlData.startMonth, ControlData.startYear);
             sds = study.getStudyDataSet();
-            ControlData.cycWarmStart = sds.getCycWarmStart();
-            ControlData.cycWarmStop = sds.getCycWarmStop();
-            ControlData.cycWarmUse = sds.getCycWarmUse();
+            ControlData.cycWarmStart = study.getCycWarmStart();
+            ControlData.cycWarmStop = study.getCycWarmStop();
+            ControlData.cycWarmUse = study.getCycWarmUse();
         }
         catch (SyntaxErrorException e) {
             System.err.println("WRESL+ syntax error(s) encountered in file "+e.getSourceFile());
@@ -279,6 +279,10 @@ public class ControllerBatch {
                         break time_marching;
                     }
                     if (modelProcessed) {
+
+                        //ControlData.currModelDataSet.dvList.sort(Comparator.naturalOrder());
+                        //ControlData.currModelDataSet.dvSlackSurplusList.sort(Comparator.naturalOrder());
+
                         // Compile solver data
                         SolverData.compile(sds, i);
 
