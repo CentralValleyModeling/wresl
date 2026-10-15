@@ -359,6 +359,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 GoalEvaluator goalEvaluator = new GoalEvaluator();
                 EvalConstraint constraint = goalEvaluator.evaluate(goal.name, goal.fromWresl, goal.line, goal.goalExpressionParseTrees.get(index));
                 goal.setSolverData(constraint);
+                if (constraint.getMultipliers() == null) { continue; }
 
                 // Include associated DVARs in the solution
                 for (String dvarName : constraint.getMultipliers().keySet()) {
@@ -388,16 +389,15 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             }
         }
 
-        // Process goal expression; if constraint is null, simply skip it
+        // Process goal expression
         GoalEvaluator goalBuilder = new GoalEvaluator();
         EvalConstraint constraint = goalBuilder.evaluate(goal.name, goal.fromWresl, goal.line, goal.goalExpressionParseTrees.get(index));
         goal.setSolverData(constraint);
+        if (constraint.getMultipliers() == null) { return; }
 
         // Include associated DVARs in the solution
-        if (constraint != null) {
-            for (String dvarName : constraint.getMultipliers().keySet()) {
-                this.currentModelDataSet.includeDvarInSolution(dvarName);
-            }
+        for (String dvarName : constraint.getMultipliers().keySet()) {
+            this.currentModelDataSet.includeDvarInSolution(dvarName);
         }
     }
 
@@ -1852,8 +1852,8 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 if (constraintRight.isNumeric()) {
                     // Both left and right constraint expressions are values
                     // -----------------------------------------------------
-                    // Return null; this goal will not be sent to the solver
-                    return null;
+                    // Return the constant
+                    constraintLeft.getConstant().subtract(constraintRight.getConstant());
                 } else {
                     // Left constraint is value, right constraint is multiplier/value
                     // --------------------------------------------------------------
@@ -1893,8 +1893,10 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             }
             constraintLeft.setSign(getWreslText(ctx.opCompare()));
 
-            // Remove multipliers with a coeffcient of zero from the constraint
-            constraintLeft.getMultipliers().entrySet().removeIf(entry -> entry.getValue().getValue().doubleValue() == 0.0);
+            // Remove multipliers with a coefficient of zero from the constraint
+            if (constraintLeft.getMultipliers() != null) {
+                constraintLeft.getMultipliers().entrySet().removeIf(entry -> entry.getValue().getValue().doubleValue() == 0.0);
+            }
 
             // Return constraint
             return constraintLeft;
