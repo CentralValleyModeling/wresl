@@ -149,9 +149,10 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 // Process alias
                 IntDouble data = this.visit(as.expressionParseTree);
 
-                // Store data in alias
+                // Store data in alias; also store its value as the latest value for the alias
                 if (timeIndex == 0) {
                     as.addData(prvs, data);
+                    this.sds.assignAliasValue(prvs, asName, data, modelIndex);
                 } else {
                     Alias newAlias = new Alias();
                     newAlias.setName(as.getName()+"__fut__"+timeIndex);
@@ -161,6 +162,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                     newAlias.setStartTime(as.getStartTime());
                     newAlias.addData(prvs, data);
                     this.currentModelDataSet.addFutureAlias(newAlias);
+                    this.sds.assignAliasValue(prvs, newAlias.getName(), data, modelIndex);
                 }
             }
         }
@@ -1043,7 +1045,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
             }
 
             // If made it this far, value was not found; generate error
-            throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Was not able to retrieve data for variable '"+varName+"' for "+prvs.parallelVarsToTimestamp()+"!");
+            throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Was not able to retrieve data for variable '"+varName+"' for "+prvs.toTimestamp()+"!");
         }
 
         // This is an ALIAS
@@ -1762,7 +1764,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         if (value != null ) { return value; }
 
         // If made it this far, value was not found; generate error
-        throw new EvaluationErrorException(getSourceFile(timestepOffsetCtx), getLine(timestepOffsetCtx), "Was not able to retrieve data for Dvar '" + dvar.getName() + "' for " + prvs.parallelVarsToTimestamp() + "!");
+        throw new EvaluationErrorException(getSourceFile(timestepOffsetCtx), getLine(timestepOffsetCtx), "Was not able to retrieve data for Dvar '" + dvar.getName() + "' for " + prvs.toTimestamp() + "!");
 
     }
 
@@ -1796,7 +1798,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
         if (value != null ) { return value; }
 
         // If made it this far, value was not found; generate error
-        throw new EvaluationErrorException(getSourceFile(timestepOffsetCtx), getLine(timestepOffsetCtx), "Was not able to retrieve data for Alias '" + as.getName() + "' for " + prvs.parallelVarsToTimestamp() + "!");
+        throw new EvaluationErrorException(getSourceFile(timestepOffsetCtx), getLine(timestepOffsetCtx), "Was not able to retrieve data for Alias '" + as.getName() + "' for " + prvs.toTimestamp() + "!");
 
     }
 
@@ -2257,7 +2259,7 @@ public class Evaluator extends wreslBaseVisitor<IntDouble> {
                 }
 
                 // If made it this far, value was not found; generate error
-                throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Was not able to retrieve data for variable '"+varName+"' for " + prvs.parallelVarsToTimestamp() + "!");
+                throw new EvaluationErrorException(getSourceFile(ctx), getLine(ctx), "Was not able to retrieve data for variable '"+varName+"' for " + prvs.toTimestamp() + "!");
             }
 
             // This is an ALIAS

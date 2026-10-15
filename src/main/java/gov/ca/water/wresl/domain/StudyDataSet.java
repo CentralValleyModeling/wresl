@@ -66,11 +66,15 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     // External functions
     public Map<String, ExternalFunction> exMap = new HashMap<>();
 
+    // All DVAR and ALIAS variables and their latest computed values
+    private Map<String, Timeseries> allDVMap = new HashMap<>();
+    private Map<String, Timeseries> allAliasMap = new HashMap<>();
+
+
 
     // ------------------------------------------------------------
     // --- GETTERS
     // ------------------------------------------------------------
-
     public List<Integer> getCycWarmStart() {return this.cycWarmStart; }
 
     public List<Integer> getCycWarmStop() {return this.cycWarmStop; }
@@ -199,7 +203,6 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     // ------------------------------------------------------------
     // --- SETTERS
     // ------------------------------------------------------------
-
     public void setParameterList(List<String> parameterList) {
         this.parameterList = parameterList;
     }
@@ -291,7 +294,7 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
 
         // Set part A and part B of DSS pathnames
         this.partA = partA;
-        this.partF = partF;
+        this.partF = partF_SV;
         this.partF_Init = partF_Init;
 
         // Figure out input file types; for DSS files create cache
@@ -402,16 +405,62 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         }
     }
 
-    // Add DVAR value to DVAR object in the specified model
+    // Add DVAR value to DVAR object in the specified model; also update its latest value
     public void assignDvarValue(ParallelVars prvs, String name, IntDouble data, int modelIndex) {
         this.getModelDataSet(modelIndex).assignDvarValue(prvs, name, data);
+
+        // Add or replace final dvar value
+        int index = TimeOperations.timeSeriesIndex(prvs, this.studyStartDate.toDate(), this.getModelTimeStep(modelIndex));
+        Timeseries ts = this.allDVMap.get(name);
+        if (ts == null) {
+            // If dvar is not found, it is a new one; add it to the list and populate
+            Dvar dvar = this.getModelDataSet(modelIndex).getDvar(name);
+            ts = new Timeseries(dvar);
+            ts.initData();
+            this.allDVMap.put(name, ts);
+            for (int i=1; i<=index; i++) {
+                ts.getData().add(null);
+            }
+            ts.getData().add(data);
+        } else {
+            // Otherwise, add or replace data
+            if (index+1 > ts.getData().size()) {
+                ts.getData().add(data);
+            } else {
+                ts.getData().set(index, data);
+            }
+        }
+    }
+
+    // Add ALIAS value as the latest value
+    public void assignAliasValue(ParallelVars prvs, String name, IntDouble data, int modelIndex) {
+        int index = TimeOperations.timeSeriesIndex(prvs, this.studyStartDate.toDate(), this.getModelTimeStep(modelIndex));
+        Timeseries ts = this.allAliasMap.get(name);
+        if (ts == null) {
+            // If alias is not found, it is a new one; add it to the list and populate
+            Alias as = this.getModelDataSet(modelIndex).getAlias(name);
+            if (as == null) as = this.getModelDataSet(modelIndex).getFutureAlias(name);
+            ts = new Timeseries(as);
+            ts.initData();
+            this.allAliasMap.put(name, ts);
+            for (int i=1; i<=index; i++) {
+                ts.getData().add(null);
+            }
+            ts.getData().add(data);
+        } else {
+            // Otherwise, add or replace data
+            if (index+1 > ts.getData().size()) {
+                ts.getData().add(data);
+            } else {
+                ts.getData().set(index, data);
+            }
+        }
     }
 
 
     // ------------------------------------------------------------
     // --- DATA SAVERS
     // ------------------------------------------------------------
-
     public void saveSvarTSData(HecDss dss, String fileName, String timeStep, String partA, String partF) {
         System.out.println("Write svar timeseries to "+fileName);
         Set svTsSet = this.svTimeseriesMap.keySet();
@@ -491,6 +540,43 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
             //writer.storeTimeSeriesData(pathName, startJulmin, dd, storeFlags);
         }
         System.out.println("Svar file saved.");
+    }
+
+
+    // ------------------------------------------------------------
+    // --- DATA WRITERS
+    // ------------------------------------------------------------
+    public void printDVAlias(int vHeclib, HecDss dssFile) {
+        // Loop through dvars and print their last values
+        for (Timeseries tsData : this.allDVMap.values()) {
+            DssOperations.printTimeseriesData(vHeclib,
+                    dssFile,
+                    tsData.startTime,
+                    tsData.getName(),
+                    tsData.getTimeStep(),
+                    "PER-AVER",
+                    tsData.getUnits(),
+                    tsData.getKind(),
+                    this.partA,
+                    this.partF,
+                    tsData.getData());
+        }
+
+        // Loop through aliases and print their last values
+        for (Timeseries tsData : this.allAliasMap.values()) {
+            DssOperations.printTimeseriesData(vHeclib,
+                    dssFile,
+                    tsData.startTime,
+                    tsData.getName(),
+                    tsData.getTimeStep(),
+                    "PER-AVER",
+                    tsData.getUnits(),
+                    tsData.getKind(),
+                    this.partA,
+                    this.partF,
+                    tsData.getData());
+        }
+
     }
 
 
@@ -831,5 +917,8 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
             return 504.1666667;
         }
     }
+
+
+
 
 }

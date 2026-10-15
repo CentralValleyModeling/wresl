@@ -1,5 +1,8 @@
 package gov.ca.water.utilities;
 
+import java.util.Calendar;
+import java.util.Date;
+
 public class ParallelVars {
 	public int dataDay;
 	public int dataMonth;
@@ -49,8 +52,18 @@ public class ParallelVars {
 	}
 
 	// Convert prvs data to time stamp
-	public String parallelVarsToTimestamp() {
+	public String toTimestamp() {
 		String timeStamp = this.dataMonth + "/" + this.dataDay + "/" + this.dataYear;
 		return timeStamp;
+	}
+
+	// Convert prvs to Date
+	public Date toDate() {
+		Calendar calendar = Calendar.getInstance();
+		calendar.set(this.dataYear, this.dataMonth-1, this.dataDay, 0, 0, 0);
+
+		Date date = calendar.getTime();
+		
+		return date;
 	}
 }

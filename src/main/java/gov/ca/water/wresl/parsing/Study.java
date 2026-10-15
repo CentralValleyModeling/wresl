@@ -2,6 +2,7 @@ package gov.ca.water.wresl.parsing;
 
 import gov.ca.water.utilities.ParallelVars;
 import gov.ca.water.wresl.domain.StudyDataSet;
+import hec.heclib.dss.HecDss;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,10 +71,14 @@ public class Study {
         return this.evaluator.processModel(modelIndex, currentDay, currentMonth, currentYear, nThreads, showRunTimeMessage);
     }
 
-
     // Process aliasses
     public void processAliases(int modelIndex, boolean showRunTimeMessage) {
         this.evaluator.processAliases(modelIndex, showRunTimeMessage);
+    }
+
+    // Print dvars and aliases to DSS output file
+    public void printDVAlias(int vHeclib, HecDss dssFile) {
+        this.sds.printDVAlias(vHeclib, dssFile);
     }
 
     // Collect study WRESL files, compile their parse trees as well as their parent and child files
@@ -95,7 +100,5 @@ public class Study {
         // Return files
         return studyFileCollector.getFiles();
     }
-
-
 
 }

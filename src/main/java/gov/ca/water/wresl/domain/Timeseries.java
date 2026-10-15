@@ -7,7 +7,7 @@ import gov.ca.water.utilities.MiscUtilities;
 import gov.ca.water.utilities.ParallelVars;
 import gov.ca.water.utilities.Param;
 import gov.ca.water.utilities.TimeOperations;
-import gov.ca.water.wresl.errors.EvaluationErrorException;
+import hec.heclib.dss.HecDss;
 import hec.heclib.util.HecTime;
 import hec.io.TimeSeriesContainer;
 
@@ -30,6 +30,30 @@ public class Timeseries extends WRESLComponent implements Serializable {
     public int studyStartIndex = 0;
 
     public List<IntDouble> data = new ArrayList<>();
+
+
+    // --------------------
+    // --- CONSTRUCTORS
+    // --------------------
+    public Timeseries() {}
+
+    public Timeseries(Timeseries ts) {
+        this.dssBPart = ts.dssBPart;
+        this.kind = ts.kind;
+        this.units = ts.units;
+        this.convertToUnits = ts.convertToUnits;
+        this.timeStep = ts.timeStep;
+        this.startTime = ts.startTime;
+        this.studyStartIndex = ts.studyStartIndex;
+        this.data = new ArrayList<>();
+        for (IntDouble value : ts.data) {
+            this.data.add(value);
+        }
+
+        this.name = ts.name;
+        this.fromWresl = ts.fromWresl;
+        this.line = ts.line;
+    }
 
 
     // --------------------
@@ -246,7 +270,7 @@ public class Timeseries extends WRESLComponent implements Serializable {
 
     // Retrieve data for a time
     public IntDouble retrieveDataForTime(ParallelVars prvs) {
-        int index = timeSeriesIndex(prvs, this.startTime, this.timeStep);
+        int index = TimeOperations.timeSeriesIndex(prvs, this.startTime, this.timeStep);
         if (index >= 0) {
             if (index <= this.data.size()-1) {
                 if (this.data.get(index) == null) { return null; }
@@ -281,30 +305,10 @@ public class Timeseries extends WRESLComponent implements Serializable {
         }
     }
 
-    // Retrieve index of a data given current date and the starting date of the timeseries data
-    private int timeSeriesIndex(ParallelVars prvs, Date tsStartTime, String timeStep) {
-        int sYear = tsStartTime.getYear() + 1900;
-        int sMonth = tsStartTime.getMonth() + 1; //HEC DSS7 uses getMonth()+1. However, Vista/HecDSS6 uses getMonth()bbecause dss data store at 24:00 Jan31, 1921 is considered to store at 0:00 Feb 1, 1921
-        Date dataDate = new Date(prvs.dataYear-1900, prvs.dataMonth-1, prvs.dataDay);
-        int index;
-        if (TimeOperations.isMonthlyInterval(timeStep)) {
-            index = prvs.dataYear*12+prvs.dataMonth-(sYear*12+sMonth);
-        } else {
-            Calendar c1=Calendar.getInstance();
-            c1.setTime(tsStartTime);
-            Calendar c2=Calendar.getInstance();
-            c2.setTime(dataDate);
-            long indexValue = Duration.between(c1.toInstant(), c2.toInstant()).toDays();
-            index=(int)indexValue+1;  //HEC DSS7 uses indexValue+1; Vista/Hec DSS6 uses indexValue+2
-        }
-
-        return index;
-    }
-
     // Add data
     public void addData(ParallelVars prvs, IntDouble data) {
         // Compute timeseries index to see if the data will be added or will overwrite an existing data
-        int index = timeSeriesIndex(prvs, this.startTime, this.timeStep);
+        int index = TimeOperations.timeSeriesIndex(prvs, this.startTime, this.timeStep);
 
         // Based on the value of index either add data or replace data
         int indexDiff = index - this.data.size() + 1;
@@ -318,6 +322,11 @@ public class Timeseries extends WRESLComponent implements Serializable {
             }
             this.data.add(data);
         }
+    }
+
+    // Initialize timeseries data as a new List
+    public void initData() {
+        this.data = new ArrayList<>();
     }
 }
 

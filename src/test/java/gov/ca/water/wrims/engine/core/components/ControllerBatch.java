@@ -537,7 +537,7 @@ public class ControllerBatch {
         }
 
         if (ControlData.yearOutputSection<0 && ControlData.writeInitToDVOutput) DssOperation.writeInitDvarAliasToDSS();
-        if (ControlData.yearOutputSection<0) DssOperation.writeDVAliasToDSS();
+        if (ControlData.yearOutputSection<0) study.printDVAlias(ControlData.vHecLib, ControlData.dvDss);
         ControlData.dvDss.close();
         if (ControlData.outputType==1) {
             HDF5Writer.createDvarAliasLookup();

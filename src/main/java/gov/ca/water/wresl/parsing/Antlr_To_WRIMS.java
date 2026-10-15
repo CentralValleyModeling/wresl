@@ -128,6 +128,7 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
 
             // Set timestep for DVARs and ALIASes
             mds.setTimeStepDvarsAliases();
+
         }
         this.sds.setSVTimeseriesMap(svTSMap);
 

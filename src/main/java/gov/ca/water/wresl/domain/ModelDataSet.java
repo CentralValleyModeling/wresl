@@ -157,6 +157,9 @@ public class ModelDataSet extends WRESLComponent implements Serializable {
 
     public Alias getAlias(String asName) { return this.asMap.get(asName); }
 
+    public Alias getFutureAlias(String asName) { return this.asFutMap.get(asName); }
+
+
     // ------------------------------------------------------------
     // --- SETTERS
     // ------------------------------------------------------------

@@ -1,7 +1,14 @@
 package gov.ca.water.io.DSS;
 
 import gov.ca.water.utilities.TimeOperations;
+import gov.ca.water.wresl.domain.IntDouble;
+import hec.heclib.dss.HecDss;
+import hec.heclib.util.HecTime;
 import hec.io.TimeSeriesContainer;
+
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
 
 public class DssOperations {
 
@@ -50,5 +57,41 @@ public class DssOperations {
     public static String getTSName(String entryNameTS){
         String[] entry=entryNameTS.split("@");
         return entry[0];
+    }
+
+    // Print a timeseries data to a given DSS file
+    public static void printTimeseriesData(int vHeclib, HecDss dssFile, Date dataStartDate, String tsName, String timeStep, String dataType, String dataUnits, String dataKind, String partA, String partF, List<IntDouble> tsData) {
+        TimeSeriesContainer dc = new TimeSeriesContainer();
+
+        String timeStepUsed = timeStep;
+        if (vHeclib == 7) {
+            if (timeStepUsed.toUpperCase().equals("1MON")) { timeStepUsed = "1Month"; }
+        }
+
+        Calendar dataStartCalendar = Calendar.getInstance();
+        dataStartCalendar.setTime(dataStartDate);
+
+        double[] dataValues = new double[tsData.size()];
+        for (int i=0; i<tsData.size(); i++) {
+            IntDouble value = tsData.get(i);
+            if (value == null) {
+                dataValues[i] = -901.0;
+            } else {
+                dataValues[i] = value.getValue().doubleValue();
+            }
+        }
+
+        dc.setStartTime(new HecTime(dataStartCalendar));
+        dc.setType(dataType);
+        dc.setUnits(dataUnits);
+        dc.setValues(dataValues);
+        dc.setName(createPath(partA, tsName, dataKind, "", timeStepUsed, partF));
+        dc.setStoreAsDoubles(true);
+
+        try {
+            dssFile.put(dc);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

@@ -285,5 +285,23 @@ public final class TimeOperations {
         return dayName(day)+monthNameNumeric(month)+year+" 2400";
     }
 
+    // Retrieve index of a data given current date and a begin date
+    public static int timeSeriesIndex(ParallelVars prvs, Date beginDate, String timeStep) {
+        int sYear = beginDate.getYear() + 1900;
+        int sMonth = beginDate.getMonth() + 1; //HEC DSS7 uses getMonth()+1. However, Vista/HecDSS6 uses getMonth()bbecause dss data store at 24:00 Jan31, 1921 is considered to store at 0:00 Feb 1, 1921
+        Date dataDate = new Date(prvs.dataYear-1900, prvs.dataMonth-1, prvs.dataDay);
+        int index;
+        if (TimeOperations.isMonthlyInterval(timeStep)) {
+            index = prvs.dataYear*12+prvs.dataMonth-(sYear*12+sMonth);
+        } else {
+            Calendar c1=Calendar.getInstance();
+            c1.setTime(beginDate);
+            Calendar c2=Calendar.getInstance();
+            c2.setTime(dataDate);
+            long indexValue = Duration.between(c1.toInstant(), c2.toInstant()).toDays();
+            index=(int)indexValue+1;  //HEC DSS7 uses indexValue+1; Vista/Hec DSS6 uses indexValue+2
+        }
 
+        return index;
+    }
 }
