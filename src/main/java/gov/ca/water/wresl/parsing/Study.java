@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 public class Study {
@@ -71,15 +72,30 @@ public class Study {
         return this.evaluator.processModel(modelIndex, currentDay, currentMonth, currentYear, nThreads, showRunTimeMessage);
     }
 
+
     // Process aliasses
     public void processAliases(int modelIndex, boolean showRunTimeMessage) {
         this.evaluator.processAliases(modelIndex, showRunTimeMessage);
     }
 
+
     // Print dvars and aliases to DSS output file; returns time that took to execute the method
     public int printDVAlias(int vHeclib, HecDss dssFile) {
         return this.sds.printDVAlias(vHeclib, dssFile);
     }
+
+
+    // Retrieve warm start cycles
+    public List<Integer> getCycWarmStart() {return this.sds.getCycWarmStart(); }
+
+
+    // Retrieve warm stop cycles
+    public List<Integer> getCycWarmStop() {return this.sds.getCycWarmStop(); }
+
+
+    // Retrieve warm use cycles
+    public List<Integer> getCycWarmUse() {return this.sds.getCycWarmUse(); }
+
 
     // Collect study WRESL files, compile their parse trees as well as their parent and child files
     private static Map<Path, WRESLFile> collectTrees(Path entryFile) {

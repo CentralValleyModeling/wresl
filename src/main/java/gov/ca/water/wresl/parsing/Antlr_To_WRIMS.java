@@ -103,7 +103,6 @@ public class Antlr_To_WRIMS extends wreslBaseVisitor<VisitorResult> {
             modelConditionParseTreeList.add(sq.conditionParseTree);
         }
         this.sds.setModelList(modelList);
-        this.sds.setModelConditionList(modelConditionList);
         this.sds.setModelConditionParseTrees(modelConditionParseTreeList);
         this.sds.setModelDataSetMap(modelDataSetMap);
 

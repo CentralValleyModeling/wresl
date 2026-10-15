@@ -29,7 +29,6 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     private LinkedHashMap<String, Svar> parameterMap = new LinkedHashMap<>();
 
     private List<String> modelList = new ArrayList<>();
-    private List<String> modelConditionList = new ArrayList<>();
     private List<ParseTree> modelConditionParseTrees = new ArrayList<>();
     private Map<String, ModelDataSet> modelDataSetMap = new HashMap<>();  // <modelName, ModelDataSet>
 
@@ -121,10 +120,6 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         return new ArrayList<String>(this.modelList);
     }
 
-    public List<String> getModelConditionList() {
-        return new ArrayList<String>(modelConditionList);
-    }
-
     public String getModelTimeStep(int modelIndex) {
         String modelName = this.modelList.get(modelIndex);
         ModelDataSet mds = this.modelDataSetMap.get(modelName);
@@ -203,14 +198,6 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     // ------------------------------------------------------------
     // --- SETTERS
     // ------------------------------------------------------------
-    public void setParameterList(List<String> parameterList) {
-        this.parameterList = parameterList;
-    }
-
-    public void setParameterMap(LinkedHashMap<String, Svar> parameterMap) {
-        this.parameterMap = parameterMap;
-    }
-
     public void setSVTimeseriesMap(Map<String, Timeseries> svTimeseriesMap) {
         this.svTimeseriesMap = svTimeseriesMap;
     }
@@ -226,28 +213,12 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         this.modelList = modelList;
     }
 
-    public void setModelConditionList(List<String> modelConditionList) {
-        this.modelConditionList = modelConditionList;
-    }
-
     public void setModelConditionParseTrees(List<ParseTree> modelConditionParseTrees) {
         this.modelConditionParseTrees = modelConditionParseTrees;
     }
 
     public void setModelDataSetMap(Map<String, ModelDataSet> modelDataSetMap) {
         this.modelDataSetMap = modelDataSetMap;
-    }
-
-    public void setVarCycleValueMap(Map<String, Map<String, IntDouble>> varCycleValueMap) {
-        this.varCycleValueMap = varCycleValueMap;
-    }
-
-    public void setVarCycleIndexValueMap(Map<String, Map<String, IntDouble>> varCycleIndexValueMap) {
-        this.varCycleIndexValueMap = varCycleIndexValueMap;
-    }
-
-    public void setVarCycleIndexList(List<String> varCycleIndexList){
-        this.varCycleIndexList = varCycleIndexList;
     }
 
 
