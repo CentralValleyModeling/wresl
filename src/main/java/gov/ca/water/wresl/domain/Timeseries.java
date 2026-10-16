@@ -305,7 +305,7 @@ public class Timeseries extends WRESLComponent implements Serializable {
         }
     }
 
-    // Add data
+    // Add data to the end of the timeseries dataset or replace it if it was provided before
     public void addData(ParallelVars prvs, IntDouble data) {
         // Compute timeseries index to see if the data will be added or will overwrite an existing data
         int index = TimeOperations.timeSeriesIndex(prvs, this.startTime, this.timeStep);
@@ -325,8 +325,7 @@ public class Timeseries extends WRESLComponent implements Serializable {
     }
 
     // Initialize timeseries data as a new List
-    public void initData() {
-        this.data = new ArrayList<>();
-    }
+    public void initData() { this.data = new ArrayList<>(); }
+
 }
 

@@ -194,6 +194,24 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
 
     public ParallelVars getStudyStartDate() { return this.studyStartDate; }
 
+    public IntDouble getFinalDvarValueForTimestep(String name, ParallelVars prvs) {
+        Timeseries dvar = this.allDVMap.get(name);
+        if (dvar == null) {
+            return null;
+        } else {
+            return dvar.retrieveDataForTime(prvs);
+        }
+    }
+
+    public IntDouble getFinalAliasValueForTimestep(String name, ParallelVars prvs) {
+        Timeseries alias = this.allAliasMap.get(name);
+        if (alias == null) {
+            return null;
+        } else {
+            return alias.retrieveDataForTime(prvs);
+        }
+    }
+
 
     // ------------------------------------------------------------
     // --- SETTERS
@@ -225,6 +243,22 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
     // ------------------------------------------------------------
     // --- MISC. METHODS
     // ------------------------------------------------------------
+    public boolean doesDvarExist(String varName) {
+        if (this.allDVMap.containsKey(varName)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public boolean doesAliasExist(String varName) {
+        if (this.allAliasMap.containsKey(varName)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     public void addSVInitTimeseries(Timeseries tsInit) {
         String svInitName = DssOperations.entryNameTS(tsInit.getName(), tsInit.getTimeStep());
         this.svInitTimeseriesMap.put(svInitName, tsInit);
@@ -237,6 +271,14 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         }
         this.parameterList.add(parameter.name);
         this.parameterMap.put(parameter.name, parameter);
+    }
+
+    public void addToAllDVMap(Dvar dvar) {
+        this.allDVMap.put(dvar.getName(), dvar);
+    }
+
+    public void addToAllAliasMap(Alias as) {
+        this.allAliasMap.put(as.getName(), as);
     }
 
     public void clearVarTimeArrayCycleValueMap() {
@@ -352,7 +394,7 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
         HDF5Reader.closeSVFile();
     }
 
-    // Initialize ALIAS data by setting their start date to the begining of the model simulation date
+    // Initialize ALIAS data by setting their start date to the beginning of the model simulation date
     public void initialDvarAlias(int startYear, int startMonth, int startDay) {
         // Compute start time
         Date startTime = new Date(startYear-1900, startMonth-1, startDay);
@@ -378,52 +420,55 @@ public class StudyDataSet extends WRESLComponent implements Serializable  {
 
     // Add DVAR value to DVAR object in the specified model; also update its latest value
     public void assignDvarValue(ParallelVars prvs, String name, IntDouble data, int modelIndex) {
-        this.getModelDataSet(modelIndex).assignDvarValue(prvs, name, data);
+        // Add timeseries data to model's Dvar only if it is a new data (i.e. prvs >= current time step)
+        if (!prvs.isEarlierThan(this.studyStartDate)) {
+            this.getModelDataSet(modelIndex).assignDvarValue(prvs, name, data);
+        }
 
         // Add or replace final dvar value
-        int index = TimeOperations.timeSeriesIndex(prvs, this.studyStartDate.toDate(), this.getModelTimeStep(modelIndex));
         Timeseries ts = this.allDVMap.get(name);
         if (ts == null) {
             // If dvar is not found, it is a new one; add it to the list and populate
             Dvar dvar = this.getModelDataSet(modelIndex).getDvar(name);
             ts = new Timeseries(dvar);
-            ts.initData();
-            this.allDVMap.put(name, ts);
-            for (int i=1; i<=index; i++) {
-                ts.getData().add(null);
+            // Initialize timeseries data only if index >=0 (index <0 means Dvar was read from DSS file, and we don't want to lose these values)
+            if (this.studyStartDate.isEarlierThan(prvs)) {
+                ts.initData();
+                ts.addData(prvs, data);
             }
-            ts.getData().add(data);
+            this.allDVMap.put(name, ts);
         } else {
-            // Otherwise, add or replace data
-            if (index+1 > ts.getData().size()) {
-                ts.getData().add(data);
+            // Otherwise, add or replace data; do nothing if data is for before the simulation begin date (i.e. index < 0)
+            if (prvs.isEarlierThan(this.studyStartDate)) {
+                // Do nothing; this should have been populated by data read from DSS file
             } else {
-                ts.getData().set(index, data);
+                // Add or replace data
+                ts.addData(prvs, data);
             }
         }
     }
 
     // Add ALIAS value as the latest value
     public void assignAliasValue(ParallelVars prvs, String name, IntDouble data, int modelIndex) {
-        int index = TimeOperations.timeSeriesIndex(prvs, this.studyStartDate.toDate(), this.getModelTimeStep(modelIndex));
         Timeseries ts = this.allAliasMap.get(name);
         if (ts == null) {
             // If alias is not found, it is a new one; add it to the list and populate
             Alias as = this.getModelDataSet(modelIndex).getAlias(name);
             if (as == null) as = this.getModelDataSet(modelIndex).getFutureAlias(name);
             ts = new Timeseries(as);
-            ts.initData();
-            this.allAliasMap.put(name, ts);
-            for (int i=1; i<=index; i++) {
-                ts.getData().add(null);
+            // Initialize timeseries data only if index >=0 (index <0 means Alias was read from DSS file, and we don't want to lose these values)
+            if (this.studyStartDate.isEarlierThan(prvs)) {
+                ts.initData();
+                ts.addData(prvs, data);
             }
-            ts.getData().add(data);
+            this.allAliasMap.put(name, ts);
         } else {
-            // Otherwise, add or replace data
-            if (index+1 > ts.getData().size()) {
-                ts.getData().add(data);
+            // Otherwise, add or replace data; do nothing if data is for before the simulation begin date (i.e. index < 0)
+            if (prvs.isEarlierThan(this.studyStartDate)) {
+                // Do nothing; this should have been populated by data read from DSS file
             } else {
-                ts.getData().set(index, data);
+                // Add or replace data
+                ts.addData(prvs, data);
             }
         }
     }
